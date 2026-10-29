@@ -32,5 +32,5 @@ final class MessageHUDController {
         presenter.dismiss()
     }
 
-    private var metrics: InterfaceMetrics { settings.interfaceSize.metrics }
+    private var metrics: InterfaceMetrics { settings.interfaceMetrics }
 }

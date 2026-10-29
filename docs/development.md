@@ -23,6 +23,19 @@ the section below is a note for anyone who wants it, not a step.
 
 ## Build & run
 
+Build and launch Tinycast Dev from the project folder:
+
+```sh
+./Scripts/build-and-run.sh
+```
+
+The Codex environment's Run action uses the same script. It restarts only Tinycast Dev and
+uses the project's signing identity. `DEVELOPER_DIR` defaults to the Xcode installation below.
+Optional flags are `--debug` for LLDB, `--logs` for process logs, `--telemetry` for subsystem
+logs, and `--verify` to check that the app starts.
+
+Or open the project in Xcode:
+
 ```sh
 open Tinycast.xcodeproj    # then ⌘R
 ```

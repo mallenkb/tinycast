@@ -80,6 +80,13 @@ struct GeneralSettingsView: View {
                 Toggle(isOn: $settings.animationsEnabled) {
                     SettingsRowTitle(.generalAppearance, "Show animations")
                 }
+                Picker(selection: $settings.typography) {
+                    ForEach(AppTypography.allCases) { typography in
+                        Text(typography.title).tag(typography)
+                    }
+                } label: {
+                    SettingsRowTitle(.generalAppearance, "Typography")
+                }
                 InterfaceSizeRow()
                 WindowModeRow()
                     .background {

@@ -189,13 +189,13 @@ struct LauncherScreen: PaletteScreen {
         if entry.kind == .customCommand {
             return CustomCommandArgumentsAccessory.make(
                 command: core.customCommands.command(entryID: entry.id), vm: vm,
-                metrics: core.settings.interfaceSize.metrics, focus: focus,
+                metrics: core.settings.interfaceMetrics, focus: focus,
                 onSubmit: { activate(at: selection) })
         }
         return ExtensionArgumentsAccessory.make(
             entry: entry, coordinator: core.extensionCoordinator,
             values: { name in headerFieldBinding(entry: entry, name: name) },
-            focus: focus, metrics: core.settings.interfaceSize.metrics,
+            focus: focus, metrics: core.settings.interfaceMetrics,
             onSubmit: { activate(at: selection) })
     }
 

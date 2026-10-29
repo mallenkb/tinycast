@@ -59,7 +59,9 @@ final class PaletteCoordinator {
         if isShowing(.launcher) {
             hidePalette()
         } else {
-            showPalette(mode: .launcher, restoreAnyMode: true)
+            showPalette(
+                mode: .launcher,
+                restoreAnyMode: !isVisible && palette.navigationRootMode == .launcher)
         }
     }
 

@@ -33,7 +33,7 @@ design follows [fsearch](https://github.com/noahdunnagan/fsearch).
   so changing `FileSearchIgnoreList.defaults` reaches installs that already ran. Every row can be
   removed, and **Restore Defaults** clears both lists. Scopes are one stored list that `defaultScopes`
   only seeds.
-- **Indexed hits in the launcher are off by default.** With **Show in launcher** off, a keystroke
+- **Indexed hits in the launcher are on by default when File Search is enabled.** With **Show in launcher** off, a keystroke
   never reaches the index or observes the session. Explicit file favorites still answer by filename
   from their saved paths, while disabling File Search hides them too.
 - **A superseded query never publishes.** The session runs one search at a time, keeps only the newest
@@ -269,9 +269,9 @@ delay old, since the reset clears its session.
 
 **Show in launcher** (`fileSearchShowInLauncher`, under the feature switch) adds a **Files** section to
 root search, between the ranked results and the `Use "…" with` fallbacks, so ↵ on a typed app name never
-opens a file. It lists the top five hits (`FileSearchQuery.launcherLimit`) once the trimmed query has
-three characters (`launcherMinimumLength`), the threshold category search uses. Shorter cancels the
-query and releases its rows.
+opens a file. Every non-empty query searches immediately and lists up to 200 hits, matching the
+Search Files screen's limit. Files remain in the scrollable list above the fallback commands.
+Clearing the query cancels the search and releases its rows.
 
 The launcher borrows this screen's `FileSearchSession` rather than keeping its own. Only one palette
 mode shows at a time, so nothing is held twice. An index swap or a trashed row updates both. And the
@@ -286,7 +286,7 @@ can be favorited through ⌘K or ⇧⌘F in either screen; their saved paths joi
 section, share its reordering and ⌘-digit slots, and survive relaunch and settings backups. Explicit
 favorites remain searchable by filename at any query length with **Show in launcher** off. Matching
 favorites lead indexed file hits in the Files section, with repeated paths removed and the same
-five-row cap. Disabling File Search hides file favorites without deleting them. It is
+200-row cap. Disabling File Search hides file favorites without deleting them. It is
 `LauncherScreen.Row.file`, id-prefixed `file-` because an application's entry id is its bundle path. It
 draws `FileSearchRow` with its location — name, dimmed parent path, then File or Folder — and answers
 the screen's own row actions: ↵ opens, ⌘↵ reveals, the copy, paste and trash chords run

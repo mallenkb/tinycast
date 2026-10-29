@@ -1,5 +1,10 @@
 # Tinycast
 
+This is a personal fork of [Tinycast](https://github.com/abue-ammar/tinycast), created by
+[Abue Ammar](https://github.com/abue-ammar). The original copyright, AGPL-3.0-or-later license,
+and contributor history are preserved. This fork adds clipboard link previews, live file search,
+typography settings and other local interface changes. It is maintained separately from the original.
+
 **A tiny, fully native macOS launcher. One hotkey, everything you reach for all day, under 100 MB of
 RAM.**
 

@@ -32,6 +32,14 @@ settings:
       STRIP_SWIFT_SYMBOLS: YES
       DEAD_CODE_STRIPPING: YES
 
+schemes:
+  Tinycast:
+    build:
+      targets:
+        Tinycast: all
+    run:
+      config: Debug
+
 targets:
   Tinycast:
     type: application
@@ -45,8 +53,11 @@ targets:
           - Features/Dictation/Helper
           - Features/FileSearch/Helper
           - Resources/EmojiKeywords
+          - Resources/Fonts
       # A folder reference keeps the packs in their own directory, which `EmojiIndex` lists.
       - path: Tinycast/Resources/EmojiKeywords
+        type: folder
+      - path: Tinycast/Resources/Fonts
         type: folder
       # The MIT mark's licence asks the notice to travel with the binary, not just the repo.
       - path: NOTICE.md

@@ -133,12 +133,12 @@ enum CalcEngine {
             case .value(let input, let from, let to, let output):
                 let amount = CalcFormatter.currency(output)
                 return CalcResult(
-                    expression: "\(CalcFormatter.display(input)) \(from.code)",
+                    expression: "\(from.code) \(CalcFormatter.display(input))",
                     sourceBadge: from.name,
                     targetBadge: to.name,
                     payload: .value(
-                        display: "\(CalcFormatter.grouped(amount)) \(to.code)",
-                        copyText: "\(amount) \(to.code)"),
+                        display: "\(to.code) \(CalcFormatter.grouped(amount))",
+                        copyText: "\(to.code) \(amount)"),
                     isCurrency: true)
             case .mismatch(let from, let to):
                 return CalcResult(

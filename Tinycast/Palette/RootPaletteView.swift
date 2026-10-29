@@ -331,6 +331,11 @@ struct RootPaletteView: View {
                 }
                 // No title bar, so this thin top margin is the only place left to grab the panel.
                 .overlay(alignment: .topLeading) { topDragStrip }
+                .overlay(alignment: .top) {
+                    if vm.isVisible, vm.mode == .clipboard, core.linkPreviews.loadingCount > 0 {
+                        LinkPreviewLoadingStrip()
+                    }
+                }
                 // The menu lives in its own window; this only reports the one to hang it from.
                 .background(
                     WindowReader {
@@ -343,7 +348,17 @@ struct RootPaletteView: View {
                 // Compact, the bar's own glass shapes are the surface and the window is bare.
                 .background(isCollapsed ? .clear : Theme.Colors.panelScrim)
                 // Hidden rather than unmounted, so expanding never shows a frame without glass.
-                .background(GlassEffectView().opacity(isCollapsed ? 0 : 1))
+                .background(
+                    GlassEffectView(cornerRadius: metrics.radius.panel)
+                        .mask {
+                            let shape = RoundedRectangle(
+                                cornerRadius: metrics.radius.panel, style: .continuous)
+                            ZStack {
+                                shape.fill(.white.opacity(Theme.Opacity.paletteBorder))
+                                shape.inset(by: 1).fill(.white)
+                            }
+                        }
+                        .opacity(isCollapsed ? 0 : 1))
                 .overlay {
                     Theme.Colors.dialogDimming
                         .opacity(core.isDimmingPaletteForDialog && !isCollapsed ? 1 : 0)

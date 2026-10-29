@@ -60,6 +60,7 @@ final class FileSearchCoordinator {
             session.cancel()
             return
         }
+        indexer.refreshAccess()
         session.search(query)
     }
 

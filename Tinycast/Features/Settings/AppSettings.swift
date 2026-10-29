@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Delay before a closed palette pops to root; an unset key reads as `.immediately`.
+/// A brief dismissal preserves the current screen before the idle timeout returns to root.
 enum PopToRootTimeout: Int, CaseIterable, Identifiable, Sendable {
     case immediately = 0
     case afterFive = 5
@@ -230,7 +230,14 @@ final class AppSettings {
         didSet { defaults.set(calcNumberStyle.rawValue, forKey: Key.calcNumberStyle.rawValue) }
     }
 
-    /// Scales the palette and its floating siblings only. Read through `InterfaceSize.metrics`.
+    var typography: AppTypography {
+        didSet { defaults.set(typography.rawValue, forKey: Key.typography.rawValue) }
+    }
+
+    var interfaceMetrics: InterfaceMetrics {
+        InterfaceMetrics(scale: interfaceSize.scale, typographyStyle: typography)
+    }
+
     var interfaceSize: InterfaceSize {
         didSet {
             defaults.set(interfaceSize.rawValue, forKey: Key.interfaceSize.rawValue)
@@ -718,9 +725,10 @@ final class AppSettings {
         emojiGridColumns =
             EmojiGridColumns(rawValue: defaults.integer(forKey: Key.emojiGridColumns.rawValue))
             ?? .default
-        popToRootTimeout =
-            PopToRootTimeout(rawValue: defaults.integer(forKey: Key.popToRootTimeout.rawValue))
-            ?? .immediately
+        popToRootTimeout = defaults.object(forKey: Key.popToRootTimeout.rawValue) == nil
+            ? .afterNinety
+            : PopToRootTimeout(rawValue: defaults.integer(forKey: Key.popToRootTimeout.rawValue))
+                ?? .afterNinety
         escapeKeyBehavior =
             defaults.string(forKey: Key.escapeKeyBehavior.rawValue).flatMap(EscapeKeyBehavior.init)
             ?? .navigateBackOrClose
@@ -730,12 +738,11 @@ final class AppSettings {
         calcNumberStyle =
             defaults.string(forKey: Key.calcNumberStyle.rawValue).flatMap(CalcNumberStyle.init)
             ?? .system
+        typography = defaults.string(forKey: Key.typography.rawValue).flatMap(AppTypography.init) ?? .system
         interfaceSize =
             defaults.string(forKey: Key.interfaceSize.rawValue).flatMap(InterfaceSize.init)
             ?? .standard
-        compactMode =
-            defaults.object(forKey: Key.compactMode.rawValue) == nil
-            || defaults.bool(forKey: Key.compactMode.rawValue)
+        compactMode = defaults.bool(forKey: Key.compactMode.rawValue)
         compactBarCommands =
             defaults.stringArray(forKey: Key.compactBarCommands.rawValue)
             .flatMap(CommandID.compactBarCommands(from:)) ?? CommandID.defaultCompactBarCommands
@@ -770,7 +777,9 @@ final class AppSettings {
             defaults.stringArray(forKey: Key.fileSearchIgnorePatterns.rawValue) ?? []
         fileSearchRemovedDefaultPatterns =
             defaults.stringArray(forKey: Key.fileSearchRemovedDefaultPatterns.rawValue) ?? []
-        fileSearchShowInLauncher = defaults.bool(forKey: Key.fileSearchShowInLauncher.rawValue)
+        fileSearchShowInLauncher =
+            defaults.object(forKey: Key.fileSearchShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.fileSearchShowInLauncher.rawValue)
         notesEnabled = defaults.bool(forKey: Key.notesEnabled.rawValue)
         dictationEnabled = defaults.bool(forKey: Key.dictationEnabled.rawValue)
         dictationMode =

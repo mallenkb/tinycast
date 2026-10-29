@@ -161,7 +161,7 @@ final class DialogController: NSObject, NSWindowDelegate {
         closing?.orderOut(nil)
     }
 
-    private var metrics: InterfaceMetrics { settings.interfaceSize.metrics }
+    private var metrics: InterfaceMetrics { settings.interfaceMetrics }
 
     private func hostingView(_ view: some View, width: CGFloat, minHeight: CGFloat) -> NSView {
         let hosting = NSHostingView(

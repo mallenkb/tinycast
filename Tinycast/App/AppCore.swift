@@ -18,6 +18,7 @@ final class AppCore {
         fileURL: AppPaths.applicationSupport().appendingPathComponent("room-parking.json"))
     let roomSession = RoomSession()
     let clipboardStore = ClipboardStore()
+    let linkPreviews = LinkPreviewStore()
     @ObservationIgnored private var clipboardTextIndexer: ClipboardTextIndexer?
     let clipboardManager: ClipboardManager
     let snippetsStore: SnippetsStore

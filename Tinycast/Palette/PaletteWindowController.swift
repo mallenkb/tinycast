@@ -529,7 +529,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             topMarginFraction: Theme.Size.paletteTopMarginFraction)
     }
 
-    private var metrics: InterfaceMetrics { core.settings.interfaceSize.metrics }
+    private var metrics: InterfaceMetrics { core.settings.interfaceMetrics }
 }
 
 extension NSScreen {

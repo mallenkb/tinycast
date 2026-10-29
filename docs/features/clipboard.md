@@ -54,6 +54,12 @@
   `ClipboardTextHelper` per item and reaps it, which is the whole reason Vision's and PDFKit's
   allocations do not accumulate in Tinycast. The helper is handed a path and answers with text.
 
+## Web link previews
+
+Selected web links display a page image or summary card, plus URL and Title information.
+Favicons appear in list rows after a link has been selected. Requests run only for the selected
+link and are cancelled when selection changes. See [link previews](link-preview.md) for limits.
+
 ## Poll-based capture
 
 **A file URL is read before the text**, because that is the whole of the bug this ordering fixes:

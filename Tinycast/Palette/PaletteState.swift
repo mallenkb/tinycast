@@ -71,7 +71,12 @@ final class PaletteState {
     /// A containment test, because hit-testing a rebuilding hierarchy misses the field.
     @ObservationIgnored var searchFieldFrame: CGRect = .zero
     /// True while a palette menu is open. See docs/features/palette.md#menu-open-input-freeze.
-    @ObservationIgnored var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
+    @ObservationIgnored var menuOpen = false {
+        didSet {
+            guard menuOpen != oldValue else { return }
+            onMenuOpenChanged?(menuOpen)
+        }
+    }
     var menuQuery = ""
     /// Fired when `menuOpen` flips, so the panel can hide the caret without a focus swap.
     @ObservationIgnored var onMenuOpenChanged: ((Bool) -> Void)?
@@ -83,6 +88,8 @@ final class PaletteState {
     }
 
     var canGoBack: Bool { !backStack.isEmpty }
+
+    var navigationRootMode: PaletteMode { backStack.first?.mode ?? mode }
 
     func prepare(mode: PaletteMode) {
         backStack.removeAll()

@@ -206,8 +206,15 @@ segment's label once a segmented control has settled.
 
 ### Typography (`Theme.Typography`)
 
-System text styles only — **no fixed point sizes in views**. Two named exceptions are explicit:
-`searchField` (20pt Regular) and the optical SF Symbol treatment `menuSymbol` (14pt Medium). Use
+General → Appearance → Typography selects Default or Inter Variable for shared interface typography.
+Default retains the system styles, including the 20 pt Light search field. Inter Variable uses Regular
+weight at the corresponding sizes. Monospaced code and symbol fonts remain system fonts. The font is
+bundled under `Resources/Fonts/` with its SIL Open Font License, not installed globally.
+
+
+Default uses system text styles; Inter Variable uses their sizes at Regular weight.
+**No fixed point sizes in views**. Two named exceptions are explicit:
+`searchField` (20pt Light in Default, Regular in Inter Variable) and the optical SF Symbol treatment `menuSymbol` (14pt Medium). Use
 `rowTitle` (`.body`), `sectionHeader` (`.subheadline.medium`),
 `rowTrailing`/`bar`/`menuRow`/`keyCap` etc. as named.
 

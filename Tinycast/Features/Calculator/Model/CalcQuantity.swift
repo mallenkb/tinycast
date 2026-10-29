@@ -96,7 +96,7 @@ enum CalcQuantity {
                     value.amount, definition: definition,
                     expression: expressionText(split.expressionTokens))
             }
-            let expression = "\(CalcFormatter.display(value.amount)) \(definition.code)"
+            let expression = "\(definition.code) \(CalcFormatter.display(value.amount))"
             // A bare amount names no target, so the Mac's own currency becomes one once it's typed.
             guard !preserveStandaloneUnit, let target = regionTarget(region, from: definition),
                 let output = rates?.convert(value.amount, from: definition.code, to: target.code)
@@ -147,8 +147,8 @@ enum CalcQuantity {
             expression: expression,
             sourceBadge: sourceBadge, targetBadge: definition.name,
             payload: .value(
-                display: "\(CalcFormatter.grouped(formatted)) \(definition.code)",
-                copyText: "\(formatted) \(definition.code)"),
+                display: "\(definition.code) \(CalcFormatter.grouped(formatted))",
+                copyText: "\(definition.code) \(formatted)"),
             isCurrency: true)
     }
 
@@ -230,13 +230,20 @@ enum CalcQuantity {
 
         var index = 0
         while index < tokens.count {
-            // Money is written sign-first (`$10`), so echo the amount ahead of its code.
             if case .ident(let name) = tokens[index], CalcUnits.byName[name] == nil,
                 let definition = CalcCurrency.byName[name], index + 1 < tokens.count,
                 let amount = numberValue(tokens[index + 1])
             {
-                add(CalcFormatter.copyText(amount))
-                add(definition.code)
+                add("\(definition.code) \(CalcFormatter.copyText(amount))")
+                index += 2
+                continue
+            }
+
+            if let amount = numberValue(tokens[index]), index + 1 < tokens.count,
+                case .ident(let name) = tokens[index + 1], CalcUnits.byName[name] == nil,
+                let definition = CalcCurrency.byName[name]
+            {
+                add("\(definition.code) \(CalcFormatter.copyText(amount))")
                 index += 2
                 continue
             }

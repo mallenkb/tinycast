@@ -40,6 +40,7 @@ enum SettingsFileSchema {
         case .language: return bind(settings, \.language)
         case .appearance: return bind(settings, \.appearance)
         case .animationsEnabled: return bind(settings, \.animationsEnabled)
+        case .typography: return bind(settings, \.typography)
         case .interfaceSize: return bind(settings, \.interfaceSize)
         case .compactMode: return bind(settings, \.compactMode)
         case .compactBarCommands:
@@ -176,6 +177,7 @@ extension CommandID: SettingsFileRawValue {}
 extension AppAppearance: SettingsFileRawValue {}
 extension AppLanguage: SettingsFileRawValue {}
 extension InterfaceSize: SettingsFileRawValue {}
+extension AppTypography: SettingsFileRawValue {}
 extension HyperKeyPhysicalKey: SettingsFileRawValue {}
 extension HyperKeyQuickPress: SettingsFileRawValue {}
 extension CalcNumberStyle: SettingsFileRawValue {}

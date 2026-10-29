@@ -21,6 +21,7 @@ enum AppSettingsKey: String, CaseIterable {
     case appearance = "appearance"
     case language = "AppleLanguages"
     case calcNumberStyle = "calculatorNumberStyle"
+    case typography = "typography"
     case interfaceSize = "interfaceSize"
     case compactMode = "compactMode"
     case compactBarCommands = "compactBarCommands"

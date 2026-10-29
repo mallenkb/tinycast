@@ -56,12 +56,14 @@ final class PalettePanel: NSPanel, AnimatedPanel {
 
     /// Mirrors the field editor's marked text. docs/features/palette.md#ime-composition
     private var compositionObserver: NotificationToken?
+    private var smoothCaret: PaletteCaretView?
 
     override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
         // A transport's button is a first responder like any other; the search field outranks it.
         if let view = responder as? NSView, view.refusesKeyboardFocus { return false }
+        if responder === firstResponder { return true }
         guard super.makeFirstResponder(responder) else { return false }
-        fieldEditor?.insertionPointColor = Self.caretColor
+        setSearchCaretHidden(paletteState?.menuOpen == true)
         trackComposition()
         if let context = fieldEditorContext { onFieldEditorFocused?(context) }
         return true
@@ -121,14 +123,25 @@ final class PalettePanel: NSPanel, AnimatedPanel {
             keyCode: UInt16(arrow.code))
     }
 
-    private static let caretColor = NSColor(Theme.Colors.textPrimary)
-
     /// Caret hiding on SwiftUI's own field editor. docs/features/palette.md#menu-open-input-freeze
     private func setSearchCaretHidden(_ hidden: Bool) {
-        guard let editor = fieldEditor else { return }
-        editor.insertionPointColor = hidden ? .clear : Self.caretColor
-        // Force a redraw so the caret flips at once rather than waiting out the blink timer.
-        editor.updateInsertionPointStateAndRestartTimer(!hidden)
+        guard let editor = fieldEditor, editor.isFieldEditor else {
+            smoothCaret?.removeFromSuperview()
+            smoothCaret = nil
+            return
+        }
+        if smoothCaret?.editor !== editor {
+            smoothCaret?.removeFromSuperview()
+            let caret = PaletteCaretView(editor: editor)
+            editor.addSubview(caret)
+            smoothCaret = caret
+        }
+        if !editor.insertionPointColor.isEqual(NSColor.clear) {
+            editor.insertionPointColor = .clear
+            editor.needsDisplay = true
+        }
+        smoothCaret?.setMenuHidden(hidden)
+        smoothCaret?.refresh(restart: false)
     }
 
     /// Every event either mechanism sets a cursor on, so neither gets the last word.
@@ -282,8 +295,14 @@ final class PalettePanel: NSPanel, AnimatedPanel {
     }
 
     /// Losing the keyboard is the last modifier news the panel gets; a re-show may skip `prepare`.
+    override func becomeKey() {
+        super.becomeKey()
+        smoothCaret?.refresh(restart: true)
+    }
+
     override func resignKey() {
         super.resignKey()
+        smoothCaret?.refresh(restart: false)
         paletteState?.noteCommandHeld(false)
     }
 

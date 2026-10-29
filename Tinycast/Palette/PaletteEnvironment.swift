@@ -5,7 +5,7 @@ private struct InterfaceMetricsScope: ViewModifier {
     let settings: AppSettings
 
     func body(content: Content) -> some View {
-        content.environment(\.metrics, settings.interfaceSize.metrics)
+        content.environment(\.metrics, settings.interfaceMetrics)
     }
 }
 
@@ -19,6 +19,7 @@ extension View {
             .environment(core.palette)
             .environment(core.appIndex)
             .environment(core.clipboardStore)
+            .environment(core.linkPreviews)
             .environment(core.favorites)
             .environment(core.visibility)
             .environment(core.aliases)

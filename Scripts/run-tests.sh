@@ -261,6 +261,7 @@ run palette-selection-test Tinycast/Features/PaletteRowIndex.swift \
 run appearance-test        Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/Settings/AppAppearance.swift
 run language-test          Tinycast/Features/Settings/AppLanguage.swift
 run localized-resource-test Tinycast/Platform/LocalizedResource.swift
@@ -272,11 +273,13 @@ run relaunch-test          Tinycast/App/AppDelegate.swift Tinycast/Platform/Rela
 run interface-size-test    Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Features/Extensions/Model/ExtensionFormMetrics.swift
 run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Palette/PalettePlacement.swift
 run palette-menu-click-test Tinycast/Platform/Appearance.swift \
@@ -286,10 +289,12 @@ run palette-menu-click-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Interaction/KeyboardFocus.swift \
                            Tinycast/DesignSystem/Interaction/Motion.swift \
                            Tinycast/DesignSystem/Interaction/AnimatedPanel.swift \
-                           Tinycast/Palette/PalettePanel.swift
+                           Tinycast/Palette/PalettePanel.swift \
+                           Tinycast/Palette/PaletteCaretView.swift
 run form-input-test        Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/DesignSystem/FormTextInput.swift \
                            Tinycast/DesignSystem/FormTextArea.swift
 run scroll-reveal-test     Tinycast/DesignSystem/Scrolling/SelectionReveal.swift
@@ -416,6 +421,7 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
 run callout-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift
 run icon-cache-test        Tinycast/Platform/Appearance.swift \
                            Tinycast/Platform/Images/IconCache.swift
@@ -428,6 +434,7 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/Extensions/Model/ExtensionBootConfig.swift \
                            Tinycast/Features/Extensions/Model/ExtensionLaunchType.swift \
                            Tinycast/Features/Extensions/Model/ExtensionManifest.swift \
@@ -532,6 +539,8 @@ run uninstall-test         Tinycast/Features/Uninstall/Model/UninstallTarget.swi
                            Tinycast/Features/Uninstall/Model/UninstallRules.swift \
                            Tinycast/Features/Uninstall/Model/UninstallProtection.swift \
                            Tinycast/Features/Uninstall/Model/UninstallPlan.swift
+run link-preview-test      Tinycast/Features/LinkPreview/Model/LinkPreviewDocument.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
 run quicklink-test         Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkStore.swift \
@@ -562,6 +571,7 @@ run notes-editor-test      Tinycast/Platform/Signposts.swift \
                            Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Features/TextInjection/Service/InjectableTextView.swift \
                            Tinycast/Features/Notes/Model/NoteDocument.swift \
@@ -589,6 +599,7 @@ run -O index notes-editor-performance \
                            Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Features/TextInjection/Service/InjectableTextView.swift \
                            Tinycast/Features/Notes/Model/NoteDocument.swift \
@@ -721,6 +732,7 @@ run slow ext-test          -parse-as-library \
                            Tinycast/Platform/Images/IconCache.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            $E/Model/ExtensionBootConfig.swift \
                            $E/Model/ExtensionDeepLink.swift \
                            $E/Model/ExtensionLaunchType.swift \
@@ -794,6 +806,7 @@ run ai-chat-test           Tinycast/Features/AI/Model/AIRequest.swift \
 run chat-markdown-test     Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Features/AI/Model/AIRequest.swift \
                            Tinycast/Features/AI/Model/AITool.swift \

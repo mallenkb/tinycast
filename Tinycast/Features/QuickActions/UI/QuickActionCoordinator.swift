@@ -354,7 +354,7 @@ final class QuickActionCoordinator {
     private func present(_ state: QuickActionPanelState, target: Target) {
         panels.present(
             state,
-            metrics: settings.interfaceSize.metrics,
+            metrics: settings.interfaceMetrics,
             languages: offeredLanguages,
             onRetranslate: { [weak self] language in
                 state.targetLanguage = language

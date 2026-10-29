@@ -242,9 +242,24 @@ The flat `selection` index is the single source of truth for highlight / activat
 match the visible row order**, including the card at index 0 when present — the calculator's (see
 [calculator.md](calculator.md)) or the meeting join card (see [calendar.md](calendar.md)), never both.
 
+## Returning after dismissal
+
+By default, dismissing the palette preserves the screen, query and selection for 90 seconds.
+Reopening before the timeout resumes that context; after it expires, the palette returns to root.
+The launcher shortcut resumes only contexts rooted in the launcher. A screen summoned directly by
+its own shortcut, such as Emoji, does not replace the launcher on the next Command-Space.
+General settings can change the delay or reset immediately. An explicit command shortcut still
+opens its requested screen, and explicit reset actions clear the preserved context immediately.
+
 ## The compact bar
 
-Compact is the default window mode; a stored choice of Expanded is kept. It is the launcher with an
+The native glass view uses the same panel corner radius as the SwiftUI mask. Clipping alone does
+not set the glass highlight's geometry; both radii update when Interface Size changes.
+The glass representable accepts SwiftUI's proposed background size, so an empty native glass view
+fills the panel instead of relying on its intrinsic size.
+An alpha mask reduces the native glass border's opacity by 20% while keeping its interior opaque.
+
+Expanded is the default window mode; Compact remains available in General settings. Compact is the launcher with an
 empty query, drawn as glass shapes over a bare window: the header row in a capsule, then one round
 button per configured `AppSettings.compactBarCommands` entry whose feature
 `AppIndex.isCommandEnabled` reports on. General settings shows **Compact Shortcuts** only
@@ -569,9 +584,11 @@ caret, mouse selection and standard editing commands.
 - The caret is hidden by clearing SwiftUI's **own** live field editor's `insertionPointColor`. SwiftUI
   force-casts its field editor to a private subclass, so vending a custom one crashes. The searchable
   menu draws no caret of its own; AppKit draws the caret in its field editor.
-- SwiftUI resolves `tint` into a fixed caret colour on focus and never refreshes it, and the search
-  field keeps focus across hide and show. `PalettePanel.makeFirstResponder` re-colours the editor with
-  the dynamic `textPrimary`, so the caret follows a Light/Dark switch.
+- The palette's field editor keeps its native typing, selection and composition behavior, while
+  `PaletteCaretView` draws its insertion point with a smooth 1.2-second opacity cycle. Its position
+  comes from the editor's selected character range, and typing restarts the visible phase.
+- Selection, composition, menus and loss of key status hide the overlay. Reduce Motion keeps it solid.
+  Repeating the current focus or menu state does not restart the fade.
 
 ## ↵ never commits the search field
 

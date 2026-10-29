@@ -5,11 +5,12 @@ struct InterfaceMetrics: Equatable, Sendable {
     static let standard = InterfaceMetrics(scale: 1)
 
     let scale: CGFloat
+    var typographyStyle: AppTypography = .system
 
     var spacing: Spacing { Spacing(scale: scale) }
     var radius: Radius { Radius(scale: scale) }
     var size: Size { Size(scale: scale) }
-    var typography: Typography { Typography(scale: scale) }
+    var typography: Typography { Typography(scale: scale, style: typographyStyle) }
 
     /// For a tuned length a surface owns itself, where `Theme` states no token for it.
     func scaled(_ value: CGFloat) -> CGFloat { scaledPoints(value, scale) }
@@ -144,18 +145,23 @@ struct InterfaceMetrics: Equatable, Sendable {
     /// `NSFont` is the only public source of a text style's size and face.
     struct Typography: Sendable {
         let scale: CGFloat
+        let style: AppTypography
 
         var searchFieldSize: CGFloat { scaledPoints(Theme.Typography.searchFieldSize, scale) }
         var searchField: Font {
-            scale == 1
+            if style == .interVariable {
+                return .custom(Theme.Typography.interFontName, fixedSize: searchFieldSize).weight(.regular)
+            }
+            return scale == 1
                 ? Theme.Typography.searchField
-                : .system(size: searchFieldSize, weight: .regular)
+                : .system(size: searchFieldSize, weight: .light)
         }
         /// Isolated because `Theme`'s twin is, not because resolving a font needs main.
         @MainActor var searchFieldNSFont: NSFont {
-            scale == 1
+            if style == .interVariable { return interFont(size: searchFieldSize) }
+            return scale == 1
                 ? Theme.Typography.searchFieldNSFont
-                : NSFont.systemFont(ofSize: searchFieldSize, weight: .regular)
+                : NSFont.systemFont(ofSize: searchFieldSize, weight: .light)
         }
         var headerIcon: Font {
             scale == 1
@@ -179,10 +185,14 @@ struct InterfaceMetrics: Equatable, Sendable {
                 ? Theme.Typography.code
                 : .system(size: nsFont(.callout).pointSize, design: .monospaced)
         }
-        var inlineCode: Font { font(Theme.Typography.inlineCode, .body).monospaced() }
+        var inlineCode: Font {
+            .system(size: nsFont(.body).pointSize, design: .monospaced)
+        }
         var bar: Font { font(Theme.Typography.bar, .callout, .medium) }
         var chip: Font { font(Theme.Typography.chip, .callout) }
-        @MainActor var chipNSFont: NSFont { scale == 1 ? Theme.Typography.chipNSFont : nsFont(.callout) }
+        @MainActor var chipNSFont: NSFont {
+            scale == 1 && style == .system ? Theme.Typography.chipNSFont : nsFont(.callout)
+        }
         var disclosure: Font { font(Theme.Typography.disclosure, .caption1, .semibold) }
         var menuRow: Font { font(Theme.Typography.menuRow, .body) }
         var menuShortcut: Font { font(Theme.Typography.menuShortcut, .callout) }
@@ -194,7 +204,7 @@ struct InterfaceMetrics: Equatable, Sendable {
         ) -> NSFont {
             let base = nsFont(style)
             if monospaced { return .monospacedSystemFont(ofSize: base.pointSize, weight: weight ?? .regular) }
-            guard let weight else { return base }
+            guard self.style == .system, let weight else { return base }
             return .systemFont(ofSize: base.pointSize, weight: weight)
         }
 
@@ -204,14 +214,25 @@ struct InterfaceMetrics: Equatable, Sendable {
         )
             -> Font
         {
+            if self.style == .interVariable { return Font(nsFont(style)) }
             guard scale != 1 else { return base }
             let scaled = Font(nsFont(style))
             return weight.map(scaled.weight) ?? scaled
         }
 
+        private func interFont(size: CGFloat) -> NSFont {
+            guard let font = NSFont(name: Theme.Typography.interFontName, size: size) else {
+                preconditionFailure("Bundled Inter Variable font is unavailable")
+            }
+            return font
+        }
+
         /// Its own descriptor, so `.headline` stays Bold and `.caption2` Medium, not lighter.
         private func nsFont(_ style: NSFont.TextStyle) -> NSFont {
             let base = NSFont.preferredFont(forTextStyle: style)
+            if self.style == .interVariable {
+                return interFont(size: scaledPoints(base.pointSize, scale))
+            }
             guard scale != 1 else { return base }
             return NSFont(descriptor: base.fontDescriptor, size: scaledPoints(base.pointSize, scale)) ?? base
         }

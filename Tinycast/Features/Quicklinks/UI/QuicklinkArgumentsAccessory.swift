@@ -14,7 +14,7 @@ enum QuicklinkArgumentsAccessory {
         onSubmit: @escaping () -> Void
     ) -> PaletteHeaderAccessory? {
         guard let quicklink else { return nil }
-        let metrics = core.settings.interfaceSize.metrics
+        let metrics = core.settings.interfaceMetrics
         let arguments = SnippetTemplateEngine.declaredArguments(in: quicklink.link).map {
             InlineArgument(
                 id: $0.name, title: $0.name, options: $0.options, isOptional: $0.isOptional)

@@ -89,7 +89,9 @@ struct LauncherList: View {
 
     private var firstRowSelected: Bool {
         if card != nil { return cardSelected }
-        return selectedRowID != nil && selectedRowID == (favorites.first?.id ?? results.first?.id)
+        let firstID = favorites.first?.id ?? results.first?.id
+            ?? files?.results.first.map { "file-" + $0.id }
+        return selectedRowID != nil && selectedRowID == firstID
     }
 
     private var fileRows: [Row] {

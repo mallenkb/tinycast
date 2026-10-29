@@ -38,6 +38,7 @@ struct SettingsBackup: Codable {
         var appearance: String?
         var language: String?
         var calcNumberStyle: String?
+        var typography: String?
         var interfaceSize: String?
         var compactMode: Bool?
         var compactBarCommands: [String]?
@@ -154,6 +155,7 @@ extension SettingsBackup {
             appearance: s.appearance.rawValue,
             language: s.language.rawValue,
             calcNumberStyle: s.calcNumberStyle.rawValue,
+            typography: s.typography.rawValue,
             interfaceSize: s.interfaceSize.rawValue,
             compactMode: s.compactMode,
             compactBarCommands: s.compactBarCommands.map(\.rawValue),
@@ -369,6 +371,10 @@ extension SettingsBackup {
         }
         if let raw = s.escapeKeyBehavior, let behavior = EscapeKeyBehavior(rawValue: raw) {
             settings.escapeKeyBehavior = behavior
+            count += 1
+        }
+        if let raw = s.typography, let typography = AppTypography(rawValue: raw) {
+            settings.typography = typography
             count += 1
         }
         if let raw = s.interfaceSize, let size = InterfaceSize(rawValue: raw) {

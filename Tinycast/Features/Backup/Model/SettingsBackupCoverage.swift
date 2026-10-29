@@ -20,6 +20,7 @@ enum SettingsBackupCoverage {
         "appearance": .appearance,
         "language": .language,
         "calcNumberStyle": .calcNumberStyle,
+        "typography": .typography,
         "interfaceSize": .interfaceSize,
         "compactMode": .compactMode,
         "compactBarCommands": .compactBarCommands,

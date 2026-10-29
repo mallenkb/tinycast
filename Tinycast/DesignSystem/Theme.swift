@@ -2,6 +2,10 @@ import SwiftUI
 
 /// Central design tokens; every dark colour is the literal the forced-dark build shipped.
 enum Theme {
+    enum Opacity {
+        static let paletteBorder: Double = 0.8
+    }
+
     enum Spacing {
         static let xxs: CGFloat = 2
         static let dictationWaveGap: CGFloat = 3
@@ -61,6 +65,7 @@ enum Theme {
     }
 
     enum Size {
+        static let caretWidth: CGFloat = 2
         static let panelWidth: CGFloat = 750
         static let panelHeight: CGFloat = 475
         /// Opening size on a first run and the floor: below it the title bar's own parts collide.
@@ -302,6 +307,7 @@ enum Theme {
     }
 
     enum Duration {
+        static let caretBlink: TimeInterval = 1.2
         /// How long each HUD stays up; a sentence needs longer than a level does.
         static let messageHUD: TimeInterval = 2.4
         static let volumeHUD: TimeInterval = 1.6
@@ -361,12 +367,13 @@ enum Theme {
     }
 
     enum Typography {
+        static let interFontName = "InterVariable"
         /// One size, two frameworks: `TextTrailingDragHandle` measures what the field renders.
         static let searchFieldSize: CGFloat = 20
-        static let searchField = Font.system(size: searchFieldSize, weight: .regular)
+        static let searchField = Font.system(size: searchFieldSize, weight: .light)
         /// `NSFont` is not `Sendable`, hence the isolation; every reader is a view anyway.
         @MainActor static let searchFieldNSFont = NSFont.systemFont(
-            ofSize: searchFieldSize, weight: .regular)
+            ofSize: searchFieldSize, weight: .light)
         static let headerIconSize: CGFloat = 18
         static let headerIcon = Font.system(size: headerIconSize, weight: .medium)
         static let rowTitle = Font.body

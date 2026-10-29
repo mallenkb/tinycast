@@ -18,6 +18,8 @@ in (see Currency below).
   only at presentation — the card, the actions header, a history row, the pasteboard. No grammar,
   tokenizer rule or formatter learns about locales, and `CalculatorHistoryStore` stores canonical
   text, so history re-renders in whatever format is chosen later.
+- **Currency codes precede amounts** in the input echo, result and copied text: `GHS 335.00`.
+  Currency conversion and arithmetic use the same order; measurement-unit suffixes stay unchanged.
 - **`CalcEngine.evaluate` never fetches** — it takes a finished `CurrencyRates?`, nil meaning no
   snapshot has landed yet. `CurrencyRateStore` owns the fetch and the cacheless `.ephemeral` session,
   and `CurrencyFeed` — pure, so the harness covers it — turns the payloads into that snapshot.

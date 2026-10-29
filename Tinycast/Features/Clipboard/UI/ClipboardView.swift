@@ -133,6 +133,7 @@ private struct ClipboardRow: View {
     let ownsImage: Bool
     /// This row's ⌘-digit, or nil when it is not among the first ten visible pins.
     let slot: Character?
+    @Environment(LinkPreviewStore.self) private var previews
     @Environment(PaletteState.self) private var palette
     @State private var hovered = false
 
@@ -191,6 +192,8 @@ private struct ClipboardRow: View {
             if let color {
                 ColorSwatch(color: color)
                     .frame(width: artworkSize, height: artworkSize)
+            } else if let url = item.pageURL {
+                LinkFavicon(icon: previews.cached(url)?.icon, side: artworkSize)
             } else {
                 Image(nsImage: IconCache.symbolIcon(named: "doc.text")).resizable()
             }
@@ -313,6 +316,8 @@ struct ClipboardPreview: View {
         case .text:
             if let color = item.colorValue {
                 ColorPreview(color: color, text: item.text ?? "")
+            } else if let url = item.pageURL {
+                LinkPreviewCard(url: url)
             } else {
                 ScrollView {
                     Text(item.text ?? "")
@@ -348,6 +353,7 @@ struct ClipboardPreview: View {
 
 /// The "Information" block; disk-touching details are gathered off the main actor.
 private struct ClipboardInfoSection: View {
+    @Environment(LinkPreviewStore.self) private var previews
     @Environment(\.metrics) private var metrics
     let item: ClipboardItem
     let imageURL: URL?
@@ -413,6 +419,14 @@ private struct ClipboardInfoSection: View {
         }
         switch item.kind {
         case .text:
+            if let url = item.pageURL {
+                rows.append(InfoRow(label: String(localized: "Type"), value: String(localized: "Link")))
+                rows.append(InfoRow(label: String(localized: "URL"), value: url.absoluteString))
+                if let title = previews.cached(url)?.title {
+                    rows.append(InfoRow(label: String(localized: "Title"), value: title))
+                }
+                break
+            }
             let isColor = item.colorValue != nil
             rows.append(
                 InfoRow(
@@ -509,5 +523,12 @@ private struct ClipboardInfoSection: View {
             inWord = !separator
         }
         return count
+    }
+}
+
+extension ClipboardItem {
+    var pageURL: URL? {
+        guard textForm == .link, let text else { return nil }
+        return LinkPreviewDocument.pageURL(from: text)
     }
 }

@@ -43,9 +43,9 @@ struct FileSearchTests {
     }
 
     static func launcherQuery() {
-        expect(!FileSearchQuery.answersLauncher("ab"), "two characters are too few for the launcher")
-        expect(FileSearchQuery.answersLauncher("abc"), "three characters reach the launcher")
-        expect(!FileSearchQuery.answersLauncher("  ab \n"), "surrounding whitespace does not count")
+        expect(FileSearchQuery.answersLauncher("a"), "one character starts live file search")
+        expect(FileSearchQuery.answersLauncher("abc"), "longer queries also reach the launcher")
+        expect(!FileSearchQuery.answersLauncher("  \n"), "whitespace alone never searches")
         let folder = result("Documents/Résumé", folder: true)
         let file = result("Documents/Résumé Final.pdf")
         let indexed = result("Downloads/Resume.txt")
@@ -54,8 +54,8 @@ struct FileSearchTests {
             "an empty launcher query leaves files to the Favorites section")
         expect(
             FileSearchQuery.launcherResults("ré", favorites: [folder, file], indexed: [indexed])
-                == [folder, file],
-            "short queries search explicit favorites without including indexed files")
+                == [folder, file, indexed],
+            "short queries include indexed files as well as favorites")
         expect(
             FileSearchQuery.launcherResults("resume", favorites: [folder, file], indexed: [file, indexed])
                 == [folder, file, indexed],
@@ -66,7 +66,7 @@ struct FileSearchTests {
         expect(
             FileSearchQuery.launcherResults("documents", favorites: [folder, file], indexed: []).isEmpty,
             "favorite matching follows file search's filename-only rule")
-        let many = (0..<10).map { result("Note \($0).txt") }
+        let many = (0..<(FileSearchQuery.launcherLimit + 1)).map { result("Note \($0).txt") }
         expect(
             FileSearchQuery.launcherResults("note", favorites: many, indexed: []).count
                 == FileSearchQuery.launcherLimit,

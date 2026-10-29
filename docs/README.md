@@ -27,6 +27,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [AI providers and chat](features/ai.md) ·
 [quick actions](features/quick-actions.md) ·
 [clipboard](features/clipboard.md) ·
+[link previews](features/link-preview.md) ·
 [calculator](features/calculator.md) ·
 [calendar](features/calendar.md) ·
 [camera](features/camera.md) ·

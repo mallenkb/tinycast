@@ -197,3 +197,5 @@ in `commands.builtIn` — by their ID after `command:`. App Launcher and Dictati
 4. Run its side effect from a `track` sink in `AppCore`.
 
 A consent flag, content or machine state gets no key.
+
+`appearance.typography` accepts `system` or `interVariable`. The choice also travels in settings backups.
