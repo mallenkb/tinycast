@@ -25,7 +25,7 @@ and typography controls. This screenshot shows the local development build; some
 pending publication, as noted below.
 
 <p align="center">
-  <img src="docs/settings-dark.png" alt="Actual Tinycast Settings window in dark mode, showing the feature sidebar and General preferences" width="900">
+  <img src="docs/settings-dark-preview.png" alt="Actual Tinycast Settings window in dark mode, showing the feature sidebar and General preferences" width="720">
 </p>
 
 ## Fork highlights
