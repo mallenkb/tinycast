@@ -12,17 +12,21 @@ and AGPL-3.0-or-later license are preserved.
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
 [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
+## App preview
+
 <p align="center">
   <img src="docs/screenshot.png" alt="Tinycast command palette" width="720">
 </p>
 
-<details open>
-  <summary>Settings preview</summary>
-  <p>The actual Settings window in the local development build, shown in dark mode.</p>
-  <p align="center">
-    <img src="docs/settings-preview.png" alt="Tinycast Settings window in dark mode with grouped feature icons and General preferences" width="720">
-  </p>
-</details>
+## Settings in dark mode
+
+The full Settings window, captured from Tinycast Dev, with grouped navigation, the updated icons,
+and typography controls. This screenshot shows the local development build; some changes are still
+pending publication, as noted below.
+
+<p align="center">
+  <img src="docs/settings-dark.png" alt="Actual Tinycast Settings window in dark mode, showing the feature sidebar and General preferences" width="900">
+</p>
 
 ## Fork highlights
 
