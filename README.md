@@ -1,7 +1,17 @@
-# Tinycast · personal fork
+# Tinycast
 
-A native macOS launcher built with SwiftUI and AppKit. Launch apps, search files, reuse your
-clipboard, run commands, and work with notes, snippets, and Raycast extensions from one palette.
+**A tiny, fully native macOS launcher. One hotkey for your apps, files, clipboard, and everyday tools.**
+
+<p align="center">
+  <a href="https://github.com/mallenkb/tinycast/releases/latest"><img src="https://img.shields.io/github/v/release/mallenkb/tinycast?label=release" alt="Latest release"></a>
+  <a href="https://www.swift.org/"><img src="https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white" alt="Swift 6.0"></a>
+  <a href="https://github.com/mallenkb/tinycast/releases/latest"><img src="https://img.shields.io/badge/macOS-26%2B-black?logo=apple&logoColor=white" alt="macOS 26 or later"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-green" alt="License AGPL-3.0"></a>
+  <a href="https://x.com/mallenkb"><img src="https://img.shields.io/badge/X-%40mallenkb-black?logo=x&logoColor=white" alt="Follow mallenkb on X"></a>
+</p>
+
+SwiftUI and AppKit, **zero third-party dependencies**, no Electron and no telemetry. It also
+**runs Raycast extensions**, rendered as native SwiftUI. Free and open source.
 
 Maintained by [mallenkb](https://github.com/mallenkb). This is an independent fork of
 [Tinycast](https://github.com/abue-ammar/tinycast), created by
