@@ -12,6 +12,18 @@ and AGPL-3.0-or-later license are preserved.
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
 [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Tinycast command palette" width="720">
+</p>
+
+<details open>
+  <summary>Settings preview</summary>
+  <p>The local development build’s grouped Settings sidebar and feature icons.</p>
+  <p align="center">
+    <img src="docs/settings-preview.png" alt="Tinycast Settings sidebar with grouped features and colored icons" width="260">
+  </p>
+</details>
+
 ## Fork highlights
 
 - **Rich clipboard link previews.** See a copied page’s title, site icon, and preview image without
