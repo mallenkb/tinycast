@@ -9,6 +9,8 @@ struct ClipboardThumbnailTests {
     static var passes = 0
 
     static func main() async {
+        previewCacheKeepsOneImage()
+        stalePreviewCannotRepopulateCache()
         await removalDuringGenerationLeavesNoCopy()
         await clearDuringGenerationLeavesNoCopy()
         await sameNameDifferentExtensionsStayApart()
@@ -19,6 +21,33 @@ struct ClipboardThumbnailTests {
 
         print("\(passes)/\(passes + failures) passed")
         if failures > 0 { exit(1) }
+    }
+
+    static func previewCacheKeepsOneImage() {
+        let cache = ThumbnailCache(rowBytes: 4096, previewBytes: 4096)
+        let first = URL(fileURLWithPath: "/first.png")
+        let second = URL(fileURLWithPath: "/second.png")
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        cache.store(image, for: first, maxPixel: 64, cost: 1024, generation: cache.generation)
+        cache.store(image, for: first, maxPixel: 900, cost: 1024, generation: cache.generation)
+        cache.store(image, for: second, maxPixel: 900, cost: 1024, generation: cache.generation)
+        expect(cache.cached(first, maxPixel: 900) == nil, "previous large preview is released")
+        expect(cache.cached(second, maxPixel: 900) != nil, "latest large preview stays warm")
+        expect(cache.cached(first, maxPixel: 64) != nil, "preview replacement preserves row tiles")
+    }
+
+    static func stalePreviewCannotRepopulateCache() {
+        let cache = ThumbnailCache(rowBytes: 4096, previewBytes: 4096)
+        let url = URL(fileURLWithPath: "/test-preview.png")
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        let generation = cache.generation
+        cache.purgePreviews()
+        cache.store(image, for: url, maxPixel: 900, cost: 1024, generation: generation)
+        expect(cache.cached(url, maxPixel: 900) == nil, "late decode cannot refill purged previews")
+        cache.store(image, for: url, maxPixel: 64, cost: 1024, generation: generation)
+        expect(cache.cached(url, maxPixel: 64) != nil, "row thumbnails remain warm")
+        cache.store(image, for: url, maxPixel: 900, cost: 1024, generation: cache.generation)
+        expect(cache.cached(url, maxPixel: 900) != nil, "reopened preview can populate cache")
     }
 
     // MARK: - Cases

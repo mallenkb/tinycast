@@ -165,12 +165,11 @@ whole stack for that same root search from any depth.
 Search says. Clearing the query is still the first press either way. In compact mode, expanded
 launcher root search always clears, then collapses, then closes, under either preference.
 
-The header draws a back chevron on **every** screen but the launcher: leaving is what the icon
-slot means once you are off the root, and a slot that changed shape with provenance would read
-as two different controls. Where the click lands still depends on the stack — a pushed screen
-pops, a root one closes — so `backHelp` says which, rather than promising a step that is really
-a close. It lights to `textPrimary` under the pointer over `Theme.Duration.hover`, and
-`HeaderBackButton` keeps that hover state to itself so the header around it never re-renders.
+The header draws a back chevron on every screen but the launcher. Clicking it returns to main search
+without closing the palette, including tools opened directly by hotkey. Native drafts are cancelled
+and an extension command is stopped before returning. Escape retains its query-clearing and stack
+behavior. The chevron lights to `textPrimary` under the pointer over `Theme.Duration.hover`, and
+`HeaderBackButton` keeps hover state local.
 
 The launcher advertises the first hop in the header — `Quick AI` beside a ⇥ key cap.
 It is drawn only when Tab really would open Quick AI, a condition read
@@ -615,6 +614,9 @@ handled in `PalettePanel.sendEvent` before `super` hands the event to the respon
 
 - **A bare backspace** — the field editor consumes it as an edit (`onBareBackspace`).
 - **Chords with no main menu item** — ⌘, and ⌘w, which an app with a menu bar would never see here.
+  The panel routes ⌘A, ⌘X, ⌘C, ⌘V, ⌘Z and ⇧⌘Z to the focused text editor's native editing actions.
+  Cut and Copy require selected text; Undo and Redo use that editor's undo manager. Without a text
+  editor these chords pass through. The paste monitor still handles AI file attachments first.
 - **The physical number-row slots.** `FavoriteSlots` matches ⌘1…⌘0 by key code before fixed command
   chords, then publishes the resolved position to the active screen. Only the launcher and clipboard
   screens intercept these slots; other screens keep their own ⌘-number shortcuts. The compact bar

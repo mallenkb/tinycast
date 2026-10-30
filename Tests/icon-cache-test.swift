@@ -224,6 +224,71 @@ struct IconCacheTests {
         expect(symbol === IconCache.symbolIcon(named: "star"), "symbols use the existing rendering path")
     }
 
+    static func closingSettingsReleasesCachedIcons() async {
+        let size = IconSize(points: 28, scale: 2)
+        let visible = IconCache.icon(forFile: finder, size: size)
+        let symbol = IconCache.symbolIcon(named: "star")
+        _ = await IconCache.loadFittedAsync(forFile: finder)
+        let generation = IconCache.style.generation
+        IconCache.purgeDecoded()
+        expect(IconCache.cached(forFile: finder, size: size) == nil, "close releases row icons")
+        expect(IconCache.cachedSymbol(named: "star") == nil, "close releases symbol icons")
+        expect(IconCache.cachedFitted(forFile: finder) == nil, "close releases fitted icons")
+        expect(pixelWidth(visible) == 56 && bitmap(symbol) != nil,
+               "purging preserves images already owned by visible views")
+        expect(IconCache.style.generation == generation, "cache purge does not restyle visible rows")
+        let reopened = await IconCache.loadAsync(forFile: finder, size: size)
+        expect(reopened != nil && pixelWidth(reopened!) == 56, "reopening restores the same resolution")
+    }
+
+    static func queuedDecodesStayPurged() {
+        let artwork = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tinycast-icon-cache-\(UUID().uuidString).tiff")
+        guard let data = bitmap(IconCache.symbolIcon(named: "star")) else {
+            expect(false, "artwork fixture rasterizes")
+            return
+        }
+        do {
+            try data.write(to: artwork)
+        } catch {
+            expect(false, "artwork fixture writes: \(error)")
+            return
+        }
+        defer { try? FileManager.default.removeItem(at: artwork) }
+
+        let generation = IconCache.decodedGeneration
+        IconCache.purgeDecoded()
+
+        func expectReleased(_ name: String, decoding: () -> NSImage) {
+            weak var image: NSImage?
+            autoreleasepool {
+                let decoded = decoding()
+                image = decoded
+                expect(pixelWidth(decoded) > 0, "a queued \(name) decode still returns its image")
+            }
+            expect(image == nil, "a queued \(name) decode cannot repopulate a purged cache")
+        }
+
+        expectReleased("file") { IconCache.icon(forFile: finder, generation: generation) }
+        expectReleased("row") {
+            IconCache.icon(
+                forFile: finder, size: IconSize(points: 24, scale: 2), generation: generation)
+        }
+        expectReleased("symbol") { IconCache.symbolIcon(named: "star", generation: generation) }
+        expectReleased("System Settings") {
+            IconCache.symbolIcon(named: "FeatureSystemSettings", generation: generation)
+        }
+        expectReleased("artwork") {
+            IconCache.artwork(atPath: artwork.path, extent: 0.76, generation: generation)
+        }
+        expectReleased("missing artwork") {
+            IconCache.artwork(atPath: "/no-such-artwork.png", extent: 0.76, generation: generation)
+        }
+        expectReleased("content type") {
+            IconCache.contentTypeIcon("public.plain-text", generation: generation)
+        }
+    }
+
     static func main() async {
         var generation = IconCacheGeneration()
         let captured = generation.value
@@ -242,6 +307,8 @@ struct IconCacheTests {
         rowRendering()
         fittedAlphaThreshold()
         await asynchronousRows()
+        await closingSettingsReleasesCachedIcons()
+        queuedDecodesStayPurged()
         semanticSymbolNames()
         tintedTiles()
         restyling()

@@ -143,7 +143,8 @@ driven imperatively from AppKit. Extension menu extras are dynamic `NSStatusItem
   unless a modal panel holds key.
   See [features/palette.md](features/palette.md).
 - **Settings and Onboarding** — titled `NSWindow`s, one `Windows/AppWindowController.swift` each, owned
-  by `SettingsCoordinator` and `OnboardingCoordinator`. SwiftUI `Settings` and `Window` scenes are
+  by `SettingsCoordinator` and `OnboardingCoordinator`. Closing detaches the content controller and
+  toolbar so AppKit retaining a closed window does not retain its SwiftUI tree. SwiftUI `Settings` and `Window` scenes are
   unreliable for accessory apps, so this is deliberate. Their lifecycles are independent of the
   palette's in both directions. Onboarding stays accessory rather than registering Dock ownership,
   so completing it can open the palette without an activation-policy change stealing focus.

@@ -37,7 +37,8 @@ design follows [fsearch](https://github.com/noahdunnagan/fsearch).
   never reaches the index or observes the session. Explicit file favorites still answer by filename
   from their saved paths, while disabling File Search hides them too.
 - **A superseded query never publishes.** The session runs one search at a time, keeps only the newest
-  pending request, and checks its revision before publishing.
+  pending request, cancels the superseded scan, and checks its revision before publishing.
+  Previously displayed results remain visible until the latest query finishes.
 - **Share is the one system popover, and the palette stays up under it.** `AGENTS.md` keeps Tinycast's
   own dialogs because a question or a report is Tinycast's to word. A share sheet is neither: it is
   AirDrop, Mail and Messages, and re-drawing it would mean re-implementing the transports and losing
@@ -87,6 +88,10 @@ non-ASCII bytes is folded through Foundation first. The second walks the entries
 name matched, adding the entry's prior and applying the type filter. Each chunk keeps its best 200, only
 the overall best 200 have their paths built, and the overlay of live additions is scored the same way.
 
+Cancellation is checked between scan phases and every 256 names or entries. The worker waits for
+the cancelled scan to finish before starting its replacement, so scratch buffers do not overlap.
+Cancellation does not reduce the index, result limit, or ranking quality.
+
 One score orders the results: exact name +4000, name starts with the first term +2000, first term at a
 word or camel-case boundary +1000, terms typed in order +1500, first term ending a word +500, the prior
 × 1500, minus 4 per name byte. Ties go to the shorter path.
@@ -100,6 +105,10 @@ keeps those rows across closes and recomputes them in the background whenever th
 or a live update reaches a file Recent can list, so the screen opens on current rows at once. That
 recompute never touches the published results, so a list on screen holds still. Each run is stamped,
 and one that finishes after a newer one is dropped.
+
+Background Recent refreshes are coalesced: one runs at a time, and changes received while it runs
+schedule at most one follow-up. This bounds concurrent refresh allocations without dropping the
+latest update or delaying typed queries.
 
 Search results follow **Pop to Root Search**: closing with **Immediately** clears the session at once.
 With a delay, results stay with the preserved query until the reset fires; reopening before it fires

@@ -195,6 +195,8 @@ run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinat
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run file-preview-thumbnail-test Tinycast/Platform/Images/FilePreviewThumbnail.swift \
+                           Tinycast/Platform/Images/ThumbnailCache.swift
 run clipboard-thumbnail-test Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
@@ -539,6 +541,11 @@ run uninstall-test         Tinycast/Features/Uninstall/Model/UninstallTarget.swi
                            Tinycast/Features/Uninstall/Model/UninstallRules.swift \
                            Tinycast/Features/Uninstall/Model/UninstallProtection.swift \
                            Tinycast/Features/Uninstall/Model/UninstallPlan.swift
+run clipboard-svg-render-test Tinycast/Platform/Images/SVGThumbnail.swift \
+                           Tinycast/Features/Clipboard/UI/ClipboardSVGImage.swift
+run link-preview-cache-test Tinycast/Features/LinkPreview/Service/LinkPreviewStore.swift \
+                           Tinycast/Features/LinkPreview/Model/LinkPreviewDocument.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
 run link-preview-test      Tinycast/Features/LinkPreview/Model/LinkPreviewDocument.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
 run quicklink-test         Tinycast/Features/Quicklinks/Model/Quicklink.swift \

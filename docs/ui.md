@@ -66,6 +66,24 @@ These are the things that quietly break the look if changed. Preserve them unles
 
 ---
 
+## Feature icons
+
+The V8 Figma artwork is bundled as vector `Feature*.imageset` assets with light and dark appearances.
+Settings rows, feature switches, built-in launcher commands and the palette's active-tool footer share
+these assets through `IconCache` and `FeatureIconView`. The footer capsule keeps the app menu action;
+root search keeps its menu circle. Titles truncate before the action capsule loses room.
+
+The settings sidebar follows five groups in order: App Settings, Search & Launch, Everyday Tools,
+Automation & AI, and Mac Controls. Groups have spacing only, with no visible titles or chevrons.
+Sidebar and detail-row icon canvases measure 28 points, with the artwork's inset supplied by its asset.
+Settings tables keep their hosted row root when its entry, enabled state, divider, and stores are
+unchanged. Observed stores still update the row directly, including aliases and hotkeys.
+
+System Settings uses the installed `/System/Applications/System Settings.app` icon through the existing
+system icon cache and style monitor. Calendar adds the current local month and day to its vector base;
+its feature view refreshes each minute and the image cache keys dates by local midnight. Generic
+Clipboard text rows use the bundled Line `file-04` glyph with appearance-aware ink.
+
 ## Tokens
 
 Source: `Tinycast/DesignSystem/Theme.swift`.

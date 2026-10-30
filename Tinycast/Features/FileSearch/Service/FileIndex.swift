@@ -93,24 +93,32 @@ final class FileIndex: Sendable {
         }
     }
 
-    func search(_ query: FileSearchQuery.Prepared, filter: FileSearchFilter) -> [FileSearchResult] {
+    func search(
+        _ query: FileSearchQuery.Prepared, filter: FileSearchFilter,
+        isCancelled: @Sendable () -> Bool = { false }
+    ) -> [FileSearchResult] {
+        guard !isCancelled() else { return [] }
         let state = state.withLock { $0 }
         guard let snapshot = state.snapshot, let policy = state.policy else { return [] }
         let limit = FileSearchQuery.resultLimit
         let names = NameScores(count: snapshot.nameCount)
         Self.chunked(0..<snapshot.nameCount, alignment: 64) { range in
-            for id in range where snapshot.nameMask[id] & query.mask == query.mask {
+            for id in range {
+                if id == range.lowerBound || id & 255 == 0, isCancelled() { return }
+                guard snapshot.nameMask[id] & query.mask == query.mask else { continue }
                 let score = FileSearchQuery.score(
                     query, name: snapshot.name(id: id), mask: snapshot.nameMask[id], prior: 0)
                 if let score { names.set(id, score) }
             }
         }
+        guard !isCancelled() else { return [] }
         let base =
             names.isEmpty
             ? []
             : Self.collect(snapshot, limit: limit) { range, top in
                 var types = TypeFilter(filter: filter)
                 for index in range {
+                    if index == range.lowerBound || index & 255 == 0, isCancelled() { return }
                     let id = Int(snapshot.nameID[index])
                     guard let score = names.score(id), !state.isDead(index),
                         types.accepts(name: snapshot.name(id: id), isDirectory: snapshot.isDirectory(index))
@@ -118,6 +126,7 @@ final class FileIndex: Sendable {
                     top.insert(score + FileSearchQuery.priorWeight * Int(snapshot.prior[index]), index)
                 }
             }
+        guard !isCancelled() else { return [] }
         var ranked = base.map { hit in
             Ranked(
                 score: hit.score, path: snapshot.path(of: hit.index),
@@ -125,6 +134,7 @@ final class FileIndex: Sendable {
         }
         var types = TypeFilter(filter: filter)
         for (path, entry) in state.added where entry.mask & query.mask == query.mask {
+            guard !isCancelled() else { return [] }
             var name = entry.name
             let score = name.withUTF8 { name -> Int? in
                 guard
@@ -137,31 +147,40 @@ final class FileIndex: Sendable {
             guard let score else { continue }
             ranked.append(Ranked(score: score, path: path, isDirectory: entry.isDirectory))
         }
+        guard !isCancelled() else { return [] }
         return Self.results(ranked, limit: limit, policy: policy)
     }
 
-    func recent(filter: FileSearchFilter) -> [FileSearchResult] {
+    func recent(
+        filter: FileSearchFilter, isCancelled: @Sendable () -> Bool = { false }
+    ) -> [FileSearchResult] {
+        guard !isCancelled() else { return [] }
         let state = state.withLock { $0 }
         guard let snapshot = state.snapshot, let policy = state.policy else { return [] }
         let limit = FileSearchQuery.recentLimit
         let base = Self.collect(snapshot, limit: limit) { range, top in
             var types = TypeFilter(filter: filter)
-            for index in range where snapshot.prior[index] == 2 && !snapshot.isDirectory(index) {
+            for index in range {
+                if index == range.lowerBound || index & 255 == 0, isCancelled() { return }
+                guard snapshot.prior[index] == 2, !snapshot.isDirectory(index) else { continue }
                 guard !state.isDead(index),
                     types.accepts(name: snapshot.name(index), isDirectory: false)
                 else { continue }
                 top.insert(Int(snapshot.mtime[index]), index)
             }
         }
+        guard !isCancelled() else { return [] }
         var ranked = base.map { hit in
             Ranked(score: hit.score, path: snapshot.path(of: hit.index), isDirectory: false)
         }
         var types = TypeFilter(filter: filter)
         for (path, entry) in state.added where entry.isRecent {
+            guard !isCancelled() else { return [] }
             var name = entry.name
             guard name.withUTF8({ types.accepts(name: $0, isDirectory: false) }) else { continue }
             ranked.append(Ranked(score: Int(entry.mtime), path: path, isDirectory: false))
         }
+        guard !isCancelled() else { return [] }
         return Self.results(ranked, limit: limit, policy: policy)
     }
 

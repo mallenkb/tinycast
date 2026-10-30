@@ -15,7 +15,8 @@ final class SettingsCoordinator {
         self.core = core
         window = AppWindowController(
             title: String(localized: "Settings"), contentSize: Theme.Size.settingsWindow, resizable: true,
-            autosaveName: "SettingsWindow", activation: core.activationPolicy)
+            autosaveName: "SettingsWindow", activation: core.activationPolicy,
+            onClose: { IconCache.purgeDecoded() })
     }
 
     /// A fresh window mounts on `tab`; an open one navigates to it, recording the jump in history.

@@ -15,6 +15,7 @@ struct LinkPreviewTests {
         detection()
         titles()
         metadata()
+        lateMetadata()
         icons()
         faviconFallback()
         siteRoots()
@@ -67,6 +68,21 @@ struct LinkPreviewTests {
                 "<head><title>Fish &amp; Chips &#8212; ok</title></head>", baseURL: base
             ).title == "Fish & Chips — ok",
             "entities decode")
+        for (source, decoded) in [
+            ("End &#39;", "End '"),
+            ("End &#x27;", "End '"),
+            ("End &apos;", "End '"),
+            ("End &unknown;", "End &unknown;"),
+            ("End &x;", "End &x;"),
+            ("End &", "End &"),
+            ("End &#123456789;", "End &#123456789;")
+        ] {
+            expect(
+                LinkPreviewDocument.parseHead(
+                    "<head><title>\(source)</title></head>", baseURL: base
+                ).title == decoded,
+                "a trailing entity decodes or stays literal within the remaining text")
+        }
         expect(
             LinkPreviewDocument.parseHead("<head></head>", baseURL: base).title == nil,
             "no title reads nil")
@@ -91,6 +107,26 @@ struct LinkPreviewTests {
             "<head><meta name=\"description\" content=\"Old style\"></head>", baseURL: base)
         expect(fallback.description == "Old style", "a plain description is the fallback")
         expect(fallback.imagePath == nil, "no image reads nil")
+    }
+
+    static func lateMetadata() {
+        let base = URL(string: "https://example.com/video")!
+        let prefix = "<head><script>" + String(repeating: " ", count: 800_000) + "</script>"
+        let html = prefix + "<meta property='og:title' content='Video title'>"
+            + "<meta property='og:image' content='/video.jpg'></head>"
+            + "<meta property='og:image' content='/wrong-body.jpg'>"
+        let head = LinkPreviewDocument.parseHead(html, baseURL: base)
+        expect(head.title == "Video title", "metadata after a large script remains reachable")
+        expect(head.imagePath == "https://example.com/video.jpg", "late OG image beats body markup")
+        for key in ["og:image:url", "og:image:secure_url", "twitter:image:src"] {
+            let html = "<meta property='\(key)' content='/photo.jpg?a=1&amp;b=2'>"
+            expect(LinkPreviewDocument.parseHead(html, baseURL: base).imagePath
+                == "https://example.com/photo.jpg?a=1&b=2", "image alias \(key) resolves")
+        }
+        let oversized = String(repeating: " ", count: LinkPreviewDocument.headByteLimit)
+            + "<meta property='og:image' content='/outside-budget.jpg'>"
+        expect(LinkPreviewDocument.parseHead(oversized, baseURL: base).imagePath == nil,
+            "metadata scanning remains bounded")
     }
 
     static func icons() {

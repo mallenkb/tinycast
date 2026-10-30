@@ -774,7 +774,7 @@ struct RootPaletteView: View {
             headerGutter(width: metrics.spacing.md * 2)
             // Every sub-screen leaves the same way, so the slot reads the same on all of them.
             if vm.mode != .launcher {
-                HeaderBackButton(help: backHelp, action: goBack)
+                HeaderBackButton(help: String(localized: "Back to main search"), action: returnToLauncher)
             } else {
                 Image(systemName: vm.mode.systemImage)
                     .font(metrics.typography.headerIcon)
@@ -1005,10 +1005,36 @@ struct RootPaletteView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var appMenuButton: some View {
-        MenuCircleButton {
-            if openMenu == .app { closeMenus() } else { open(.app, highlighting: 0) }
+    @ViewBuilder private var appMenuButton: some View {
+        if vm.mode == .launcher {
+            MenuCircleButton(action: toggleAppMenu)
+        } else {
+            BarButton(isSelected: openMenu == .app, action: toggleAppMenu) {
+                HStack(spacing: metrics.spacing.sm) {
+                    if vm.mode == .dictionary {
+                        FeatureIconView(name: "FeatureDictionary", size: metrics.size.resultRowIcon)
+                    } else if let tab = vm.mode.featureTab {
+                        FeatureIconView(name: tab.iconAsset, size: metrics.size.resultRowIcon)
+                    } else {
+                        SymbolImage(
+                            name: vm.mode.systemImage,
+                            size: metrics.size.barButtonHeight - metrics.spacing.md)
+                    }
+                    Text(vm.mode.featureTitle)
+                        .font(metrics.typography.bar)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(metrics.spacing.xs)
+            .frame(height: metrics.size.barButtonHeight + metrics.spacing.xs * 2)
+            .frosted(in: Capsule())
+            .accessibilityLabel(Text("\(vm.mode.featureTitle), menu"))
         }
+    }
+
+    private func toggleAppMenu() {
+        if openMenu == .app { closeMenus() } else { open(.app, highlighting: 0) }
     }
 
     private func actionGroup(
@@ -1507,16 +1533,14 @@ struct RootPaletteView: View {
         open(.argumentOptions, highlighting: 0)
     }
 
-    /// An extension keeps its own stack, so it can have a step back the palette cannot see.
-    private var hasBackStep: Bool {
-        vm.canGoBack || (vm.mode == .extensionCommand && extensions.navigationDepth > 1)
-    }
-
-    /// Never promises a step the click does not take: a root screen closes rather than backs.
-    private var backHelp: String {
-        hasBackStep
-            ? String(localized: "Esc to go back or ⌘ Esc to go to root search")
-            : String(localized: "Esc to close or ⌘ Esc to go to root search")
+    private func returnToLauncher() {
+        closeMenus()
+        if vm.mode.isNativeEditor { goBack() }
+        if vm.mode == .extensionCommand {
+            core.extensionCoordinator.popExtensionToRoot()
+        } else {
+            core.paletteCoordinator.popToRootNow()
+        }
     }
 
     private func goBack() {
@@ -1637,5 +1661,35 @@ private struct HeaderBackButton: View {
         .onHover { hovered = $0 }
         .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
         .help(help)
+    }
+}
+
+private extension PaletteMode {
+    var featureTab: SettingsTab? {
+        switch self {
+        case .launcher: nil
+        case .clipboard: .clipboard
+        case .ai, .aiHistory: .ai
+        case .calculatorHistory, .dictionary: nil
+        case .emoji: .emoji
+        case .fileSearch, .uninstall: .fileSearch
+        case .menuSearch, .switchWindows: .navigation
+        case .rooms, .roomWindows: .windowManagement
+        case .schedule, .eventEditor, .meetingDetails: .calendar
+        case .customCommands, .customCommandEditor: .commands
+        case .quicklinks, .quicklinkEditor: .quicklinks
+        case .snippets, .snippetEditor: .snippets
+        case .extensionCommand: .extensions
+        }
+    }
+
+    var featureTitle: String {
+        switch self {
+        case .clipboard: String(localized: "Clipboard History")
+        case .calculatorHistory: String(localized: "Calculator History")
+        case .dictionary: String(localized: "Dictionary")
+        case .launcher: String(localized: "Tinycast")
+        default: featureTab?.title ?? ""
+        }
     }
 }

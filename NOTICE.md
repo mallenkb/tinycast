@@ -3,6 +3,21 @@
 Tinycast is licensed under the GNU Affero General Public License v3 — see [LICENSE](LICENSE). It
 also redistributes the third-party material recorded below, under the terms stated for each.
 
+## Fork interface artwork
+
+The fork's feature artwork was selected and adapted in the Tinycast icon checklist:
+https://www.figma.com/design/P3fIHvAV8XkIyOI0bGlNo7/
+
+Line and solid symbols are adapted from My Personal Icons Pro:
+https://www.figma.com/design/ckcGqjQxbFIqNVo5Ikjbol/
+
+Additional supplied artwork comes from Flaticon, including clipboard 12066882, emoji 10851206,
+notes 8140230, applications 9711065, calendar 11464564, and navigation 16230875.
+https://www.flaticon.com/
+
+These third-party assets remain subject to their respective source licenses. The app's AGPL license
+does not grant a separate license to redistribute the original icon libraries as standalone assets.
+
 ## Dictation model resources
 
 Tinycast's dictation code uses Apple's frameworks only. No speech model is bundled with the app.

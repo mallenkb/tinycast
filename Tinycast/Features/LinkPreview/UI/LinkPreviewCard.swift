@@ -35,13 +35,8 @@ struct LinkPreviewCard: View {
             }
         }
         .task(id: url) {
-            if let hit = previews.cached(url) {
-                preview = hit
-                loaded = true
-                return
-            }
-            preview = nil
-            loaded = false
+            preview = previews.cached(url)
+            loaded = preview != nil
             let result = await previews.preview(for: url)
             guard !Task.isCancelled else { return }
             preview = result

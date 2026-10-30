@@ -2,9 +2,9 @@
 
 ## Status of this fork
 
-No binary release has been published for `mallenkb/tinycast`. Local packaging works, but the
-inherited CI workflow and app updater still reference upstream services. The workflow below documents
-the upstream setup; it is not yet configured as this fork’s release pipeline. See [fork status](fork.md).
+Version 0.1.0 is the first locally packaged release of `mallenkb/tinycast`. Downloads and the in-app
+update feed use this fork's GitHub releases. The universal DMG and ZIP are self-signed and not
+notarized. The inherited CI workflow described below is not used for this fork's release.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
 the signing identity itself is in [signing.md](signing.md).
@@ -12,12 +12,15 @@ the signing identity itself is in [signing.md](signing.md).
 ## Packaging a DMG locally
 
 ```sh
-./Scripts/build-dmg.sh            # -> build/Tinycast-<version>.dmg (version from project.yml)
-./Scripts/build-dmg.sh 0.5.7      # -> build/Tinycast-0.5.7.dmg
+./Scripts/build-dmg.sh            # -> build/Tinycast-Universal-<version>.dmg (version from project.yml)
+./Scripts/build-dmg.sh 0.5.7      # -> build/Tinycast-Universal-0.5.7.dmg
 ```
 
-It builds a Release `Tinycast.app` signed with `Tinycast Self-Signed` and packs it with an
-`/Applications` symlink. Official per-channel releases are built by CI, below.
+It builds a universal Release `Tinycast.app` signed with `Tinycast Self-Signed` and packs it with an
+`/Applications` symlink. It writes `Tinycast-Universal-<version>.dmg` and a matching updater ZIP.
+`TINYCAST_ARCHS` selects architectures and `TINYCAST_SIGNING_IDENTITY` overrides the certificate.
+Developer ID Application identities use a secure timestamp. Self-signed builds use no timestamp.
+The inherited per-channel CI workflow is documented below for reference.
 
 ## Signing & Gatekeeper
 

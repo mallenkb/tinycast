@@ -73,8 +73,8 @@ struct AboutView: View {
                 } label: {
                     SettingsRowTitle(.aboutAbout, "Check for Updates")
                 }
-                .buttonStyle(.link)
-                .font(.caption)
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
             }
 
             Text("A tiny, native macOS launcher.")
@@ -130,36 +130,34 @@ struct AboutView: View {
 }
 
 private struct AboutLink: Identifiable {
-    enum Glyph {
-        case symbol(String)
-        /// A brand mark from the asset catalog; SF Symbols ships no such logo.
-        case brand(String)
-    }
-
     let id: String
-    let glyph: Glyph
+    let systemImage: String
     let title: String
     let detail: String
     let url: URL
 
     static let all: [AboutLink] = [
         AboutLink(
-            id: "website", glyph: .symbol("globe"), title: String(localized: "Website"),
+            id: "website", systemImage: "globe", title: String(localized: "Website"),
             detail: "tinycast.dev",
             url: URL(string: "https://tinycast.dev/")!),
         AboutLink(
-            id: "github", glyph: .brand("BrandGitHub"), title: "GitHub",
+            id: "github", systemImage: "chevron.left.forwardslash.chevron.right", title: "GitHub",
+            detail: "github.com/mallenkb/tinycast",
+            url: URL(string: "https://github.com/mallenkb/tinycast")!),
+        AboutLink(
+            id: "upstream", systemImage: "person.crop.circle", title: "Abue Ammar",
             detail: "github.com/abue-ammar/tinycast",
             url: URL(string: "https://github.com/abue-ammar/tinycast")!),
         AboutLink(
-            id: "discord", glyph: .brand("BrandDiscord"), title: "Discord",
+            id: "discord", systemImage: "bubble.left.and.bubble.right", title: "Discord",
             detail: String(localized: "Join the Tinycast community"),
             url: URL(string: "https://discord.gg/v2Eeb4QQy3")!),
         AboutLink(
-            id: "x", glyph: .brand("BrandX"), title: "X", detail: "@abue_ammar",
+            id: "x", systemImage: "at", title: "X", detail: "@abue_ammar",
             url: URL(string: "https://x.com/abue_ammar")!),
         AboutLink(
-            id: "email", glyph: .symbol("envelope"), title: String(localized: "Email"),
+            id: "email", systemImage: "envelope", title: String(localized: "Email"),
             detail: "iabueammar@gmail.com", url: URL(string: "mailto:iabueammar@gmail.com")!)
     ]
 }
@@ -186,28 +184,12 @@ private struct AboutLinkRow: View {
                 Label {
                     Text(link.title)
                 } icon: {
-                    glyph
+                    SymbolImage(name: link.systemImage, size: 13, monochrome: true)
                 }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
-    }
-
-    @ViewBuilder
-    private var glyph: some View {
-        switch link.glyph {
-        case .symbol(let name):
-            Image(systemName: name)
-                .font(.system(size: 13, weight: .medium))
-        case .brand(let name):
-            // Brand marks paint edge to edge, so they sit under the symbol box to match.
-            Image(name)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 14, height: 14)
-        }
     }
 }

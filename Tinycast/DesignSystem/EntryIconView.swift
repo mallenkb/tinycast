@@ -16,7 +16,9 @@ struct EntryIconView: View {
 
     var body: some View {
         Group {
-            if let image {
+            if case .symbol(let name) = source, name.hasPrefix("Feature") {
+                FeatureIconView(name: name, size: nil)
+            } else if let image {
                 Image(nsImage: image).resizable()
             } else {
                 RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)

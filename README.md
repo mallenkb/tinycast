@@ -10,7 +10,7 @@ and AGPL-3.0-or-later license are preserved.
 
 [Contact @mallenkb on X](https://x.com/mallenkb) ·
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
-[Build from source](#build-from-source) · [Documentation](docs/README.md)
+[Download v0.1.0](https://github.com/mallenkb/tinycast/releases/tag/v0.1.0) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
 ## App preview
 
@@ -21,8 +21,7 @@ and AGPL-3.0-or-later license are preserved.
 ## Settings in dark mode
 
 The full Settings window, captured from Tinycast Dev, with grouped navigation, the updated icons,
-and typography controls. This screenshot shows the local development build; some changes are still
-pending publication, as noted below.
+and typography controls. This screenshot shows the development build of the features included in v0.1.0.
 
 <p align="center">
   <img src="docs/settings-dark-preview.png" alt="Actual Tinycast Settings window in dark mode, showing the feature sidebar and General preferences" width="720">
@@ -33,21 +32,37 @@ pending publication, as noted below.
 - **Rich clipboard link previews.** See a copied page’s title, site icon, and preview image without
   opening the browser, with a loading indicator while metadata is fetched.
 - **Rendered SVG previews.** View copied SVG markup as an image in the clipboard preview, with an
-  SVG-specific row icon and type label. This is in the latest local build, pending publication.
+  SVG-specific row icon and type label. Included in v0.1.0.
 - **Live file search.** See matching files in the main launcher as you type when File Search and
   Show in launcher are enabled. No need to open the Search Files command first.
 - **Typography choices.** Choose the default system font or Inter Variable in Settings.
 - **Palette refinements.** Smoother cursor blinking, appearance-aware caret colors, and refinements
   to the search field and panel styling.
 - **Redesigned feature icons.** Consistent sizing, light and dark variants, and grouped settings
-  navigation. The latest icon set is in the local build, pending publication.
+  navigation. Included in v0.1.0.
 - **Memory improvements.** Smaller preview and icon caches, cancellation of obsolete file searches,
-  and resource cleanup when Settings closes. These changes are in the local build, pending publication.
+  and resource cleanup when Settings closes. Included in v0.1.0.
 
-The published source already includes link previews, live file search, and typography settings.
-The newer SVG, icon, and memory changes have not yet been pushed. See
-[fork status](docs/fork.md) for the distinction. Memory use varies with the workload; this fork does
-not promise to stay below 100 MB during every operation.
+Version 0.1.0 includes these changes. See [fork status](docs/fork.md) for distribution details.
+Memory use varies with the workload; this fork does not promise to stay below 100 MB during every
+operation.
+
+## Download and install
+
+Download the universal DMG from [Releases](https://github.com/mallenkb/tinycast/releases/latest).
+It supports Apple silicon and Intel Macs running macOS 26 or later. Open the DMG and drag Tinycast
+to Applications.
+
+This release is self-signed and is not notarized by Apple. After installing this download, remove
+its quarantine attribute once, then open the app:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Tinycast.app"
+open "/Applications/Tinycast.app"
+```
+
+This fork uses the same app identity as upstream stable. Installing it replaces the original
+Tinycast app and uses its existing data. Future update checks use `mallenkb/tinycast` releases.
 
 ## Features
 
@@ -69,8 +84,8 @@ indexes the folders configured in Settings. AI features are off by default.
 
 ## Build from source
 
-There is no published binary release of this fork yet. Build the source in this repository to use
-its published changes. The original project’s Homebrew casks and downloads install the upstream app.
+The original project’s Homebrew casks and downloads install the upstream app. Use this repository
+or its GitHub releases for this fork.
 
 Requirements: macOS 26 or later, Xcode 27 as specified in the development guide, and the local
 signing identity described in [signing.md](docs/signing.md).

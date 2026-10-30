@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 @MainActor
 @Observable
@@ -18,10 +19,13 @@ final class FileSearchSession {
     private var revision = 0
     @ObservationIgnored private var pending: (request: Request, revision: Int)?
     @ObservationIgnored private var workerTask: Task<Void, Never>?
+    @ObservationIgnored private var activeSearch: Task<[FileSearchResult], Never>?
     @ObservationIgnored private let searchOperation: SearchOperation
     /// Kept across closes, so the blank screen opens on its rows instead of on nothing.
     @ObservationIgnored private var recent: [FileSearchResult]?
     @ObservationIgnored private var recentStamp = 0
+    @ObservationIgnored private var recentRefreshTask: Task<Void, Never>?
+    @ObservationIgnored private var recentRefreshPending = false
 
     private struct Request: Equatable {
         static let recent = Request(query: "", filter: .all)
@@ -33,12 +37,18 @@ final class FileSearchSession {
     /// No debounce: a search costs milliseconds, and the worker already runs only the newest.
     init(index: FileIndex) {
         searchOperation = { query, filter in
-            await Task.detached(priority: .userInitiated) {
-                guard let prepared = FileSearchQuery.prepare(query) else {
-                    return index.recent(filter: filter)
-                }
-                return index.search(prepared, filter: filter)
-            }.value
+            let cancelled = Atomic(false)
+            return await withTaskCancellationHandler {
+                await Task.detached(priority: .userInitiated) {
+                    let isCancelled: @Sendable () -> Bool = { cancelled.load(ordering: .relaxed) }
+                    guard let prepared = FileSearchQuery.prepare(query) else {
+                        return index.recent(filter: filter, isCancelled: isCancelled)
+                    }
+                    return index.search(prepared, filter: filter, isCancelled: isCancelled)
+                }.value
+            } onCancel: {
+                cancelled.store(true, ordering: .relaxed)
+            }
         }
     }
 
@@ -65,7 +75,16 @@ final class FileSearchSession {
 
     /// Only the kept rows move, so a list on screen never shifts under the pointer.
     func refreshRecent() {
-        Task { [weak self] in await self?.run(.recent) }
+        recentRefreshPending = true
+        guard recentRefreshTask == nil else { return }
+        recentRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            while recentRefreshPending {
+                recentRefreshPending = false
+                await run(.recent)
+            }
+            recentRefreshTask = nil
+        }
     }
 
     /// Idle already means no results and nothing that can publish, so it notifies no observer.
@@ -73,6 +92,7 @@ final class FileSearchSession {
         guard request != nil else { return }
         revision &+= 1
         pending = nil
+        activeSearch?.cancel()
         request = nil
         results = []
         state = .idle
@@ -88,6 +108,7 @@ final class FileSearchSession {
         revision &+= 1
         self.request = request
         state = .searching
+        activeSearch?.cancel()
         pending = (request, revision)
         guard workerTask == nil else { return }
         workerTask = Task { [weak self] in
@@ -98,7 +119,10 @@ final class FileSearchSession {
     private func runWorker() async {
         while let next = pending {
             pending = nil
-            let found = await run(next.request)
+            let task = Task { await run(next.request) }
+            activeSearch = task
+            let found = await task.value
+            activeSearch = nil
             guard revision == next.revision, request == next.request else { continue }
             if results != found { results = found }
             state = .ready
@@ -109,11 +133,12 @@ final class FileSearchSession {
     /// Recent's rows are kept whoever asked; stamped, so a late finisher never replaces newer rows.
     @discardableResult
     private func run(_ request: Request) async -> [FileSearchResult] {
+        guard !Task.isCancelled else { return [] }
         guard request == .recent else { return await searchOperation(request.query, request.filter) }
         recentStamp &+= 1
         let stamp = recentStamp
         let found = await searchOperation(request.query, request.filter)
-        if stamp == recentStamp { recent = found }
+        if stamp == recentStamp, !Task.isCancelled { recent = found }
         return found
     }
 }

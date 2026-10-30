@@ -214,6 +214,11 @@ struct AppEntry: Identifiable, Hashable, Sendable {
 
     private var defaultIcon: EntryIcon {
         guard kind.descriptor.isSymbolIcon else { return .file(stamp: iconStamp) }
+        if symbolName == nil, let command = CommandCatalog.command(for: self),
+            let owner = command.owner
+        {
+            return .symbol(owner.iconAsset)
+        }
         return .symbol(symbolName ?? kindSymbol)
     }
 

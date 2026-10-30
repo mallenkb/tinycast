@@ -4,26 +4,11 @@ import SwiftUI
 // The few pieces more than one Settings pane or editor needs; everything else stays feature-owned.
 
 struct SettingsTabIcon: View {
-    let systemImage: String
-    let tint: Color
-    var size = Theme.Size.settingsSidebarGlyph + Theme.Spacing.xs * 2
-    @Environment(\.colorScheme) private var colorScheme
+    let name: String
+    var size = Theme.Size.settingsSidebarIcon
 
     var body: some View {
-        let scale = size / (Theme.Size.settingsSidebarGlyph + Theme.Spacing.xs * 2)
-        Image(systemName: SystemSymbolName.resolve(systemImage, isDark: colorScheme == .dark))
-            .resizable()
-            .scaledToFit()
-            .frame(
-                width: Theme.Size.settingsSidebarGlyph * scale,
-                height: Theme.Size.settingsSidebarGlyph * scale
-            )
-            .foregroundStyle(tint)
-            .padding(Theme.Spacing.xs * scale)
-            .background(
-                tint.opacity(0.1),
-                in: RoundedRectangle(
-                    cornerRadius: Theme.Radius.thumbnail * scale, style: .continuous))
+        FeatureIconView(name: name, size: size)
     }
 }
 
@@ -35,8 +20,8 @@ struct SettingsFeatureToggleLabel: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.lg) {
             SettingsTabIcon(
-                systemImage: anchor.tab.systemImage, tint: .accentColor,
-                size: Theme.Size.settingsRowIcon * 1.5)
+                name: anchor.tab.iconAsset,
+                size: Theme.Size.settingsSidebarIcon)
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 SettingsRowTitle(anchor, title)
                     .fontWeight(.semibold)
@@ -90,7 +75,7 @@ struct SettingsRow<Icon: View, Trailing: View>: View {
 }
 
 enum SettingsListMetrics {
-    static let iconSize = Theme.Size.settingsRowIcon + Theme.Spacing.xs
+    static let iconSize = Theme.Size.settingsSidebarIcon
 }
 
 extension SettingsRow where Icon == EmptyView {

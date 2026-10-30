@@ -54,6 +54,18 @@
   `ClipboardTextHelper` per item and reaps it, which is the whole reason Vision's and PDFKit's
   allocations do not accumulate in Tinycast. The helper is handed a path and answers with text.
 
+## SVG text previews
+
+The footer identifies Clipboard History with its pink feature icon and title. Text entries use
+My Personal Icons Pro's Line `file-04` glyph; file entries retain their native previews and file icons.
+
+SVG entries use My Personal Icons Pro's Line `file-code-02` glyph in list rows.
+Copied SVG markup renders at half the preview pixel budget, with its displayed size unchanged.
+At the default size, the longest rendered edge is 450 pixels rather than 900.
+The Information pane labels SVG markup and `.svg` files as `SVG`.
+The entry stays text, so paste, copy and editing preserve the original source. Invalid SVG falls
+back to the text preview. Rendering uses AppKit without a web view.
+
 ## Web link previews
 
 Selected web links display a page image or summary card, plus URL and Title information.
@@ -538,3 +550,13 @@ any other Tinycast paste.
 `pasteInPlace` writes the pasteboard at once and posts ⌘V 50ms later, and the target reads the
 pasteboard only when it handles that ⌘V. A press inside that gap would swap the pasteboard first:
 one entry pasted twice, another skipped. A queue would replay a held shortcut as a burst.
+
+### Preview memory lifecycle
+
+Hiding the palette unmounts the clipboard preview artwork while preserving its selection and query.
+Link titles and favicons remain cached separately from banners. Hiding purges the banner cache and
+invalidates pending banner publication; reopening can fetch the selected banner again.
+
+Image and file thumbnail caches each keep only one large preview, with a 4 MiB cost limit, and
+a separate 4 MiB row cache. Quick Look receives the pixel budget at scale 1, avoiding a second
+Retina multiplication. Row sizes and the on-screen preview size are unchanged.

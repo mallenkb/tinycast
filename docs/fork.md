@@ -4,18 +4,16 @@ This repository is [mallenkb/tinycast](https://github.com/mallenkb/tinycast), an
 [abue-ammar/tinycast](https://github.com/abue-ammar/tinycast). Contact the fork maintainer at
 [@mallenkb on X](https://x.com/mallenkb).
 
-## Published source and local work
+## Release 0.1.0
 
-As of 30 October 2026, the published implementation includes rich clipboard link previews, live
-launcher file results, system or Inter Variable typography, and palette and caret refinements.
+The first fork release includes rich clipboard link previews with Open Graph images, rendered SVG
+previews and type labels, live launcher file results, system or Inter Variable typography, and palette
+and caret refinements. It also includes redesigned feature icons, grouped Settings navigation, and
+memory improvements.
 
-The latest local build also includes rendered SVG clipboard previews and SVG type labels, a redesigned
-feature icon set, grouped Settings navigation, and memory improvements. Those implementation changes
-are not yet committed or pushed. A source checkout of this repository does not include them yet.
-
-A local universal Release build, version 0.1.0, was packaged successfully for Apple silicon and Intel.
-Its code signature verified. No GitHub binary release has been published. Building and signature
-verification do not establish that every feature has passed runtime testing.
+The universal DMG and updater ZIP support Apple silicon and Intel on macOS 26 or later. The source
+for the packaged build is available at the `v0.1.0` tag. Build and signature validation do not establish
+that every feature has passed runtime testing.
 
 ## Memory
 
@@ -28,18 +26,14 @@ active screen, and operating system, so an unconditional under-100-MB claim is n
 
 ## Distribution status
 
-- The app’s update feed still points to `abue-ammar/tinycast`.
+- Downloads and update checks use `mallenkb/tinycast` releases.
 - Release builds use `com.tinycast.app`, the same identity as upstream stable. Dev builds use
   `com.tinycast.app.dev` and keep separate data.
-- The inherited GitHub Actions release workflow references the original Homebrew tap, website,
-  and announcement setup. It needs adaptation for this fork before use.
-- Local packages are self-signed. Successful signature verification is not Apple notarization.
-- Upstream Homebrew instructions and upstream releases install the original project.
-
-Before the first fork release, publish the intended source changes, choose the version and channel,
-configure the fork’s updater and release destinations, and complete release validation. Third-party
-icon assets in the local design work also need their source credits and distribution terms recorded
-when those assets are published.
+- Version 0.1.0 is packaged locally with the fork's self-signed certificate. It is not notarized.
+  Installation instructions are in the README and release notes.
+- The inherited GitHub Actions workflow still references upstream services and is not used for this
+  release. Local packaging does not update upstream taps, websites, or announcements.
+- Original author credit and third-party notices remain in the app and repository.
 
 ## Attribution
 

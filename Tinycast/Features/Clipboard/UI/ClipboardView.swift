@@ -192,10 +192,12 @@ private struct ClipboardRow: View {
             if let color {
                 ColorSwatch(color: color)
                     .frame(width: artworkSize, height: artworkSize)
+            } else if let text = item.text, ClipboardSVGRenderer.isSVG(text) {
+                Image(nsImage: IconCache.symbolIcon(named: "fileCode")).resizable()
             } else if let url = item.pageURL {
                 LinkFavicon(icon: previews.cached(url)?.icon, side: artworkSize)
             } else {
-                Image(nsImage: IconCache.symbolIcon(named: "doc.text")).resizable()
+                Image(nsImage: IconCache.symbolIcon(named: "fileDocument")).resizable()
             }
         case .image:
             AsyncThumbnail(url: imageURL, maxPixel: 64, source: .image(derived: ownsImage)) { image in
@@ -209,15 +211,19 @@ private struct ClipboardRow: View {
                 Image(nsImage: IconCache.symbolIcon(named: "photo")).resizable()
             }
         case .file:
-            AsyncThumbnail(url: fileURL, maxPixel: 64, source: .file) { image in
-                image
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: artworkSize, height: artworkSize)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: metrics.radius.thumbnail, style: .continuous))
-            } placeholder: {
-                Image(nsImage: IconCache.symbolIcon(named: fileKind.systemImage)).resizable()
+            if fileURL?.pathExtension.lowercased() == "svg" {
+                Image(nsImage: IconCache.symbolIcon(named: "fileCode")).resizable()
+            } else {
+                AsyncThumbnail(url: fileURL, maxPixel: 64, source: .file) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: artworkSize, height: artworkSize)
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: metrics.radius.thumbnail, style: .continuous))
+                } placeholder: {
+                    Image(nsImage: IconCache.symbolIcon(named: fileKind.systemImage)).resizable()
+                }
             }
         }
     }
@@ -286,7 +292,9 @@ private struct AsyncThumbnail<Content: View, Placeholder: View>: View {
                 return
             }
             image = nil  // show the placeholder while a new image decodes
-            image = await source.loadAsync(url, maxPixel: maxPixel)
+            let loaded = await source.loadAsync(url, maxPixel: maxPixel)
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 }
@@ -296,9 +304,10 @@ struct ClipboardPreview: View {
     @Environment(\.metrics) private var metrics
     let item: ClipboardItem?
     @Environment(ClipboardStore.self) private var store
+    @Environment(PaletteState.self) private var palette
 
     var body: some View {
-        if let item {
+        if palette.isVisible, let item {
             VStack(alignment: .leading, spacing: 0) {
                 content(for: item)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -310,21 +319,29 @@ struct ClipboardPreview: View {
         }
     }
 
+    private func textPreview(_ text: String) -> some View {
+        ScrollView {
+            Text(text)
+                .font(.system(.subheadline, design: .monospaced))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
     @ViewBuilder
     private func content(for item: ClipboardItem) -> some View {
         switch item.kind {
         case .text:
             if let color = item.colorValue {
                 ColorPreview(color: color, text: item.text ?? "")
+            } else if let text = item.text, ClipboardSVGRenderer.isSVG(text) {
+                ClipboardSVGImage(text: text, maxPixel: metrics.size.clipboardPreviewPixel) {
+                    textPreview(text)
+                }
             } else if let url = item.pageURL {
                 LinkPreviewCard(url: url)
             } else {
-                ScrollView {
-                    Text(item.text ?? "")
-                        .font(.system(.subheadline, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+                textPreview(item.text ?? "")
             }
         case .image:
             AsyncThumbnail(
@@ -428,10 +445,18 @@ private struct ClipboardInfoSection: View {
                 break
             }
             let isColor = item.colorValue != nil
+            let typeName: String
+            if isColor {
+                typeName = String(localized: "Color")
+            } else if let text = item.text, ClipboardSVGRenderer.isSVG(text) {
+                typeName = "SVG"
+            } else {
+                typeName = String(localized: "Text")
+            }
             rows.append(
                 InfoRow(
                     label: String(localized: "Type"),
-                    value: isColor ? String(localized: "Color") : String(localized: "Text")))
+                    value: typeName))
             // A colour's own notations are the pane above; its length is not what you came for.
             if !isColor {
                 if let characters = details.characters {
@@ -458,10 +483,12 @@ private struct ClipboardInfoSection: View {
             }
         case .file:
             let path = item.filePath ?? ""
+            let isSVG = URL(filePath: path, directoryHint: .inferFromPath)
+                .pathExtension.lowercased() == "svg"
             rows.append(
                 InfoRow(
                     label: String(localized: "Type"),
-                    value: details.typeName ?? ClipboardFileKind.of(path: path).title))
+                    value: isSVG ? "SVG" : details.typeName ?? ClipboardFileKind.of(path: path).title))
             rows.append(
                 InfoRow(
                     label: String(localized: "Path"),

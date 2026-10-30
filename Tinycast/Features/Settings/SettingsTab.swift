@@ -5,6 +5,34 @@ enum SettingsTab: CaseIterable, Identifiable {
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
+    var iconAsset: String {
+        switch self {
+        case .general: "FeatureGeneral"
+        case .applications: "FeatureApplications"
+        case .systemSettings: "FeatureSystemSettings"
+        case .systemActions: "FeatureSystemActions"
+        case .commands: "FeatureCommands"
+        case .quicklinks: "FeatureQuicklinks"
+        case .appleShortcuts: "FeatureAppleShortcuts"
+        case .fallbacks: "FeatureFallbacks"
+        case .clipboard: "FeatureClipboard"
+        case .snippets: "FeatureSnippets"
+        case .fileSearch: "FeatureFileSearch"
+        case .windowManagement: "FeatureWindowManagement"
+        case .navigation: "FeatureNavigation"
+        case .notes: "FeatureNotes"
+        case .calendar: "FeatureCalendar"
+        case .emoji: "FeatureEmojiSymbols"
+        case .dictation: "FeatureDictation"
+        case .ai: "FeatureAI"
+        case .quickActions: "FeatureQuickActions"
+        case .extensions: "FeatureExtensions"
+        case .permissions: "FeaturePermissions"
+        case .backup: "FeatureBackup"
+        case .about: "FeatureAbout"
+        }
+    }
+
     var title: String {
         switch self {
         case .general: return String(localized: "General")
@@ -64,34 +92,26 @@ enum SettingsTab: CaseIterable, Identifiable {
 
 /// Declaration order is display order; not `.Section`, which would shadow SwiftUI's `Section`.
 enum SettingsSection: CaseIterable, Identifiable {
-    case general, launcher, features, advanced
-    /// See `SettingsTab.id`: distinct types keep the two namespaces from colliding.
+    case appSettings, searchLaunch, everydayTools, automationAI, macControls
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .general: return String(localized: "General")
-        case .launcher: return String(localized: "Launcher")
-        case .features: return String(localized: "Features")
-        case .advanced: return String(localized: "Advanced")
+        case .appSettings: String(localized: "App Settings")
+        case .searchLaunch: String(localized: "Search & Launch")
+        case .everydayTools: String(localized: "Everyday Tools")
+        case .automationAI: String(localized: "Automation & AI")
+        case .macControls: String(localized: "Mac Controls")
         }
     }
 
     var tabs: [SettingsTab] {
         switch self {
-        case .general: return [.general, .permissions]
-        case .launcher:
-            return [
-                .applications, .systemSettings, .systemActions, .commands, .quicklinks,
-                .appleShortcuts, .fallbacks
-            ]
-        case .features:
-            // Everyday tools first; AI and extensions are opt-in extras.
-            return [
-                .clipboard, .snippets, .fileSearch, .windowManagement, .navigation, .notes,
-                .calendar, .emoji, .dictation, .ai, .quickActions, .extensions
-            ]
-        case .advanced: return [.backup, .about]
+        case .appSettings: [.general, .permissions, .backup, .about]
+        case .searchLaunch: [.applications, .fileSearch, .quicklinks, .fallbacks]
+        case .everydayTools: [.clipboard, .snippets, .notes, .calendar, .emoji, .dictation]
+        case .automationAI: [.commands, .appleShortcuts, .quickActions, .ai, .extensions]
+        case .macControls: [.windowManagement, .navigation, .systemSettings, .systemActions]
         }
     }
 }

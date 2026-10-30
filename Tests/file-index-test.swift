@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 @main
 struct FileIndexTests {
@@ -34,6 +35,8 @@ struct FileIndexTests {
 
         layout(snapshot, root: root.path)
         search(index, root: root.path)
+        cancellation(index)
+        try cancellationWithinScan(at: scratch.appending(path: "cancel-index.bin"), policy: policy)
         try live(index, root: root, policy: policy)
 
         print(failures == 0 ? "File index tests passed" : "\(failures) file index tests failed")
@@ -87,6 +90,52 @@ struct FileIndexTests {
         expect(recent.contains("notes.txt"), "recent lists files under home")
         expect(!recent.contains("config"), "recent leaves hidden files out")
         expect(index.itemCount == 15, "the count matches the snapshot")
+    }
+
+    static func cancellation(_ index: FileIndex) {
+        let query = FileSearchQuery.prepare("todo")!
+        expect(index.search(query, filter: .all, isCancelled: { true }).isEmpty,
+               "cancelled query skips the scan")
+        let checks = Atomic(0)
+        let cancelled = index.search(query, filter: .all, isCancelled: {
+            checks.wrappingAdd(1, ordering: .relaxed).newValue >= 3
+        })
+        expect(cancelled.isEmpty, "mid-scan cancellation never returns partial matches")
+        expect(index.recent(filter: .all, isCancelled: { true }).isEmpty,
+               "cancelled recents skip the scan")
+        expect(index.search(query, filter: .all).count == 2,
+               "cancellation leaves the index reusable")
+    }
+
+    static func cancellationWithinScan(at url: URL, policy: FileSearchPolicy) throws {
+        var listing = FileIndexCrawler.Listing()
+        for number in 0..<1024 {
+            let name = Array("document-\(number).txt".utf8)
+            listing.entries.append(FileIndexCrawler.Entry(
+                nameStart: UInt32(listing.names.count), nameLength: UInt16(name.count),
+                isDirectory: false, prior: 2, mtime: UInt32(number), child: FileIndexCrawler.none))
+            listing.names.append(contentsOf: name)
+        }
+        try FileIndexSnapshot.write(
+            [listing], roots: [(policy.homeDirectory.path, 2)], eventID: 0,
+            fingerprint: policy.fingerprint, to: url)
+        let index = FileIndex()
+        index.replace(with: FileIndexSnapshot(contentsOf: url), policy: policy)
+        let query = FileSearchQuery.prepare("document")!
+        let checks = Atomic(0)
+        let result = index.search(query, filter: .all, isCancelled: {
+            checks.wrappingAdd(1, ordering: .relaxed).newValue >= 3
+        })
+        expect(result.isEmpty && checks.load(ordering: .relaxed) == 4,
+               "name scan exits at its first periodic cancellation check")
+        let recentChecks = Atomic(0)
+        let recent = index.recent(filter: .all, isCancelled: {
+            recentChecks.wrappingAdd(1, ordering: .relaxed).newValue >= 3
+        })
+        expect(recent.isEmpty && recentChecks.load(ordering: .relaxed) == 4,
+               "recent scan exits at its first periodic cancellation check")
+        expect(index.search(query, filter: .all).count == FileSearchQuery.resultLimit,
+               "full result coverage remains after an interrupted scan")
     }
 
     static func live(_ index: FileIndex, root: URL, policy: FileSearchPolicy) throws {

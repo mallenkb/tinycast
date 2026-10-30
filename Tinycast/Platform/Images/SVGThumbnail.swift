@@ -26,7 +26,7 @@ enum SVGThumbnail {
     }
 
     /// Vector drawn to exactly `longestEdge` pixels, whatever the display scale.
-    @MainActor static func rasterize(_ data: Data, longestEdge: CGFloat) -> CGImage? {
+    static func rasterize(_ data: Data, longestEdge: CGFloat) -> CGImage? {
         guard let image = NSImage(data: data) else { return nil }
         let size = image.size
         guard size.width > 0, size.height > 0 else { return nil }

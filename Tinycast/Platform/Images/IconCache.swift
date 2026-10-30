@@ -88,7 +88,7 @@ enum IconCache {
     // One entry per file, not per file and size: resizing must replace rows, never accumulate them.
     private static let rowCache: RowCache = {
         let cache = RowCache()
-        cache.totalCostLimit = 8 * 1024 * 1024
+        cache.totalCostLimit = 4 * 1024 * 1024
         return cache
     }()
 
@@ -96,14 +96,14 @@ enum IconCache {
 
     private static let cache: Cache = {
         let cache = Cache()
-        cache.totalCostLimit = 32 * 1024 * 1024
+        cache.totalCostLimit = 8 * 1024 * 1024
         return cache
     }()
 
     // One 200-row result set fits; unlike launcher icons, these are discarded with the list.
     private static let fittedCache: Cache = {
         let cache = Cache()
-        cache.totalCostLimit = 8 * 1024 * 1024
+        cache.totalCostLimit = 4 * 1024 * 1024
         return cache
     }()
     private static let fittedGeneration = Mutex(IconCacheGeneration())
@@ -137,16 +137,31 @@ enum IconCache {
     /// The same count, readable off-main because every cache key carries it.
     private static let styleGeneration = Mutex(0)
 
+    static var decodedGeneration: Int { styleGeneration.withLock { $0 } }
+
     /// For icons resolved synchronously in `body`: the read *is* the subscription, so not a no-op.
     @MainActor static func observeStyle() { _ = style.generation }
 
     /// A surface or icon-style move stales every bitmap; the generation in each key fixes it.
     @MainActor static func invalidateStyled() {
-        styleGeneration.withLock { $0 &+= 1 }
-        cache.removeAllObjects()
-        rowCache.removeAllObjects()
-        purgeFitted()
+        purgeDecoded()
         style.bump()
+    }
+
+    static func purgeDecoded() {
+        styleGeneration.withLock { generation in
+            generation &+= 1
+            cache.removeAllObjects()
+            rowCache.removeAllObjects()
+        }
+        purgeFitted()
+    }
+
+    private static func store(_ image: NSImage, forKey key: NSString, cost: Int) {
+        styleGeneration.withLock { generation in
+            guard key.hasPrefix("\(generation):") else { return }
+            cache.setObject(image, forKey: key, cost: cost)
+        }
     }
 
     /// macOS restyles `NSWorkspace`'s images in place, so these bytes are the only proof it landed.
@@ -171,13 +186,17 @@ enum IconCache {
     private static let styleProbePath = "/System/Library/CoreServices/Finder.app"
 
     /// In every key, so an in-flight decode writes somewhere unreachable instead of repopulating.
-    private static func key(_ body: String) -> NSString {
-        "\(styleGeneration.withLock { $0 }):\(body)" as NSString
+    private static func key(_ body: String, generation: Int = IconCache.decodedGeneration) -> NSString {
+        "\(generation):\(body)" as NSString
     }
 
-    private static func symbolKey(_ name: String, _ tint: SymbolTint?) -> NSString {
+    private static func symbolKey(
+        _ name: String, _ tint: SymbolTint?, generation: Int = IconCache.decodedGeneration
+    ) -> NSString {
         let surface = darkSurface.withLock { $0 } ? "dark" : "light"
-        return key("symbol:\(surface):\(tint?.key ?? "plain"):\(name)")
+        let date = name == "FeatureCalendar"
+            ? Calendar.current.startOfDay(for: .now).timeIntervalSince1970 : 0
+        return key("symbol:\(surface):\(tint?.key ?? "plain"):\(name):\(date)", generation: generation)
     }
 
     /// A freshly-decoded, thereafter-immutable `NSImage` is safe to move across the actor boundary.
@@ -193,35 +212,49 @@ enum IconCache {
 
     /// Returns the decode directly, so a purge mid-decode can't strand a placeholder.
     static func loadAsync(forFile path: String, stamp: Int = 0, size: IconSize? = nil) async -> NSImage? {
+        guard !Task.isCancelled else { return nil }
+        let generation = decodedGeneration
         if let cached = cached(forFile: path, stamp: stamp, size: size) { return cached }
         return await Task.detached(priority: .userInitiated) { () -> Decoded in
             guard FileManager.default.fileExists(atPath: path) else { return Decoded(image: nil) }
-            return Decoded(image: icon(forFile: path, stamp: stamp, size: size))
+            return autoreleasepool {
+                Decoded(image: icon(forFile: path, stamp: stamp, size: size, generation: generation))
+            }
         }.value.image
     }
     static func loadSymbolAsync(named name: String, tint: SymbolTint? = nil) async -> NSImage? {
+        guard !Task.isCancelled else { return nil }
+        let generation = decodedGeneration
         if let cached = cachedSymbol(named: name, tint: tint) { return cached }
         return await Task.detached(priority: .userInitiated) {
-            Decoded(image: symbolIcon(named: name, tint: tint))
+            autoreleasepool {
+                Decoded(image: symbolIcon(named: name, tint: tint, generation: generation))
+            }
         }.value.image
     }
 
-    static func icon(forFile path: String, stamp: Int = 0, size: IconSize? = nil) -> NSImage {
-        if let size { return rowIcon(forFile: path, stamp: stamp, size: size) }
-        let key = fileKey(path, stamp)
+    static func icon(
+        forFile path: String, stamp: Int = 0, size: IconSize? = nil,
+        generation: Int = IconCache.decodedGeneration
+    ) -> NSImage {
+        let key = fileKey(path, stamp, generation: generation)
+        if let size { return rowIcon(forFile: path, size: size, key: key) }
         if let cached = cache.object(forKey: key) { return cached }
         let (icon, cost) = downsampled(NSWorkspace.shared.icon(forFile: path))
-        cache.setObject(icon, forKey: key, cost: cost)
+        store(icon, forKey: key, cost: cost)
         return icon
     }
 
-    private static func rowIcon(forFile path: String, stamp: Int, size: IconSize) -> NSImage {
-        if let warm = cached(forFile: path, stamp: stamp, size: size) { return warm }
+    private static func rowIcon(forFile path: String, size: IconSize, key: NSString) -> NSImage {
+        if let warm = rowCache.object(forKey: key), warm.size == size { return warm.image }
         let (image, cost) = autoreleasepool { () -> (NSImage, Int) in
             let (source, sourceCost) = downsampled(NSWorkspace.shared.icon(forFile: path))
             return resized(source, to: size) ?? (source, sourceCost)
         }
-        rowCache.setObject(RowImage(size: size, image: image), forKey: fileKey(path, stamp), cost: cost)
+        styleGeneration.withLock { generation in
+            guard key.hasPrefix("\(generation):") else { return }
+            rowCache.setObject(RowImage(size: size, image: image), forKey: key, cost: cost)
+        }
         return image
     }
 
@@ -246,9 +279,20 @@ enum IconCache {
         return (image, rep.bytesPerRow * rep.pixelsHigh)
     }
 
-    static func symbolIcon(named name: String, tint: SymbolTint? = nil) -> NSImage {
-        let key = symbolKey(name, tint)
+    static func symbolIcon(
+        named name: String, tint: SymbolTint? = nil, generation: Int = IconCache.decodedGeneration
+    ) -> NSImage {
+        if name == "FeatureSystemSettings" {
+            return icon(forFile: "/System/Applications/System Settings.app", generation: generation)
+        }
+        let key = symbolKey(name, tint, generation: generation)
         if let cached = cache.object(forKey: key) { return cached }
+
+        if name.hasPrefix("Feature"), let feature = featureIcon(named: name) {
+            let (icon, cost) = downsampled(feature)
+            store(icon, forKey: key, cost: cost)
+            return icon
+        }
 
         let side = displayPixel
         let isDark = darkSurface.withLock { $0 }
@@ -273,8 +317,43 @@ enum IconCache {
             return true
         }
         let (icon, cost) = downsampled(image)
-        cache.setObject(icon, forKey: key, cost: cost)
+        store(icon, forKey: key, cost: cost)
         return icon
+    }
+
+    private static func featureIcon(named name: String) -> NSImage? {
+        guard let asset = NSImage(named: name) else { return nil }
+        let isDark = darkSurface.withLock { $0 }
+        let side = displayPixel
+        let now = Date.now
+        return NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            NSAppearance(named: isDark ? .darkAqua : .aqua)?.performAsCurrentDrawingAppearance {
+                asset.draw(in: rect)
+                if name == "FeatureCalendar" { drawCalendarDate(now, side: side) }
+            }
+            return true
+        }
+    }
+
+    private static func drawCalendarDate(_ date: Date, side: CGFloat) {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("MMM")
+        let scale = side / 64
+        let month = formatter.string(from: date).uppercased() as NSString
+        let day = String(Calendar.current.component(.day, from: date)) as NSString
+        for (text, size, center, color) in [
+            (month, 11.0, 14.803, NSColor.white),
+            (day, 23.0, 39.488, NSColor.srgbInk(0.1, alpha: 1))
+        ] {
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: size * scale, weight: .bold),
+                .foregroundColor: color
+            ]
+            let bounds = text.size(withAttributes: attributes)
+            text.draw(
+                at: NSPoint(x: (side - bounds.width) / 2, y: side - center * scale - bounds.height / 2),
+                withAttributes: attributes)
+        }
     }
 
     private static func glyph(named name: String, tint: NSColor, isDark: Bool) -> NSImage? {
@@ -288,8 +367,8 @@ enum IconCache {
             return symbol
         }
         guard let asset = NSImage(named: name) else { return nil }
-        // A 24pt box lands the asset's ink at the symbols' ~22pt optical height.
-        let assetSize = NSSize(width: 24, height: 24)
+        let extent: CGFloat = name == "fileDocument" || name == "fileCode" ? 28 : 24
+        let assetSize = NSSize(width: extent, height: extent)
         return NSImage(size: assetSize, flipped: false) { rect in
             asset.draw(in: rect)
             tint.set()
@@ -310,14 +389,16 @@ enum IconCache {
     }
 
     /// Keyed by path and extent, so two features wanting different sizes never serve each other's.
-    static func artwork(atPath path: String, extent: CGFloat) -> NSImage {
-        let key = artworkKey(path, extent)
+    static func artwork(
+        atPath path: String, extent: CGFloat, generation: Int = IconCache.decodedGeneration
+    ) -> NSImage {
+        let key = artworkKey(path, extent, generation: generation)
         if let cached = cache.object(forKey: key) { return cached }
         guard let source = NSImage(contentsOfFile: path) else {
-            return symbolIcon(named: "questionmark.square.dashed")
+            return symbolIcon(named: "questionmark.square.dashed", generation: generation)
         }
         let (icon, cost) = fitted(source, to: extent)
-        cache.setObject(icon, forKey: key, cost: cost)
+        store(icon, forKey: key, cost: cost)
         return icon
     }
 
@@ -326,17 +407,21 @@ enum IconCache {
     }
 
     static func loadArtworkAsync(atPath path: String, extent: CGFloat) async -> NSImage? {
+        guard !Task.isCancelled else { return nil }
+        let generation = decodedGeneration
         if let cached = cachedArtwork(atPath: path, extent: extent) { return cached }
         return await Task.detached(priority: .userInitiated) {
-            Decoded(image: artwork(atPath: path, extent: extent))
+            Decoded(image: artwork(atPath: path, extent: extent, generation: generation))
         }.value.image
     }
 
-    static func contentTypeIcon(_ identifier: String) -> NSImage {
-        let key = contentTypeKey(identifier)
+    static func contentTypeIcon(
+        _ identifier: String, generation: Int = IconCache.decodedGeneration
+    ) -> NSImage {
+        let key = contentTypeKey(identifier, generation: generation)
         if let cached = cache.object(forKey: key) { return cached }
         let (icon, cost) = downsampled(NSWorkspace.shared.icon(for: UTType(identifier) ?? .item))
-        cache.setObject(icon, forKey: key, cost: cost)
+        store(icon, forKey: key, cost: cost)
         return icon
     }
 
@@ -345,18 +430,24 @@ enum IconCache {
     }
 
     static func loadContentTypeIconAsync(_ identifier: String) async -> NSImage? {
+        guard !Task.isCancelled else { return nil }
+        let generation = decodedGeneration
         if let cached = cachedContentTypeIcon(identifier) { return cached }
         return await Task.detached(priority: .userInitiated) {
-            Decoded(image: contentTypeIcon(identifier))
+            Decoded(image: contentTypeIcon(identifier, generation: generation))
         }.value.image
     }
 
-    private static func contentTypeKey(_ identifier: String) -> NSString {
-        key("type:\(identifier)")
+    private static func contentTypeKey(
+        _ identifier: String, generation: Int = IconCache.decodedGeneration
+    ) -> NSString {
+        key("type:\(identifier)", generation: generation)
     }
 
-    private static func artworkKey(_ path: String, _ extent: CGFloat) -> NSString {
-        key("artwork:\(extent):\(path)")
+    private static func artworkKey(
+        _ path: String, _ extent: CGFloat, generation: Int = IconCache.decodedGeneration
+    ) -> NSString {
+        key("artwork:\(extent):\(path)", generation: generation)
     }
 
     // MARK: - Drawing an `EntryIcon`
@@ -407,7 +498,7 @@ enum IconCache {
                 guard FileManager.default.fileExists(atPath: path) else {
                     return Decoded(image: nil)
                 }
-                return fittedIcon(forFile: path)
+                return autoreleasepool { fittedIcon(forFile: path) }
             }
         ).value
         guard let image = decoded.image, !Task.isCancelled else { return nil }
@@ -425,8 +516,10 @@ enum IconCache {
         }
     }
 
-    private static func fileKey(_ path: String, _ stamp: Int) -> NSString {
-        key("file:\(stamp):\(path)")
+    private static func fileKey(
+        _ path: String, _ stamp: Int, generation: Int = IconCache.decodedGeneration
+    ) -> NSString {
+        key("file:\(stamp):\(path)", generation: generation)
     }
     private static func fittedKey(_ path: String) -> NSString { key("fit:" + path) }
 

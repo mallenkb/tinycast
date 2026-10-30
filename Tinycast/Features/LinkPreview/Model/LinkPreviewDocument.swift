@@ -18,13 +18,19 @@ enum LinkPreviewDocument {
 
     /// Title, description, image and icon from a page head. Open Graph wins throughout.
     static func parseHead(_ html: String, baseURL: URL) -> Head {
-        let head = String(headSection(of: html).prefix(headScanLimit))
+        let bounded = html.utf8.count > headByteLimit
+            // swiftlint:disable:next optional_data_string_conversion
+            ? String(decoding: html.utf8.prefix(headByteLimit), as: UTF8.self) : html
+        let head = headSection(of: bounded)
         let description =
             metaContent(in: head, key: "og:description")
             ?? metaContent(in: head, key: "twitter:description")
             ?? metaContent(in: head, key: "description")
         let image = (metaContent(in: head, key: "og:image")
-            ?? metaContent(in: head, key: "twitter:image")).flatMap {
+            ?? metaContent(in: head, key: "og:image:url")
+            ?? metaContent(in: head, key: "og:image:secure_url")
+            ?? metaContent(in: head, key: "twitter:image")
+            ?? metaContent(in: head, key: "twitter:image:src")).flatMap {
             resolve($0, baseURL: baseURL)
         }
         return Head(
@@ -94,11 +100,11 @@ enum LinkPreviewDocument {
         return html[..<end.lowerBound]
     }
 
-    private static let headScanLimit = 65_536
+    static let headByteLimit = 2_097_152
     private static let titleLimit = 300
 
     /// Inner text of the first `<title>`, entities decoded and whitespace collapsed.
-    private static func documentTitle(in head: String) -> String? {
+    private static func documentTitle(in head: Substring) -> String? {
         guard let open = head.range(of: "<title", options: .caseInsensitive),
             let start = head[open.upperBound...].firstIndex(of: ">"),
             let close = head[start...].range(of: "</title", options: .caseInsensitive)
@@ -108,7 +114,7 @@ enum LinkPreviewDocument {
     }
 
     /// `content` of the first `<meta>` naming `key` through `property` or `name`.
-    private static func metaContent(in head: String, key: String) -> String? {
+    private static func metaContent(in head: Substring, key: String) -> String? {
         var rest = head[...]
         while let open = rest.range(of: "<meta", options: .caseInsensitive) {
             guard let end = rest[open.lowerBound...].firstIndex(of: ">") else { return nil }
@@ -118,7 +124,7 @@ enum LinkPreviewDocument {
                 let content = attribute(in: tag, named: "content"),
                 !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             {
-                if key.hasSuffix(":image") {
+                if key.contains(":image") {
                     return decodeEntities(in: content.trimmingCharacters(in: .whitespacesAndNewlines))
                 }
                 return cleanedTitle(content)
@@ -129,7 +135,7 @@ enum LinkPreviewDocument {
     }
 
     /// `href` of the first `<link>` whose `rel` names an icon, resolved against the page.
-    private static func iconLink(in head: String, baseURL: URL) -> String? {
+    private static func iconLink(in head: Substring, baseURL: URL) -> String? {
         var rest = head[...]
         while let open = rest.range(of: "<link", options: .caseInsensitive) {
             guard let end = rest[open.lowerBound...].firstIndex(of: ">") else { return nil }
@@ -209,8 +215,7 @@ enum LinkPreviewDocument {
         while let amp = rest.firstIndex(of: "&") {
             out += rest[..<amp]
             rest = rest[amp...]
-            guard let semi = rest.firstIndex(of: ";"), semi < rest.index(rest.startIndex, offsetBy: 10)
-            else {
+            guard let semi = rest.prefix(10).firstIndex(of: ";") else {
                 out += "&"
                 rest = rest.dropFirst()
                 continue

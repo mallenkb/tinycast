@@ -4,7 +4,7 @@ import Synchronization
 
 enum ImageThumbnail {
     private static let cache = ThumbnailCache(
-        rowBytes: 8 * 1024 * 1024, previewBytes: 8 * 1024 * 1024)
+        rowBytes: 4 * 1024 * 1024, previewBytes: 4 * 1024 * 1024)
 
     /// Frees the preview bitmaps on dismiss; row thumbnails stay warm for a re-open.
     static func purgePreviews() {
@@ -24,6 +24,7 @@ enum ImageThumbnail {
         _ url: URL, maxPixel: CGFloat, copyingWith helper: URL? = nil
     ) async -> NSImage? {
         if let cached = cached(url, maxPixel: maxPixel) { return cached }
+        let generation = cache.generation
         var decodable = url
         if let helper, let copy = ImageDerivative.covering(url, maxPixel: Int(maxPixel.rounded(.up))),
             await makeCopy(copy, of: url, helper: helper)
@@ -33,27 +34,29 @@ enum ImageThumbnail {
         // A tile scrolled away mid-copy must not fall back to the full-size decode it was avoiding.
         guard !Task.isCancelled else { return nil }
         return await Task.detached(priority: .userInitiated) { [decodable] in
-            if let image = decode(decodable, cachingAs: url, maxPixel: maxPixel) {
+            if let image = decode(decodable, cachingAs: url, maxPixel: maxPixel, generation: generation) {
                 return Decoded(image: image)
             }
             guard decodable != url else { return Decoded(image: nil) }
             // An unreadable copy is dropped so the next draw remakes it; the original shows now.
             ImageDerivative.queue.async { try? FileManager.default.removeItem(at: decodable) }
-            return Decoded(image: decode(url, cachingAs: url, maxPixel: maxPixel))
+            return Decoded(image: decode(url, cachingAs: url, maxPixel: maxPixel, generation: generation))
         }.value.image
     }
 
     static func load(_ url: URL, maxPixel: CGFloat) -> NSImage? {
         if let cached = cached(url, maxPixel: maxPixel) { return cached }
-        return decode(url, cachingAs: url, maxPixel: maxPixel)
+        return decode(url, cachingAs: url, maxPixel: maxPixel, generation: cache.generation)
     }
 
-    private static func decode(_ file: URL, cachingAs url: URL, maxPixel: CGFloat) -> NSImage? {
+    private static func decode(
+        _ file: URL, cachingAs url: URL, maxPixel: CGFloat, generation: Int
+    ) -> NSImage? {
         guard let cgImage = downsample(file, maxPixel: maxPixel) else { return nil }
         let image = NSImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
         cache.store(
-            image, for: url, maxPixel: maxPixel, cost: cgImage.bytesPerRow * cgImage.height)
+            image, for: url, maxPixel: maxPixel, cost: cgImage.bytesPerRow * cgImage.height, generation: generation)
         return image
     }
 

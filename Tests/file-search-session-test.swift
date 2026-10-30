@@ -2,8 +2,10 @@ import Foundation
 
 actor FileSearchProbe {
     private var active = 0
+    private var recentRuns = 0
     private var calls: [String] = []
     private var maximumActive = 0
+    private(set) var cancelledQueries: [String] = []
     private let pausedQuery: String?
     private var pauseEnabled: Bool
     private var pausedContinuation: CheckedContinuation<Void, Never>?
@@ -14,6 +16,8 @@ actor FileSearchProbe {
     }
 
     func search(query: String, filter: FileSearchFilter) async -> [FileSearchResult] {
+        if query.isEmpty { recentRuns += 1 }
+        let resultName = query.isEmpty ? "recent-\(recentRuns)" : query
         active += 1
         calls.append(filter == .all ? query : "\(query) [\(filter.title)]")
         maximumActive = max(maximumActive, active)
@@ -24,9 +28,10 @@ actor FileSearchProbe {
         } else {
             try? await Task.sleep(for: .milliseconds(80))
         }
+        if Task.isCancelled { cancelledQueries.append(query) }
         active -= 1
         let home = URL(fileURLWithPath: "/Users/test")
-        return [FileSearchResult(url: home.appending(path: query), isDirectory: false, homeDirectory: home)]
+        return [FileSearchResult(url: home.appending(path: resultName), isDirectory: false, homeDirectory: home)]
     }
 
     func snapshot() -> (calls: [String], maximumActive: Int) {
@@ -44,6 +49,8 @@ actor FileSearchProbe {
         }
         return true
     }
+
+    func pauseNextSearch() { pauseEnabled = true }
 
     func resumePausedSearch() {
         pauseEnabled = false
@@ -64,6 +71,9 @@ struct FileSearchSessionTests {
     }
 
     static func main() async {
+        await cancellationKeepsVisibleResults()
+        await cancelledRecentDoesNotReplaceKeptRows()
+        await coalescesRecentRefreshes()
         await coalescesQueuedQueries()
         await serializesRunningQueries()
         await cancellationPreventsPendingWork()
@@ -76,6 +86,56 @@ struct FileSearchSessionTests {
 
         print(failures == 0 ? "File search session tests passed" : "\(failures) tests failed")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    static func cancellationKeepsVisibleResults() async {
+        let probe = FileSearchProbe(pausing: "old")
+        let session = makeSession(probe: probe)
+        session.search("visible")
+        await waitUntil { session.state == .ready }
+        session.search("old")
+        guard await probe.waitUntilPaused() else { return expect(false, "old query starts") }
+        session.search("latest")
+        expect(session.results.first?.name == "visible", "typing keeps visible results")
+        await probe.resumePausedSearch()
+        await waitUntil { session.state == .ready && session.results.first?.name == "latest" }
+        let cancelled = await probe.cancelledQueries
+        expect(cancelled == ["old"], "superseded operation receives cancellation")
+        let snapshot = await probe.snapshot()
+        expect(snapshot.maximumActive == 1, "cancelled work finishes before replacement starts")
+    }
+
+    static func cancelledRecentDoesNotReplaceKeptRows() async {
+        let probe = FileSearchProbe(pausing: "")
+        await probe.resumePausedSearch()
+        let session = makeSession(probe: probe)
+        session.search("")
+        await waitUntil { session.state == .ready }
+        expect(session.results.first?.name == "recent-1", "initial recents are kept")
+        await probe.pauseNextSearch()
+        session.refresh()
+        guard await probe.waitUntilPaused() else { return expect(false, "recent refresh starts") }
+        session.cancel()
+        await probe.resumePausedSearch()
+        session.search("reopened")
+        await waitUntil { session.state == .ready && session.results.first?.name == "reopened" }
+        let cancelled = await probe.cancelledQueries
+        expect(cancelled.contains(""), "closing cancels the active recent scan")
+        session.search("")
+        expect(session.results.first?.name == "recent-1", "cancelled recents cannot replace kept rows")
+    }
+
+    static func coalescesRecentRefreshes() async {
+        let probe = FileSearchProbe(pausing: "")
+        let session = makeSession(probe: probe)
+        session.refreshRecent()
+        guard await probe.waitUntilPaused() else { return expect(false, "recent refresh starts") }
+        for _ in 0..<20 { session.refreshRecent() }
+        await probe.resumePausedSearch()
+        try? await Task.sleep(for: .milliseconds(300))
+        let snapshot = await probe.snapshot()
+        expect(snapshot.maximumActive == 1, "recent refresh bursts do not overlap")
+        expect(snapshot.calls.count == 2, "refresh burst keeps only one trailing refresh")
     }
 
     static func coalescesQueuedQueries() async {
@@ -152,7 +212,8 @@ struct FileSearchSessionTests {
 
         let snapshot = await probe.snapshot()
         expect(
-            snapshot.calls == ["", "report", "report", ""],
+            snapshot.calls.filter { $0 == "report" }.count == 2
+                && snapshot.calls.filter { $0.isEmpty }.count == 2,
             "an idle session prepares recents, and an open one re-asks its query and refreshes them")
     }
 

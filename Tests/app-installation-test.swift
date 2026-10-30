@@ -529,7 +529,10 @@ struct AppInstallationTest {
 }
 
 // Empty feature catalogs keep this harness focused on the shipped launcher.
-enum SettingsTab: Sendable { case ai }
+enum SettingsTab: Sendable {
+    case ai
+    var iconAsset: String { "FeatureAI" }
+}
 enum ExtensionRefreshState: Hashable, Sendable { case idle }
 enum EntryIcon: Hashable, Sendable { case file(stamp: Int), symbol(String) }
 enum IconCache {

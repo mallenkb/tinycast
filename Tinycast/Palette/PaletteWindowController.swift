@@ -165,6 +165,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         drag = nil
         dropGuides.hide()
         // Drop the multi-MB preview bitmaps, so idle RAM returns near baseline.
+        core.linkPreviews.purgeBanners()
         ImageThumbnail.purgePreviews()
         FilePreviewThumbnail.purgePreviews()
         IconCache.purgeFitted()

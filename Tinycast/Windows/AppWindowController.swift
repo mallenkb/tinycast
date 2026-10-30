@@ -19,6 +19,7 @@ final class AppWindowController: NSObject, NSWindowDelegate {
     private let autosaveName: String?
     private let activation: ActivationPolicy?
     private let closesOnEscape: Bool
+    private let onClose: @MainActor () -> Void
     private var window: NSWindow?
     /// Rebuilt with the window, so a chrome's state never outlives the window it decorated.
     private var chrome: WindowChrome?
@@ -26,7 +27,8 @@ final class AppWindowController: NSObject, NSWindowDelegate {
     /// The opening size is also the resize floor unless a smaller `minimumSize` is named.
     init(
         title: String, contentSize: CGSize, minimumSize: CGSize? = nil, resizable: Bool = false,
-        autosaveName: String? = nil, activation: ActivationPolicy?, closesOnEscape: Bool = false
+        autosaveName: String? = nil, activation: ActivationPolicy?, closesOnEscape: Bool = false,
+        onClose: @escaping @MainActor () -> Void = {}
     ) {
         self.title = title
         self.contentSize = contentSize
@@ -35,6 +37,7 @@ final class AppWindowController: NSObject, NSWindowDelegate {
         self.autosaveName = autosaveName
         self.activation = activation
         self.closesOnEscape = closesOnEscape
+        self.onClose = onClose
     }
 
     /// Returns `true` when a window was built, `false` when an already-open one was re-raised.
@@ -99,6 +102,10 @@ final class AppWindowController: NSObject, NSWindowDelegate {
         self.window = nil
         self.chrome = nil
         activation?.windowDidClose(window)
+        window.toolbar = nil
+        window.contentViewController = nil
+        window.contentView = nil
+        onClose()
     }
 
     // MARK: - Private

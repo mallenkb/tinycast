@@ -166,6 +166,7 @@ private final class LauncherItemCellView: NSTableCellView {
     static let reuseID = NSUserInterfaceItemIdentifier("launcherItem")
     weak var coordinator: LauncherItemsTable.Coordinator?
     private let host: NSHostingView<LauncherItemCell>
+    private var hasContent = false
 
     init(_ content: LauncherItemCell) {
         host = NSHostingView(rootView: content)
@@ -187,6 +188,16 @@ private final class LauncherItemCellView: NSTableCellView {
     required init?(coder: NSCoder) { fatalError() }
 
     func show(_ content: LauncherItemCell) {
+        let shownContent = host.rootView
+        if hasContent,
+            shownContent.entry == content.entry,
+            shownContent.showsDivider == content.showsDivider,
+            shownContent.isEnabled == content.isEnabled,
+            shownContent.visibility === content.visibility,
+            shownContent.aliases === content.aliases,
+            shownContent.hotKeys === content.hotKeys
+        { return }
+        hasContent = true
         var content = content
         content.onRecorderFrame = { [weak self] frame in self?.recorderMoved(to: frame) }
         content.onTab = { [weak self] in self?.tabbed() ?? false }

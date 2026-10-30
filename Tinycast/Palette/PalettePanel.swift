@@ -33,8 +33,42 @@ final class PalettePanel: NSPanel, AnimatedPanel {
     /// SwiftUI's text fields all edit through the window's one shared field editor.
     private var fieldEditor: NSTextView? { firstResponder as? NSTextView }
 
-    func selectAllFieldEditorText() {
-        fieldEditor?.selectAll(nil)
+    @discardableResult
+    func selectAllFieldEditorText() -> Bool {
+        guard let editor = fieldEditor, editor.isSelectable else { return false }
+        editor.selectAll(nil)
+        return true
+    }
+
+    private func handleTextEditingShortcut(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        guard modifiers == .command || modifiers == [.command, .shift],
+            let editor = fieldEditor, editor.isSelectable
+        else { return false }
+        let character = ASCIIKeyboardLayout.character(for: event)?.lowercased()
+            ?? event.charactersIgnoringModifiers?.lowercased()
+        if character == "z", editor.isEditable, !editor.hasMarkedText() {
+            guard !event.isARepeat else { return true }
+            editor.breakUndoCoalescing()
+            if modifiers.contains(.shift) {
+                if editor.undoManager?.canRedo == true { editor.undoManager?.redo() }
+            } else if editor.undoManager?.canUndo == true {
+                editor.undoManager?.undo()
+            }
+            return true
+        }
+        guard modifiers == .command else { return false }
+        switch character {
+        case "a": return selectAllFieldEditorText()
+        case "x" where editor.isEditable && editor.selectedRange().length > 0:
+            editor.cut(nil)
+        case "c" where editor.selectedRange().length > 0:
+            editor.copy(nil)
+        case "v" where editor.isEditable:
+            editor.paste(nil)
+        default: return false
+        }
+        return true
     }
 
     func moveFieldEditorCaretToEnd() {
@@ -237,6 +271,7 @@ final class PalettePanel: NSPanel, AnimatedPanel {
         {
             return
         }
+        if event.type == .keyDown, handleTextEditingShortcut(event) { return }
         // The controller owns the chords the field editor or a missing main menu would eat.
         if event.type == .keyDown,
             event.modifierFlags.contains(.command),
