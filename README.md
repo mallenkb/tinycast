@@ -18,9 +18,9 @@ and AGPL-3.0-or-later license are preserved.
 
 <details open>
   <summary>Settings preview</summary>
-  <p>The local development build’s grouped Settings sidebar and feature icons.</p>
+  <p>The actual Settings window in the local development build, shown in dark mode.</p>
   <p align="center">
-    <img src="docs/settings-preview.png" alt="Tinycast Settings sidebar with grouped features and colored icons" width="260">
+    <img src="docs/settings-preview.png" alt="Tinycast Settings window in dark mode with grouped feature icons and General preferences" width="720">
   </p>
 </details>
 
