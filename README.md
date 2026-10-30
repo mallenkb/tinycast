@@ -1,6 +1,7 @@
 # Tinycast
 
-**A tiny, fully native macOS launcher. One hotkey for your apps, files, clipboard, and everyday tools.**
+**A tiny, fully native macOS launcher. One hotkey for your apps, files, clipboard, and everyday tools.
+Built with a memory target of under 100 MB of RAM.**
 
 <p align="center">
   <a href="https://github.com/mallenkb/tinycast/releases/latest"><img src="https://img.shields.io/github/v/release/mallenkb/tinycast?label=release" alt="Latest release"></a>
