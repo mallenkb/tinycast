@@ -4,8 +4,9 @@ Tinycast is signed with a **stable self-signed identity** called `Tinycast Self-
 _same_ identity on every build is what makes macOS remember the Accessibility permission across
 rebuilds and updates — ad-hoc signing changes every build and macOS forgets the grant.
 
-An Apple Developer ID certificate now exists, but nothing is signed with it yet. Why that switch is
-staged rather than immediate is [below](#the-developer-id-migration).
+The upstream project documents an Apple Developer ID migration
+[below](#the-developer-id-migration). That does not establish that this fork has a Developer ID
+certificate. This fork’s current local packages use its local self-signed identity.
 
 You create this identity **once**. The same identity is used for:
 

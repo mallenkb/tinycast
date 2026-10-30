@@ -1,13 +1,18 @@
 # Contributing to Tinycast
 
-Check existing [issues](https://github.com/abue-ammar/tinycast/issues) and
-[pull requests](https://github.com/abue-ammar/tinycast/pulls) first.
+These guidelines apply to the personal fork maintained by
+[@mallenkb](https://x.com/mallenkb). For contributions to the original project, follow
+[its contribution guidelines](https://github.com/abue-ammar/tinycast/blob/main/CONTRIBUTING.md).
+
+Check existing [issues](https://github.com/mallenkb/tinycast/issues) and
+[pull requests](https://github.com/mallenkb/tinycast/pulls) first.
 
 > **Don't hurry your code. Make sure it works well and is well designed. Don't worry about timing.**
 
 ## Non-negotiables
 
-- **RAM.** Under 100 MB, always. No feature is worth going over.
+- **RAM.** Under 100 MB is the contribution budget. Include measured idle and active peaks
+  with the workload and build; do not present the budget as a guarantee of current behavior.
 - **No leaks.** Leak-test before you submit. Zero leaks, no retain cycles, memory back to baseline
   after the palette closes.
 - **Design.** New UI must look like it shipped with the app — spacing, type, radii and motion from the
@@ -18,7 +23,7 @@ Check existing [issues](https://github.com/abue-ammar/tinycast/issues) and
 
 ## Setup
 
-- macOS 26+, Xcode 26. Do the one-time signing setup
+- macOS 26+, Xcode 27. Do the one-time signing setup
   ([`docs/signing.md`](docs/signing.md) §1).
 - `open Tinycast.xcodeproj` → ⌘R. Debug builds are their own channel (`Tinycast Dev.app`).
 - After editing `project.yml`: `xcodegen generate`, commit the result. No SwiftPM.

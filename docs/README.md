@@ -1,5 +1,8 @@
 # Tinycast documentation
 
+Start with [fork status](fork.md) for what is published, what is still local, and how this
+repository differs from the original project.
+
 Start with [`AGENTS.md`](../AGENTS.md) at the repo root — it is the short version, and it links here for
 anything that needs more than a line.
 

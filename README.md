@@ -1,150 +1,102 @@
-# Tinycast
+# Tinycast · personal fork
 
-This is a personal fork of [Tinycast](https://github.com/abue-ammar/tinycast), created by
-[Abue Ammar](https://github.com/abue-ammar). The original copyright, AGPL-3.0-or-later license,
-and contributor history are preserved. This fork adds clipboard link previews, live file search,
-typography settings and other local interface changes. It is maintained separately from the original.
+A native macOS launcher built with SwiftUI and AppKit. Launch apps, search files, reuse your
+clipboard, run commands, and work with notes, snippets, and Raycast extensions from one palette.
 
-**A tiny, fully native macOS launcher. One hotkey, everything you reach for all day, under 100 MB of
-RAM.**
+Maintained by [mallenkb](https://github.com/mallenkb). This is an independent fork of
+[Tinycast](https://github.com/abue-ammar/tinycast), created by
+[Abue Ammar](https://github.com/abue-ammar). The original author’s copyright, contributor history,
+and AGPL-3.0-or-later license are preserved.
 
-<p align="center">
-  <a href="https://github.com/abue-ammar/tinycast/releases/latest">
-    <img alt="Latest release"
-         src="https://img.shields.io/github/v/release/abue-ammar/tinycast?sort=semver&style=flat&label=release&color=1F6FEB"></a>
-  <img alt="Swift 6.0"
-       src="https://img.shields.io/badge/Swift-6.0-F05138?style=flat&logo=swift&logoColor=white">
-  <img alt="macOS 26 or later"
-       src="https://img.shields.io/badge/macOS-26%2B-000000?style=flat&logo=apple&logoColor=white">
-  <a href="LICENSE">
-    <img alt="License: AGPL-3.0"
-         src="https://img.shields.io/badge/License-AGPL--3.0-3DA639?style=flat"></a>
-  <a href="https://discord.gg/v2Eeb4QQy3">
-    <img alt="Join the Tinycast Discord"
-         src="https://img.shields.io/badge/Discord-Join-5865F2?style=flat&logo=discord&logoColor=white"></a>
-</p>
+[Contact @mallenkb on X](https://x.com/mallenkb) ·
+[Report a bug](https://github.com/mallenkb/tinycast/issues) ·
+[Build from source](#build-from-source) · [Documentation](docs/README.md)
 
-SwiftUI and AppKit, **zero third-party dependencies**, no Electron and no telemetry. It also **runs
-real Raycast extensions**, rendered as native SwiftUI. Free, open source, and staying that way.
+## Fork highlights
 
-For anything private, email [iabueammar@gmail.com](mailto:iabueammar@gmail.com).
+- **Rich clipboard link previews.** See a copied page’s title, site icon, and preview image without
+  opening the browser, with a loading indicator while metadata is fetched.
+- **Rendered SVG previews.** View copied SVG markup as an image in the clipboard preview, with an
+  SVG-specific row icon and type label. This is in the latest local build, pending publication.
+- **Live file search.** See matching files in the main launcher as you type when File Search and
+  Show in launcher are enabled. No need to open the Search Files command first.
+- **Typography choices.** Choose the default system font or Inter Variable in Settings.
+- **Palette refinements.** Smoother cursor blinking, appearance-aware caret colors, and refinements
+  to the search field and panel styling.
+- **Redesigned feature icons.** Consistent sizing, light and dark variants, and grouped settings
+  navigation. The latest icon set is in the local build, pending publication.
+- **Memory improvements.** Smaller preview and icon caches, cancellation of obsolete file searches,
+  and resource cleanup when Settings closes. These changes are in the local build, pending publication.
 
-<p align="center">
-  <img src="docs/screenshot.png" alt="Tinycast command palette" width="720">
-</p>
+The published source already includes link previews, live file search, and typography settings.
+The newer SVG, icon, and memory changes have not yet been pushed. See
+[fork status](docs/fork.md) for the distinction. Memory use varies with the workload; this fork does
+not promise to stay below 100 MB during every operation.
 
 ## Features
 
-- **App launcher** — fuzzy-search and launch anything, pin favorites, see what's running, quit an app
-  or every app at once.
-- **Global hotkey** — one shortcut summons the palette from anywhere.
-- **Per-app hotkeys** — bind a key to an app; press it to toggle (focus/hide).
-- **Search Files** — open files and folders from the folders you choose, through Spotlight, with no
-  index of our own.
-- **Dictionary** — look a word up with the Define Word command, or define whatever you typed from the
-  launcher's fallbacks, read from the Mac's own dictionaries.
-- **Clipboard history** — text and images, searchable, pasted back into the app you were using.
-- **Calculator** — do math, unit, live currency and crypto conversions inline, right in the palette.
-- **Quicklinks** — turn a URL, search, file or deeplink into a command, with placeholders for typed
-  input, the clipboard or the date.
-- **Apple Shortcuts** — search and run the shortcuts you built in the Shortcuts app, with aliases and
-  global hotkeys.
-- **Snippets** — reusable Markdown templates with dynamic placeholders, arguments, nested references
-  and optional keyword expansion.
-- **Custom commands** — run named shell commands through fuzzy search or their own global hotkeys.
-- **Window management** — 34 Rectangle-style actions: halves, quarters, thirds, sizing, nudging,
-  display moves, fullscreen and Spaces.
-- **System actions** — lock, sleep, restart, empty trash, toggle appearance, Bluetooth, mute, hidden
-  files, and more.
-- **Calendar and meetings** — your next meeting on the empty palette and in the menu bar, one key to
-  join it, or let it join itself.
-- **Notes** — an unlimited collection of plain Markdown files in one floating editor, searchable from
-  the palette and rendered as you write.
-- **Emoji picker** — a searchable emoji grid, one keystroke away.
-- **AI chat** — use your own key or an installed AI account: ask Quick AI from the palette, or keep
-  longer conversations in the AI Chat window, with a searchable, pinnable history. Off out of the box,
-  like every AI feature.
-- **Quick Actions** — fix grammar, rewrite, translate or summarize the selected text in any app.
-- **Raycast extensions** — run the ones you already have natively, rendered as SwiftUI.
-- **Backup and import** — export your settings to a file, or import your setup from Raycast.
+| Area | What you can do |
+| --- | --- |
+| Launcher | Fuzzy app search, favorites, running-app indicators, global and per-app hotkeys |
+| Files | Search a local filename index across configured folders, with results in the launcher |
+| Clipboard | Search text and images, preview links, and paste into the previous app |
+| Calculator | Calculate expressions and convert units, currencies, and cryptocurrencies |
+| Writing | Use the Mac’s dictionaries, searchable emoji, snippets, and Markdown notes |
+| Automation | Run custom shell commands, Apple Shortcuts, quicklinks, and Raycast extensions |
+| Mac controls | Manage windows, navigate windows, and run system actions |
+| Calendar | View upcoming meetings and join them from the palette |
+| AI and dictation | Use configurable AI providers, text Quick Actions, and dictation |
+| Backup | Export settings or import a setup from Raycast |
 
-## Install
+File Search uses Tinycast’s own filename index, not Spotlight. It requires Full Disk Access and
+indexes the folders configured in Settings. AI features are off by default.
 
-First, add the tap:
+## Build from source
+
+There is no published binary release of this fork yet. Build the source in this repository to use
+its published changes. The original project’s Homebrew casks and downloads install the upstream app.
+
+Requirements: macOS 26 or later, Xcode 27 as specified in the development guide, and the local
+signing identity described in [signing.md](docs/signing.md).
 
 ```sh
-brew trust --tap abue-ammar/tinycast   # required for third-party taps
-brew tap abue-ammar/tinycast
+git clone https://github.com/mallenkb/tinycast.git
+cd tinycast
+./Scripts/build-and-run.sh
 ```
 
-Then run the one line that matches your Mac:
+This builds **Tinycast Dev**, with its own preferences, data, and permissions, separate from an
+installed Tinycast app. Grant the Dev app its own permissions and configure its shortcuts.
 
-| Your Mac                         | Install                                  |
-| -------------------------------- | ---------------------------------------- |
-| Apple silicon, macOS 26 or newer | `brew install --cask tinycast`           |
-| Intel, macOS 26                  | `brew install --cask tinycast-universal` |
+To package a local Release build:
 
-Not sure which Mac you have? **Apple menu → About This Mac.**
-
-- **Early builds:** `brew install --cask tinycast@beta` installs `Tinycast Beta.app` beside the stable app.
-- **DMG from [Releases](https://github.com/abue-ammar/tinycast/releases)?** It's self-signed, so run
-  `xattr -dr com.apple.quarantine "/Applications/Tinycast.app"` once.
-
-## Building from source
-
-See **[docs/development.md](docs/development.md)** for the toolchain, build, packaging, release and
-website workflows. **[docs/](docs/README.md)** indexes everything else — architecture, engineering
-standards, the design system and one document per feature.
-
-## Support
-
-Tinycast is **free, and it stays that way**. If you enjoy it, you can support it with crypto: scan a
-code with your wallet, or copy an address. Send only on the network named for that address. If yours
-isn't listed, [email me](mailto:iabueammar@gmail.com?subject=Supporting%20Tinycast).
-
-<table>
-  <tr>
-    <td align="center">
-      <img width="160" alt="Bitcoin address QR code" src="website/public/wallets/bitcoin-qr.svg"><br>
-      <b>Bitcoin</b>
-    </td>
-    <td align="center">
-      <img width="160" alt="Ethereum, Base and BNB Smart Chain address QR code" src="website/public/wallets/ethereum-qr.svg"><br>
-      <b>Ethereum, Base, BNB Smart Chain</b>
-    </td>
-    <td align="center">
-      <img width="160" alt="Solana address QR code" src="website/public/wallets/solana-qr.svg"><br>
-      <b>Solana</b>
-    </td>
-  </tr>
-</table>
-
-**Bitcoin**
-
-```text
-bc1qpfxtjpuhm2cm8kg4lqgu3ffjch7vcjf678arwn
+```sh
+./Scripts/build-dmg.sh
 ```
 
-**Ethereum, Base and BNB Smart Chain** (one address for all three)
+The DMG is written under `build/`. Release builds use the same `com.tinycast.app` identity as the
+original stable app, so installing one replaces that app and uses its data. Use Tinycast Dev while
+trying the fork alongside the original.
 
-```text
-0x22A00612bc0bf1Dc73AAC75e8De1BA4e81fF0810
-```
+The current in-app updater still checks upstream releases. It is not a distribution channel for
+this fork. See [fork status](docs/fork.md) before publishing or installing a Release build.
 
-**Solana**
+## Feedback and contributions
 
-```text
-4EH7JDXZxkJiahas1xgPyC1iBW9pfCVUXxVtpqvwAz6T
-```
+For this fork, use [GitHub Issues](https://github.com/mallenkb/tinycast/issues) or contact
+[@mallenkb on X](https://x.com/mallenkb). Include your macOS version, build or commit, and steps to
+reproduce a problem. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and
+[SECURITY.md](SECURITY.md) for private vulnerability reports.
 
-Prefer a card? Buy the wallpaper pack and get a Discord role.
+For the original project, visit [abue-ammar/tinycast](https://github.com/abue-ammar/tinycast).
+You can support its original author through the [upstream support page](https://tinycast.dev/support).
 
-<p align="center">
-  <a href="https://tinycast.dev/support">
-    <img alt="Support Tinycast" width="188" height="44" src="docs/support-button.svg"></a><br>
-  <sub>Card payments are handled securely by <a href="https://polar.sh">Polar.sh</a>.</sub>
-</p>
+## Credits and license
 
-## License
+Tinycast was created by [Abue Ammar](https://github.com/abue-ammar) with contributions from the
+[upstream community](https://github.com/abue-ammar/tinycast/graphs/contributors).
+This fork is maintained separately by [mallenkb](https://github.com/mallenkb).
 
-[AGPL-3.0](LICENSE)
+The code is licensed under [AGPL-3.0-or-later](LICENSE). Inter Variable includes its own
+[font license](Tinycast/Resources/Fonts/LICENSE.txt). Original notices and contributor history remain
+in the repository.

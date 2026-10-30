@@ -2,7 +2,9 @@
 
 ## Reporting a Vulnerability
 
-Report privately through GitHub: **Security** tab → **Report a vulnerability**.
+For this fork, report privately through
+[GitHub vulnerability reporting](https://github.com/mallenkb/tinycast/security/advisories/new).
+Do not include credentials or private clipboard content in public issues or X posts.
 
 Include your macOS version, the Tinycast version and channel, reproduction steps, and the impact.
 Please don't disclose publicly until it's fixed.
@@ -11,7 +13,8 @@ We'll respond as quickly as we can and keep you posted.
 
 ## Supported Versions
 
-Current stable and beta only. Update (`brew upgrade --cask tinycast`) before reporting.
+This fork has no published stable or beta binaries yet. Report against the current `main` branch
+and include the commit hash. Upstream Homebrew packages install the original project.
 
 ## Scope
 

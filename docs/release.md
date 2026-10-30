@@ -1,5 +1,11 @@
 # Release
 
+## Status of this fork
+
+No binary release has been published for `mallenkb/tinycast`. Local packaging works, but the
+inherited CI workflow and app updater still reference upstream services. The workflow below documents
+the upstream setup; it is not yet configured as this fork’s release pipeline. See [fork status](fork.md).
+
 How a build reaches a user. The local development loop is in [development.md](development.md);
 the signing identity itself is in [signing.md](signing.md).
 
