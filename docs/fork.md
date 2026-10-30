@@ -4,7 +4,10 @@ This repository is [mallenkb/tinycast](https://github.com/mallenkb/tinycast), an
 [abue-ammar/tinycast](https://github.com/abue-ammar/tinycast). Contact the fork maintainer at
 [@mallenkb on X](https://x.com/mallenkb).
 
-## Release 0.1.0
+## Releases 0.1.0 and 0.1.1
+
+Version 0.1.1 binds the update cache to this fork and rejects assets from other repositories. This
+prevents a cached upstream version from appearing after switching to the fork.
 
 The first fork release includes rich clipboard link previews with Open Graph images, rendered SVG
 previews and type labels, live launcher file results, system or Inter Variable typography, and palette
@@ -12,7 +15,7 @@ and caret refinements. It also includes redesigned feature icons, grouped Settin
 memory improvements.
 
 The universal DMG and updater ZIP support Apple silicon and Intel on macOS 26 or later. The source
-for the packaged build is available at the `v0.1.0` tag. Build and signature validation do not establish
+for the packaged build is available at each release tag. Build and signature validation do not establish
 that every feature has passed runtime testing.
 
 ## Memory
@@ -29,7 +32,7 @@ active screen, and operating system, so an unconditional under-100-MB claim is n
 - Downloads and update checks use `mallenkb/tinycast` releases.
 - Release builds use `com.tinycast.app`, the same identity as upstream stable. Dev builds use
   `com.tinycast.app.dev` and keep separate data.
-- Version 0.1.0 is packaged locally with the fork's self-signed certificate. It is not notarized.
+- Releases are packaged locally with the fork's self-signed certificate. It is not notarized.
   Installation instructions are in the README and release notes.
 - The inherited GitHub Actions workflow still references upstream services and is not used for this
   release. Local packaging does not update upstream taps, websites, or announcements.

@@ -21,6 +21,7 @@ struct UpdatesTests {
         ordersVersions()
         roundTripsVersionsThroughJSON()
         derivesChannels()
+        rejectsForeignAssets()
         picksNewestForChannel()
         picksTheZipThisMacCanRun()
         rejectsUnusableFeeds()
@@ -135,7 +136,7 @@ struct UpdatesTests {
         let list = assets.map {
             """
             {"name":"\($0)","size":1024,
-             "browser_download_url":"https://example.invalid/\($0)"}
+             "browser_download_url":"https://github.com/\(ReleaseFeed.repository)/releases/download/\(tag)/\($0)"}
             """
         }
         return """
@@ -143,6 +144,28 @@ struct UpdatesTests {
              "body":"\(body)","published_at":"2026-01-05T12:00:00Z",
              "assets":[\(list.joined(separator: ","))]}
             """
+    }
+
+    static func rejectsForeignAssets() {
+        let own = "https://github.com/\(ReleaseFeed.repository)/releases/download/v0.3.0/a.zip"
+        expect(ReleaseFeed.ownsAsset(URL(string: own)!, tag: "v0.3.0"), "accepts this fork's asset")
+        for raw in [
+            own.replacingOccurrences(of: ReleaseFeed.repository, with: "abue-ammar/tinycast"),
+            own.replacingOccurrences(of: "https:", with: "http:"),
+            own.replacingOccurrences(of: "github.com/", with: "github.com.evil.invalid/"),
+            own.replacingOccurrences(of: "v0.3.0", with: "v0.4.0")
+        ] {
+            expect(!ReleaseFeed.ownsAsset(URL(string: raw)!, tag: "v0.3.0"), "rejects a foreign asset")
+            let release = AvailableRelease(
+                version: AppVersion("0.3.0")!, tag: "v0.3.0", notes: "",
+                assetURL: URL(string: raw)!, assetSize: 1, publishedAt: nil)
+            expect(ReleaseFeed.offer(release, running: AppVersion("0.1.0")!, skipped: nil) == nil,
+                "a foreign cached release cannot be offered")
+        }
+        let payload = String(bytes: feed(entry(tag: "v0.3.0", prerelease: false)), encoding: .utf8)!
+            .replacingOccurrences(of: ReleaseFeed.repository, with: "abue-ammar/tinycast")
+        expect(ReleaseFeed.newest(from: Data(payload.utf8), channel: .stable,
+            architecture: .appleSilicon) == nil, "ignores upstream feed assets")
     }
 
     static func picksNewestForChannel() {
@@ -248,11 +271,11 @@ struct UpdatesTests {
         let running = AppVersion("0.2.0")!
         let newer = AvailableRelease(
             version: AppVersion("0.3.0")!, tag: "v0.3.0", notes: "",
-            assetURL: URL(string: "https://example.invalid/a.zip")!, assetSize: 1,
+            assetURL: URL(string: "https://github.com/\(ReleaseFeed.repository)/releases/download/v0.3.0/a.zip")!, assetSize: 1,
             publishedAt: nil)
         let same = AvailableRelease(
             version: running, tag: "v0.2.0", notes: "",
-            assetURL: URL(string: "https://example.invalid/a.zip")!, assetSize: 1,
+            assetURL: URL(string: "https://github.com/\(ReleaseFeed.repository)/releases/download/v0.2.0/a.zip")!, assetSize: 1,
             publishedAt: nil)
 
         expect(

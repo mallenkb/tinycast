@@ -32,9 +32,23 @@ enum ReleaseFeed {
     static func offer(
         _ release: AvailableRelease?, running: AppVersion, skipped: AppVersion?
     ) -> AvailableRelease? {
-        guard let release, release.version > running else { return nil }
+        guard let release, ownsAsset(release.assetURL, tag: release.tag),
+            release.version > running
+        else { return nil }
         if let skipped, release.version <= skipped { return nil }
         return release
+    }
+
+    static func ownsAsset(_ url: URL, tag: String) -> Bool {
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            parts.scheme == "https", parts.host == "github.com", parts.port == nil,
+            parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil,
+            AppVersion(tag) != nil
+        else { return false }
+        let path = url.pathComponents
+        return path.count == 7
+            && path.dropFirst().prefix(4).joined(separator: "/") == "\(repository)/releases/download"
+            && path[5] == tag && path[6].hasSuffix(".zip")
     }
 
     private static func release(
@@ -44,7 +58,9 @@ enum ReleaseFeed {
             let version = AppVersion(entry.tagName),
             // A tag disagreeing with the prerelease flag is a mis-published release, not an update.
             version.isPrerelease == entry.prerelease,
-            let asset = asset(from: entry.assets, for: architecture)
+            let asset = asset(
+                from: entry.assets.filter { ownsAsset($0.browserDownloadURL, tag: entry.tagName) },
+                for: architecture)
         else { return nil }
         return AvailableRelease(
             version: version,

@@ -21,7 +21,7 @@ and AGPL-3.0-or-later license are preserved.
 
 [Contact @mallenkb on X](https://x.com/mallenkb) ·
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
-[Download v0.1.0](https://github.com/mallenkb/tinycast/releases/tag/v0.1.0) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
+[Download v0.1.1](https://github.com/mallenkb/tinycast/releases/tag/v0.1.1) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
 ## App preview
 
@@ -73,7 +73,8 @@ open "/Applications/Tinycast.app"
 ```
 
 This fork uses the same app identity as upstream stable. Installing it replaces the original
-Tinycast app and uses its existing data. Future update checks use `mallenkb/tinycast` releases.
+Tinycast app and uses its existing data. Future update checks use `mallenkb/tinycast` releases. Version 0.1.1 also rejects old upstream
+update caches and download URLs from other repositories.
 
 ## Features
 

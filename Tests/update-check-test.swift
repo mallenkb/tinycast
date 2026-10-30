@@ -9,6 +9,7 @@ struct UpdateCheckTests {
     static func main() async throws {
         try await stopsBeforeFirstCheck()
         try await cancelsAndRestarts()
+        try rejectsForeignCaches()
         try reportsInstalledVersionOnce()
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
@@ -107,12 +108,41 @@ struct UpdateCheckTests {
         expect(afterwards.takeInstalledVersion() == nil, "and clears the record")
     }
 
+    static func rejectsForeignCaches() throws {
+        let file = makeFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let fixture = FetchFixture()
+        for variant in 0..<3 {
+            try seedCache(at: file)
+            guard var cache = try JSONSerialization.jsonObject(with: Data(contentsOf: file))
+                as? [String: Any]
+            else { fatalError("the seeded cache must be an object") }
+            if variant == 0 {
+                cache.removeValue(forKey: "repository")
+            } else if variant == 1 {
+                cache["repository"] = "abue-ammar/tinycast"
+            } else {
+                guard var release = cache["latest"] as? [String: Any]
+                else { fatalError("the seeded cache must contain a release") }
+                release["assetURL"] = "https://github.com/abue-ammar/tinycast/releases/download/v1.1.0/a.zip"
+                cache["latest"] = release
+            }
+            try JSONSerialization.data(withJSONObject: cache).write(to: file)
+            let store = makeStore(file: file, fixture: fixture)
+            expect(store.latest == nil && store.update == nil, "a foreign cache offers no update")
+            expect(store.lastCheckedAt == nil, "a foreign cache cannot delay this fork's check")
+        }
+        try seedCache(at: file)
+        expect(makeStore(file: file, fixture: fixture).update != nil, "this fork's cache still works")
+    }
+
     static func seedCache(at file: URL) throws {
         guard
             let release = ReleaseFeed.newest(
                 from: feed(version: "1.1.0"), channel: .stable, architecture: .current)
         else { fatalError("the fixture release must be installable") }
         let cache: [String: Any] = [
+            "repository": ReleaseFeed.repository,
             "lastCheckedAt": Date.distantPast.timeIntervalSinceReferenceDate,
             "latest": try JSONSerialization.jsonObject(with: JSONEncoder().encode(release))
         ]
@@ -137,7 +167,7 @@ struct UpdateCheckTests {
             """
             [{"tag_name":"v\(version)","prerelease":false,"draft":false,"assets":[
                 {"name":"Tinycast-Universal-\(version).zip","size":100,
-                 "browser_download_url":"https://example.com/update.zip"}
+                 "browser_download_url":"https://github.com/\(ReleaseFeed.repository)/releases/download/v\(version)/update.zip"}
             ]}]
             """.utf8)
     }

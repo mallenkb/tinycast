@@ -12,6 +12,10 @@ enum UpdateDownloader {
         _ release: AvailableRelease, to destination: URL
     ) -> AsyncThrowingStream<Event, any Error> {
         AsyncThrowingStream { continuation in
+            guard ReleaseFeed.ownsAsset(release.assetURL, tag: release.tag) else {
+                continuation.finish(throwing: UpdateFailure.bundleMismatch)
+                return
+            }
             let config = URLSessionConfiguration.ephemeral
             // Cacheless, never `URLSession.shared`, so the only copy is the one on disk.
             config.urlCache = nil
