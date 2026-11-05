@@ -80,7 +80,9 @@ private struct DictionarySourceButton: View {
     private var session: DictionarySession { coordinator.session }
     private var selectionName: String {
         session.sources.first { $0.id == coordinator.preferredSourceID }?.name
-            ?? String(localized: "Follow Dictionary.app Order")
+            ?? session.lookup?.entry?.source?.name
+            ?? session.sources.first?.name
+            ?? String(localized: "Choose Dictionary")
     }
 
     var body: some View {
@@ -102,19 +104,16 @@ private struct DictionarySourceButton: View {
 
     private func openSources() {
         let sources = coordinator.orderedSources
-        var items = [
-            PopoverMenuItem(
-                title: String(localized: "Follow Dictionary.app Order"),
-                systemImage: coordinator.preferredSourceID.isEmpty ? "checkmark" : "list.bullet"
-            ) { coordinator.selectSource("") }
-        ]
-        items += sources.map { source in
+        let selectedID = sources.first { $0.id == coordinator.preferredSourceID }?.id
+            ?? session.lookup?.entry?.source?.id
+            ?? sources.first?.id
+        let items = sources.map { source in
             PopoverMenuItem(
                 title: source.name,
-                systemImage: coordinator.preferredSourceID == source.id ? "checkmark" : "book"
+                systemImage: selectedID == source.id ? "checkmark" : "book"
             ) { coordinator.selectSource(source.id) }
         }
-        let selection = sources.firstIndex { $0.id == coordinator.preferredSourceID }.map { $0 + 1 } ?? 0
+        let selection = sources.firstIndex { $0.id == selectedID } ?? 0
         openInputMenu(PopoverMenuContent(items: items), .belowControl(menuFrame), selection)
     }
 }

@@ -38,8 +38,8 @@ The empty state shows Dictionary.app's icon through the shared icon cache, with 
 The dictionary name stays in the selector beside the search input rather than repeating above the
 definition. The selector opens one searchable list. Its width fits the longest label up to the palette width and stays fixed while filtering.
 Choosing a dictionary applies immediately and saves it as the preferred source for future lookups.
-Only one dictionary is displayed at a time. "Follow Dictionary.app Order" stays at the top; the selected
-dictionary and recently selected dictionaries follow, with untouched sources in Dictionary.app order.
+Only one dictionary is displayed at a time. The menu contains individual dictionaries, with the
+selected and recently selected dictionaries first and untouched sources in Dictionary.app order.
 Up to 12 recent dictionary identifiers are saved across launches and backups, and mirrored as
 `dictionary.recentSources` in settings.json. Automatic fallback never changes this recent order.
 
@@ -52,7 +52,7 @@ The preference uses the dictionary's identifier, survives relaunch and backup, a
 Names and identifiers come from runtime-resolved `DCSDictionaryGetName` and
 `DCSDictionaryGetIdentifier`. The menu lists enabled dictionaries exposed by Dictionary Services;
 onlocal Dictionary.app sources such as Wikipedia are not promised. If the private calls are missing,
-the public plain-text result is labeled "System Dictionary" without claiming a specific source.
+the screen offers the public plain-text result without claiming a specific source.
 
 Only names and identifiers are retained for the menu. Records are read sequentially until a source
 answers, and temporary markup is released after each record. Closing the screen clears the entry and

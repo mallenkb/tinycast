@@ -4,7 +4,7 @@ This repository is [mallenkb/tinycast](https://github.com/mallenkb/tinycast), an
 [abue-ammar/tinycast](https://github.com/abue-ammar/tinycast). Contact the fork maintainer at
 [@mallenkb on X](https://x.com/mallenkb).
 
-## Releases 0.1.0 through 0.1.2
+## Releases 0.1.0 through 0.1.3
 
 Version 0.1.1 binds the update cache to this fork and rejects assets from other repositories. This
 prevents a cached upstream version from appearing after switching to the fork.
@@ -37,8 +37,8 @@ active screen, and operating system, so an unconditional under-100-MB claim is n
   `com.tinycast.app.dev` and keep separate data.
 - Releases are packaged locally with the fork's self-signed certificate. It is not notarized.
   Installation instructions are in the README and release notes.
-- The inherited GitHub Actions workflow still references upstream services and is not used for this
-  release. Local packaging does not update upstream taps, websites, or announcements.
+- GitHub Actions validates pushes and pull requests and provides a manual signed release workflow.
+  It uses fork release assets and does not update upstream taps, websites, or announcements.
 - Original author credit and third-party notices remain in the app and repository.
 
 ## Attribution

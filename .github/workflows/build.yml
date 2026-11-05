@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check toolchain
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild -version | head -1 | grep -Eq '^Xcode 27\.'
+          if ! command -v swiftlint >/dev/null; then brew install swiftlint; fi
+      - name: Lint and validate resources
+        run: ./Scripts/lint.sh
+      - name: Run focused regression checks
+        run: |
+          set -euo pipefail
+          for harness in dictionary-test icon-cache-test settings-file-test settings-backup-test; do
+            ./Scripts/run-tests.sh "$harness"
+          done
+      - name: Build universal Release without signing
+        run: |
+          set -euo pipefail
+          xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+            build > "$RUNNER_TEMP/build.log" 2>&1
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-log
+          path: ${{ runner.temp }}/build.log
+          if-no-files-found: ignore
+          retention-days: 7
