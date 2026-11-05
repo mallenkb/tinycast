@@ -9,6 +9,7 @@ struct DictionaryEntryView: View {
             LazyVStack(alignment: .leading, spacing: metrics.spacing.md) {
                 ForEach(entry.blocks.indices, id: \.self) { index in
                     DictionaryBlockView(block: entry.blocks[index], leadsPage: index == 0)
+                    if index == 0 { DictionaryPronunciationView(term: entry.term) }
                 }
             }
             .textSelection(.enabled)

@@ -7,6 +7,7 @@ update feed use this fork's GitHub releases. The universal DMG and ZIP are self-
 notarized. Version 0.1.1 additionally scopes cached updates and accepted asset URLs to this fork.
 Version 0.1.2 adds dictionary source selection and idle memory reclamation. Version 0.1.4 integrates
 upstream application fixes, deeplinks, extension authentication and AI protocol updates.
+Version 0.1.5 adds recorded English pronunciation, readable guides and source credits.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
@@ -62,9 +63,9 @@ Removing that line would reintroduce exactly those three problems. See
 ## GitHub Actions
 
 `Build` runs on pushes to main, pull requests and manual dispatch. It uses GitHub's `xcode-27` hosted
-runner, runs lint and focused dictionary, icon-cache, settings-file and backup harnesses, then builds
+runner, runs lint and focused dictionary, pronunciation, icon-cache, settings-file and backup harnesses, then builds
 an unsigned Apple silicon Debug build. Signed releases retain universal validation. The build log is retained for seven days. It does not run the focus-taking
-onboarding harness or the offscreen form-rendering checks that fail on the current SDK.
+onboarding harness or the offscreen form-rendering checks.
 
 `Release` is a manual workflow for this fork on main. Update project.yml's version first, push that
 commit, then choose Actions → Release → Run workflow and enter the same stable version. The job checks

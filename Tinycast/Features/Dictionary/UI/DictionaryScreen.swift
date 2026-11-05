@@ -142,13 +142,21 @@ private struct DictionaryContentView: View {
             definition
         }
         .onAppear { if isVisible { coordinator.prepare(query: query) } }
+        .onChange(of: query) {
+            guard isVisible else { return }
+            if let entry, query.trimmingCharacters(in: .whitespacesAndNewlines) == entry.term {
+                coordinator.pronunciation.prepare(term: entry.term)
+            } else {
+                coordinator.pronunciation.reset()
+            }
+        }
         .onChange(of: coordinator.preferredSourceID) {
             if isVisible { coordinator.prepare(query: query) }
         }
         .onChange(of: isVisible) {
-            if isVisible { coordinator.prepare(query: query) } else { session.reset() }
+            if isVisible { coordinator.prepare(query: query) } else { coordinator.reset() }
         }
-        .onDisappear { session.reset() }
+        .onDisappear { coordinator.reset() }
     }
 
     @ViewBuilder private var definition: some View {

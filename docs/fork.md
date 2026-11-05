@@ -44,6 +44,20 @@ appeared during this workload. An earlier Debug run reached 102.5 MB, so a stric
 is still unproven. The measured Release snapshot predates only two lint-equivalent UTF-8 decoding
 edits; the final Debug snapshot matches the current production source.
 
+## Release 0.1.5
+
+Version 0.1.5 adds recorded English pronunciation through public Wiktionary and Wikimedia
+Commons APIs without an API key. It includes Play/Stop, normal and slow playback, accent choices,
+approximate Sounds like guides, original IPA, alternative pronunciations, and source/licence credits.
+Stale work is cancelled and playback resources are released after use. Audio downloads on demand;
+the previously suggested bounded persistent disk cache is not implemented.
+
+Validation covers 123 background harnesses and the separately authorized onboarding focus test,
+live recording downloads, default-volume normal/slow playback, passive layout and link checks,
+and repeated muted playback with Settings. The final Release memory run peaked at 75.2 MB and
+settled at 49.7 MB. The separately authorized rendered-control pass verified Play/Stop, Slow and accent switching,
+including the updated recording source and licence.
+
 ## Memory
 
 The local optimization work limits decoded preview sizes and cache retention, cancels obsolete file

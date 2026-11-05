@@ -2,8 +2,9 @@
 
 `Define Word` is a launcher command and a fallback. The command opens the dictionary screen (`.dictionary`)
 empty; the fallback opens it on whatever was typed. The search field stays the term, so a different
-word is one edit away. Everything is read from the dictionaries enabled in Dictionary.app — no network,
-no bundled word list.
+word is one edit away. Definitions come from the dictionaries enabled in Dictionary.app. The
+English pronunciation card retrieves human recordings and phonetic text through public Wiktionary and
+Wikimedia Commons APIs without an API key.
 
 ## Invariants
 
@@ -73,3 +74,47 @@ rather than accumulate window-owned memory. A further run also checked idle laun
 These measurements use decimal MB of physical footprint, with noninteractive test panels behind other
 windows on the built-in display. They cover the tested workflow, not every extension or dataset.
 The allocator policy is implemented in [Apple's libmalloc source](https://github.com/apple-oss-distributions/libmalloc/blob/main/src/xzone_malloc/xzone_malloc.c).
+
+## Recorded pronunciation
+
+The English pronunciation card appears below the headword. Metadata loads after a short debounce;
+recording bytes download only when Play is pressed. Changing the query, recording or screen cancels
+obsolete work. An unavailable recording and a failed request have distinct states, with retry for
+failures. Definitions remain available offline.
+
+Accent choices use the recording's source labels. IPA is paired only with a compatible accent.
+When the source lists several variants without identifying the recording, the card shows the variants
+and explains that the recording may use one of them. It never selects a variant as an exact match. The Sounds like line is a conservative,
+approximate English respelling with uppercase primary stress. It retains the original IPA alongside it.
+Unsupported notation omits the guide while leaving the recording usable. Slow plays at 75% speed.
+The audio source, author, licence and phonetic source links remain visible independently of the native
+definition source.
+
+Requests use a private ephemeral session without URL caching, cookies or credentials. Metadata is
+bounded to 1 MiB and audio to 2 MiB; at most four recordings are retained as metadata. Downloads use
+advertised Wikimedia URLs and accept only approved HTTPS hosts. Rate-limit responses delay further
+requests according to Retry-After, including after the user changes words. There is no bundled voice model,
+WebKit view, persistent audio cache or speech-synthesis fallback. The player is created on demand and
+released on completion, failure, cancellation or dismissal. Resource release schedules the app's
+existing idle memory cleanup.
+
+Pronunciation validation on 5 November 2026 passed 123 background harnesses and the separately
+authorized onboarding focus harness, with affected tests rerun after the final provider and playback
+changes. Live public-API checks downloaded attributed
+recordings for library, bulwark and rice. The session harness covers 48 lifecycle and cooldown checks;
+its simulated player emits no sound. A separate Release probe performed nine real muted playbacks
+across three Dictionary and Settings cycles. Every player and Settings hosting controller released. A separate no-window test also completed
+normal and slow playback at the player's default volume without changing system volume.
+
+The final probe peaked at 75.2 MB combined physical footprint. Closing Settings settled at 53.4 to
+55.4 MB, and closing the test windows settled at 49.7 MB. An earlier selectable-card variant peaked
+at 102.2 MB during inspection and 95.5 MB without inspection. The final pronunciation card disables
+inherited text selection on its controls and labels while leaving definitions selectable. These are
+measurements of the tested workload, not an unconditional limit across all data and runtime states.
+
+A separately authorized foreground interaction pass verified the actual rendered Play/Stop button,
+Slow switch and accent selector. Selecting American updated the header, Commons recording source
+and licence. Both guide rows and their IPA/source information fit the held library card without
+visible clipping. The isolated test app closed afterward. The onboarding focus check also passed;
+the form-input harness passed after correcting its Light-mode ink detection. This brings coverage
+to all 124 harnesses across the background suite and focused reruns.

@@ -69,6 +69,8 @@ final class AppCore {
     let fileIndexer = FileIndexer()
     @ObservationIgnored private(set) lazy var fileSearch = FileSearchSession(index: fileIndexer.index)
     let dictionary = DictionarySession()
+    @ObservationIgnored private(set) lazy var dictionaryPronunciation = DictionaryPronunciationSession(
+        onResourcesReleased: { [weak self] in self?.memoryReclaimer.schedule() })
     let menuSearch = MenuSearchSession()
     let windowSwitch = WindowSwitchSession()
     let activationPolicy = ActivationPolicy()
@@ -223,7 +225,8 @@ final class AppCore {
         paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
     @ObservationIgnored private(set) lazy var dictionaryCoordinator = DictionaryCoordinator(
-        paletteCoordinator: paletteCoordinator, session: dictionary, settings: settings)
+        paletteCoordinator: paletteCoordinator, session: dictionary, settings: settings,
+        pronunciation: dictionaryPronunciation)
     @ObservationIgnored private(set) lazy var updateCoordinator = UpdateCoordinator(
         store: updateChecker, core: self)
     @ObservationIgnored private(set) lazy var supportCoordinator = SupportCoordinator(

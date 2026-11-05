@@ -7,14 +7,19 @@ final class DictionaryCoordinator {
     private let paletteCoordinator: PaletteCoordinator
 
     @ObservationIgnored private(set) lazy var applicationURL = DictionaryService.applicationURL
+    let pronunciation: DictionaryPronunciationSession
     let session: DictionarySession
     private let settings: AppSettings
 
     var preferredSourceID: String { settings.dictionaryPreferredSource }
 
-    init(paletteCoordinator: PaletteCoordinator, session: DictionarySession, settings: AppSettings) {
+    init(
+        paletteCoordinator: PaletteCoordinator, session: DictionarySession, settings: AppSettings,
+        pronunciation: DictionaryPronunciationSession
+    ) {
         self.paletteCoordinator = paletteCoordinator
         self.session = session
+        self.pronunciation = pronunciation
         self.settings = settings
     }
 
@@ -39,6 +44,11 @@ final class DictionaryCoordinator {
     func prepare(query: String) {
         session.configure(preferredSourceID: preferredSourceID)
         session.lookUp(query)
+    }
+
+    func reset() {
+        pronunciation.reset()
+        session.reset()
     }
 
     /// `term` is the fallback row's query, so the screen opens already showing its entry.
