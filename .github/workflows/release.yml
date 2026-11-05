@@ -52,7 +52,9 @@ jobs:
             echo "::error::Release v$VERSION already exists."
             exit 1
           fi
-          xcodebuild -version | head -1 | grep -Eq '^Xcode 27\.'
+          TINYCAST_XCODE_VERSION="$(xcodebuild -version)"
+          printf '%s\n' "$TINYCAST_XCODE_VERSION"
+          [[ "$TINYCAST_XCODE_VERSION" =~ ^Xcode\ 27\. ]]
           if ! command -v swiftlint >/dev/null; then brew install swiftlint; fi
       - name: Validate sources
         run: |

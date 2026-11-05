@@ -25,8 +25,9 @@ jobs:
       - name: Check toolchain
         run: |
           set -euo pipefail
-          xcodebuild -version
-          xcodebuild -version | head -1 | grep -Eq '^Xcode 27\.'
+          TINYCAST_XCODE_VERSION="$(xcodebuild -version)"
+          printf '%s\n' "$TINYCAST_XCODE_VERSION"
+          [[ "$TINYCAST_XCODE_VERSION" =~ ^Xcode\ 27\. ]]
           if ! command -v swiftlint >/dev/null; then brew install swiftlint; fi
       - name: Lint and validate resources
         run: ./Scripts/lint.sh
