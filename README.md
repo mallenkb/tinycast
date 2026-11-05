@@ -21,7 +21,7 @@ and AGPL-3.0-or-later license are preserved.
 
 [Contact @mallenkb on X](https://x.com/mallenkb) ·
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
-[Download v0.1.3](https://github.com/mallenkb/tinycast/releases/tag/v0.1.3) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
+[Download v0.1.4](https://github.com/mallenkb/tinycast/releases/tag/v0.1.4) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
 ## App preview
 
@@ -85,7 +85,7 @@ update caches and download URLs from other repositories.
 | Clipboard | Search text and images, preview links, and paste into the previous app |
 | Calculator | Calculate expressions and convert units, currencies, and cryptocurrencies |
 | Writing | Use the Mac’s dictionaries, searchable emoji, snippets, and Markdown notes |
-| Automation | Run custom shell commands, Apple Shortcuts, quicklinks, and Raycast extensions |
+| Automation | Run custom shell commands, Apple Shortcuts, quicklinks, deeplinks, and Raycast extensions |
 | Mac controls | Manage windows, navigate windows, and run system actions |
 | Calendar | View upcoming meetings and join them from the palette |
 | AI and dictation | Use configurable AI providers, text Quick Actions, and dictation |

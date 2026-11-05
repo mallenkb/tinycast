@@ -18,8 +18,10 @@ struct QuicklinkCoordinatorTests {
         try await hotKeySelectedTextTargets()
         try await hotKeyCopiesOnce()
         try await plainLink()
+        try ownSchemeLink()
         try copying()
         try editing()
+        try await batchImport()
         try await deleting()
         try revealing()
         print("\(passes) passed, \(failures) failed")
@@ -218,6 +220,18 @@ struct QuicklinkCoordinatorTests {
         expect(fixture.injector.copies == 0, "a link that reads no selection never sends ⌘C")
     }
 
+    static func ownSchemeLink() throws {
+        let fixture = try Fixture(link: "tinycast://command/search-files?fallbackText={argument}")
+        defer { fixture.cleanUp() }
+        fixture.coordinator.openQuicklink(id: fixture.link.id, values: ["Argument": "~/Downloads"])
+        expect(QuicklinkLauncher.opened.isEmpty, "Tinycast's own link never leaves the process")
+        expect(
+            fixture.core.deepLinkCoordinator.opened.map(\.0.absoluteString)
+                == ["tinycast://command/search-files?fallbackText=~%2FDownloads"]
+                && fixture.core.deepLinkCoordinator.opened.first?.1 == .tinycast,
+            "it runs as a link Tinycast chose, so it never asks")
+    }
+
     static func copying() throws {
         for succeeds in [true, false] {
             let fixture = try Fixture(link: "https://example.com/?q={argument}&selection={selection}")
@@ -319,6 +333,32 @@ struct QuicklinkCoordinatorTests {
             expect(fixture.window.isVisible, "\(link) leaves the palette open")
         }
         expect(AppLauncher.revealed.count == 1, "only the folder link reached Finder")
+    }
+
+    static func batchImport() async throws {
+        for outcome in ["enabled", "disabled", "cancelled", "declined"] {
+            let fixture = try Fixture()
+            defer { fixture.cleanUp() }
+            let original = fixture.store.quicklinks
+            let offered = Quicklink(name: "Imported", link: "https://example.com/imported")
+            fixture.core.onConfirm = {
+                if outcome == "disabled" { fixture.settings.quicklinksEnabled = false }
+                if outcome == "cancelled" { withUnsafeCurrentTask { $0?.cancel() } }
+                return outcome != "declined"
+            }
+            let task = Task { await fixture.coordinator.importQuicklinks(offered: [offered]) }
+            await task.value
+            let expected = outcome == "enabled" ? original + [offered] : original
+            expect(
+                Set(fixture.store.quicklinks.map(\.link)) == Set(expected.map(\.link)),
+                "a \(outcome) batch import publishes only permitted changes")
+            let reopened = QuicklinkStore(directory: fixture.directory)
+            reopened.load()
+            expect(
+                Set(reopened.quicklinks.map(\.link)) == Set(expected.map(\.link)),
+                "a \(outcome) batch import persists only permitted changes")
+            expect(fixture.core.confirmations == 1, "a \(outcome) batch asks once")
+        }
     }
 
     static func waitForOpen() async {
@@ -490,6 +530,19 @@ enum AppLauncher {
 }
 
 enum DialogTone { case danger, neutral, success }
+
+enum DeepLinkSource { case outside, tinycast }
+
+@MainActor
+final class DeepLinkCoordinator {
+    var opened: [(URL, DeepLinkSource)] = []
+    func handles(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == "tinycast"
+            && url.host(percentEncoded: false)?.lowercased() != "extensions"
+    }
+    func open(_ url: URL, source: DeepLinkSource = .outside) { opened.append((url, source)) }
+}
+
 @MainActor
 final class AppCore {
     let palette = PaletteState()
@@ -497,15 +550,21 @@ final class AppCore {
     lazy var quicklinkCoordinator: QuicklinkCoordinator = {
         fatalError("The fixture must wire the coordinator")
     }()
+    let deepLinkCoordinator = DeepLinkCoordinator()
     var messages: [String] = []
     var confirmations = 0
+    var onConfirm: (() async -> Bool)?
     func showNotice(title: String, message: String, symbol: String, tone: DialogTone) async {}
     func reportFailure(title: String, message: String, symbol: String, recovery: String) async -> Bool {
         false
     }
-    func confirm(title: String, message: String, symbol: String, confirmTitle: String) async -> Bool {
+    enum ConfirmRole { case standard, destructive }
+    func confirm(
+        title: String, message: String, symbol: String, confirmTitle: String,
+        tone: DialogTone = .danger, confirmRole: ConfirmRole = .destructive
+    ) async -> Bool {
         confirmations += 1
-        return false
+        return await onConfirm?() ?? false
     }
     func showMessage(_ message: String, tone: DialogTone = .success) { messages.append(message) }
 }

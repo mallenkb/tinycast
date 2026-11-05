@@ -53,6 +53,11 @@ are pure.
 
 ## Rendering
 
+Return pastes the selected emoji even when clicking the grid moves focus away from the search field.
+Text composition and an open control list retain their own Return handling.
+Paste sends its Command-V events to the captured target app, even if focus changes during dismissal.
+If that app quits before delivery, the events are discarded.
+
 Two structural decisions in `EmojiGridView` are load-bearing, and both are about the ~2,000 cells the
 grid can realize.
 

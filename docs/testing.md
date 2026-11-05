@@ -15,9 +15,9 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
 
-There is no CI: every item is on you, run locally. CodeRabbit reviews each PR, but it is a reviewer,
-not a gate. Each is expanded below; the manual sweep at the end of this file is the sixth, judged by
-what you touched.
+GitHub Build runs lint, focused regression checks and an unsigned Debug build. The full suite and
+manual checks remain local responsibilities. Each is expanded below; the manual sweep at the end
+is judged by what you touched.
 
 ## The harnesses
 
@@ -51,13 +51,18 @@ through a stand-in for the hosted redirect page and confirms that a callback who
 repeated, stale or wrong is refused, for each redirect method and for custom `{ url }` requests. The
 runtime fixture suite runs both as well.
 
+`ext-test` exercises `SharedArrayBuffer` allocation at command load and finite waits in JavaScriptCore
+through the shipped synchronous host bridge.
+
 The suite runs four harnesses at a time by default to reduce CPU usage. `TINYCAST_TEST_JOBS` overrides
 that limit; `TINYCAST_TEST_JOBS=1` runs one at a time. Each result is numbered
 against the total and shows its run and compile time, a quiet stretch names the harnesses still running, and a harness that runs longer
 than `TINYCAST_TEST_TIMEOUT` seconds (default 300) is killed and reported as timed out. Parallelism is safe
 because each harness already roots its scratch state somewhere of its own — a UUID-suffixed
 `temporaryDirectory`, a `UserDefaults(suiteName:)`, or `NSPasteboard.withUniqueName()` — and a new
-harness must keep doing that rather than reach for a fixed path.
+harness must keep doing that rather than reach for a fixed path. The runner's own queue, logs and
+verdicts do live at a fixed path, so a second suite started in the same `$TMPDIR` waits for the first,
+and a run that reports fewer results than it queued fails rather than passing.
 
 Two consequences worth knowing. Status lines arrive in **completion order**, not the order the `run`
 lines are written; and a failing harness's compiler diagnostics or assertion output are replayed
@@ -71,8 +76,8 @@ scrypt at `-Onone` and one second at `-O`. `slow` dispatches it in the first wav
 harnesses are not still running after everything else has finished. `exclusive` runs a harness alone
 after the parallel queue completes; use it when a harness needs exclusive desktop focus.
 
-The script is the **only** place the harness set is written down. Nothing runs it for you, so run it
-before you open a PR. Adding a harness means adding one `run` line.
+The script is the **only** place the full harness set is written down. CI runs a focused subset;
+run the full suite before publishing. Adding a harness means adding one `run` line.
 
 Each harness compiles the **shipped sources** it guards rather than a copy of them, which is what makes
 the pure-layer boundary real: a harness that stops *compiling* means AppKit or SwiftUI has leaked into a
@@ -144,6 +149,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `ModifierKey.swift`, `ModifierKeyDetector.swift`, `HotKeyBinding.swift`, `HotKeySpelling.swift`, `HyperKey.swift`, `HIDKeyMapping.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
 | `hyper-key-test` | `HotKeys/Model/HIDKeyMapping.swift`, `HyperKeyConflictPolicy.swift`, `Service/KeyboardRemapper.swift`, `RemapInstanceLock.swift` — mapping ownership, refused writes, crash recovery, device reconnection, Caps Lock and 🎤 remaps sharing a keyboard, conflict severities, Modifier Keys and Karabiner parsing, another app taking over Caps Lock, one process per Hyper Key |
 | `hotkey-dispatch-test` | `HotKeys/Service/HotKeyManager.swift` — Secure Input side isolation, shared Control registrations, press/release routing, recording and cancellation; isolated preferences and simulated Carbon registration |
+| `deeplink-test` | `DeepLinks/Model/`, `HotKeys/Model/HotKeyAction+EntryID.swift`, `Settings/SettingsTab.swift` — every bindable command, window command and system action round-trips through its link and its entry ID, stored rows by UUID, snippet paths through percent-encoding, case folding, the channel's scheme, the links that must not resolve (Raycast schemes, the `extensions` host), input decoding, encoding and its refusals (bytes, not characters), batches, field filling, consent classes and keys, the quicklink loop rule, note, chat and window-size links, and every Settings tab slug |
 | `dictation-key-test` | `HotKeys/Service/DictationKeyManager.swift` — shared and separate preference domains, ownership handoff through the real health ticker, and retry cancellation on unbind or termination; isolated preferences, lock files and simulated keyboards |
 | `dictation-test` | `Dictation/Model/DictationModel.swift`, `DictationTextFormatter.swift` — model paths and text formatting |
 | `dictation-field-test` | Composer rebinding and teardown, field-scoped dictation cancellation, and queued insertion validity; synthetic capture and real AppKit editors |
@@ -167,6 +173,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `quicklink-test` | all of `Quicklinks/Model/`, plus editor drafts and placeholder selection |
 | `quicklink-coordinator-test` | Opening and requested arguments, launcher editing, current enabled-state preservation, deletion during editing and feature gates; no platform effects or on-screen focus checks |
 | `apple-shortcut-test` | all of `AppleShortcuts/Model/` — the `shortcuts list` parser and entry ids |
+| `snippet-coordinator-test` | Import confirmation, cancellation and post-confirmation feature gates against the shipped coordinator |
 | `snippets-test` | all of `Snippets/Model/` and `Snippets/Service/`, plus editor drafts, placeholder selection and `Platform/HealthTicker.swift` |
 | `notes-test` | all of `Notes/Model/` and `Notes/Service/`, including the Markdown parser, edit plans and reveal policy, plus the real fuzzy matcher and signposts |
 | `notes-editor-test` | the Notes editor, rendered and literal, with real TextKit 2 and AppKit editing objects: styling, reveal, layout fragments, keys, chords, checkboxes and links |
@@ -176,8 +183,10 @@ If a change touches anything in the right column, the harness on the left is man
 | `ext-refresh-test` | `Extensions/Model/ExtensionRefreshPolicy.swift` — interval parsing, due dates, backoff, subtitle fallback, indicator state, Refresh Now refusals |
 | `ext-version-test` | `Extensions/Service/ExtensionVersionStore.swift` — what an update check reports, adopts and forgets |
 | `ext-metadata-test` | `Extensions/Service/ExtensionCommandMetadataStore.swift` — round-trip, failure runs, uninstall |
+| `extension-output-tail-test` | Bounded installer output, split UTF-8, missing EOF and high-volume streaming against the shipped buffer |
 | `ext-test` | the extension runtime and native menu-bar lifecycle — boots shipped sources in JavaScriptCore; menu tests cover restoration, refresh serialization, actions and teardown; fetch tests cover HTTP connection cleanup, cancellation and request isolation |
 | `ext-icon-test` | `Extensions/Service/ExtensionIconCache.swift` — artwork sizing and its fallback |
+| `ext-sign-in-test` | `Extensions/Service/ExtensionSignInSession.swift` — browser start failures, completion, cancellation without a callback, and late callbacks after teardown |
 | `icon-cache-test` | `Platform/Images/IconCache.swift` — row sizing at 1×/2×, warm reuse, stamp and style invalidation, bitmap release, fitted geometry across all 256 alpha values, and that a row icon draws identically to the 96px one |
 | `entry-icon-test` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `text-diff-test` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
@@ -189,7 +198,8 @@ If a change touches anything in the right column, the harness on the left is man
 | `updates-test` | `Updates/Model/` — version precedence, channel filtering, install route, readiness |
 | `update-check-test` | `UpdateCheckStore` — stopping, in-flight cancellation, cached prompt suppression, restart and independent manual checking |
 | `support-test` | `Support/Model/` — when the support reminder comes due, and a clock moved backwards |
-| `ai-provider-test` | `AI/Model/` and `AISettingsStore` — instruction composition, provider requests and streams, route settings, protocol framing and CLI launch encodings |
+| `ai-provider-test` | `AI/Model/` and `AISettingsStore` — instruction composition, provider requests and streams, route settings, protocol framing, CLI launch encodings and queued Codex writes across cancellation, timeout and Stop |
+| `opencode-mcp-test` | OpenCode's per-turn MCP bridge and installed CLI launch, authentication, scoped catalog, consent dispatch, serial calls, result budgets and cancellation |
 | `apple-intelligence-test` | On-device status, snapshot deltas, transcript assembly and error mapping; real generation is opt-in |
 | `syntax-highlight-test` | `AI/Model/SyntaxGrammar.swift`, `SyntaxHighlighter.swift`, `SyntaxStructuredLexers.swift` — every grammar's tokens, language aliases, the size limit and streaming prefixes |
 | `mcp-test` | `MCP/Model/` and `MCPSettingsStore` — JSON-RPC framing, handles, tool names, output flattening, trust, `@server` addressing, the shape a vendor CLI is handed, and which servers Tinycast leaves to that CLI |
@@ -453,8 +463,10 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   of the capsule's end, the last one never clipped at the window's edge; with Show animations off they
   appear in place. Mouse and keyboard activation open the command immediately, without a fuse,
   delayed reveal or shortcut shapes beneath the expanded panel. Show Notes opens its window
-- Compact mode: keyboard selection has a medium gray fill in Light, a brighter fill in Dark, and a white
-  monochrome glyph in both, without a ring;
+- Compact mode: arrow navigation tints the selected glass circle and uses a white monochrome glyph;
+  inspect its native contour at actual size in both appearances, without a second fill or stroke;
+  the left capsule and rightmost button must remain whole through opening, hovering, and selection,
+  and expanding/collapsing after a drag must preserve the visible bar’s top-left position;
   Emoji & Symbols uses the same outlined glyph as the launcher in both Light and Dark
 - Verify compact selection in the live glass compositor in both appearances; an offscreen view bitmap
   omits the material and cannot prove selection contrast
@@ -896,8 +908,66 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   turning Window Management off each bring every window back.
   Repeat on two displays and with Reduce Motion on
 
+### Deeplinks
+
+Debug answers `tinycast-dev://`; use that scheme for every link below.
+
+- ⇧⌘C on a command, window command, system action, quicklink and extension row says Deeplink
+  copied; ⌘K lists Copy Deeplink there, and not on an application or a System Settings pane. A
+  built-in row's link starts `tinycast-dev://`, and so does an extension row's
+- Type into a quicklink's and a custom command's argument fields, then ⇧⌘C: the link carries the
+  values, and opening it fills the same fields
+- Right-click a shortcut field in Settings (a command, a quicklink, an extension command): Copy
+  Deeplink copies its link. Onboarding's and General's App Launcher field offer no menu
+- The note switcher's link button, and Copy Deeplink in the AI Chat sidebar and window menu, copy a
+  link that reopens that note or chat; a renamed note's old link reports the missing file
+- `open -g` each copied link with the palette closed: it runs what the row's shortcut runs
+- Quit Tinycast, then `open -g` a command link: the app starts and runs it
+- Open a window command's link with a plain `open` (no `-g`): after the question, it moves the
+  window of the app you were in, not Tinycast
+- Open a command's link twice: it toggles, as its shortcut does. Turn the feature off: the link shows
+  a HUD naming it and runs nothing
+- Hide a command from launcher search: its link still runs. Open a mistyped link, or a quicklink
+  link with a made-up UUID: a HUD says it can't open it, and nothing asks
+- The first link to a window command, system action or quicklink asks. Return chooses Cancel. Run
+  Once runs it and asks again next time; Always Allow runs it and never asks again. Settings →
+  General → Deeplinks lists it; remove it there and the next link asks again. A clipboard-history
+  link with no input never asks. Export a backup: the allowed list is not in it
+- `search?fallbackText=echo%20hi` asks first and shows `echo hi`; Cancel leaves the launcher closed.
+  Always Allow it: the same link no longer asks, `search?fallbackText=echo%20bye` still does
+- Open two asking links back to back: only the first asks; the second runs nothing
+- `command/search-files?fallbackText=~/Downloads/`, `command/clipboard-history?fallbackText=a`,
+  `command/switch-windows?fallbackText=a` and `search?fallbackText=2%2B2` (after allowing) open their
+  screen already searching. `command/ai-chat?fallbackText=hi` types into Quick AI and
+  `command/ai-chat-window?fallbackText=hi` into the window, and neither sends
+- A quicklink `https://example.com/?q={argument}`: `?arguments=%7B%22Argument%22%3A%22x%22%7D` and
+  `?fallbackText=x` both open `?q=x`; with no input it asks for the argument. A custom command with
+  one argument and `?arguments=%5B%22x%22%5D` runs with `$1` = `x`
+- `command/create-quicklink?context=%7B%22name%22%3A%22Docs%22%2C%22link%22%3A%22https%3A%2F%2Fexample.com%22%7D`
+  opens the editor filled in; Cancel saves nothing. `command/create-snippet?fallbackText=hello` and
+  `command/create-note?fallbackText=hello` start with `hello`
+- `command/create-quicklink?context=` with a list of two, one already in the library: it asks to add
+  two, showing each name and link, adds one, and the HUD says so. The same for `create-snippet`,
+  whose question shows names
+- Select text in TextEdit, then run Create Snippet from its hotkey and from the launcher: the editor
+  starts with that text, and the clipboard is untouched
+- `system-action/set-volume?fallbackText=30` sets 30% with no picker; `?fallbackText=300` reports the
+  link before asking and changes nothing. `note/..` reports it too
+- `window-size?arguments=%7B%22width%22%3A%22800%22%2C%22height%22%3A%2260%25%22%7D` sizes the front
+  window to 800 pt by 60%; `"width":"0"` reports the link
+- `?arguments=nope` on any link: a HUD says it can't open it, and nothing runs
+- `settings/permissions` opens Settings on Permissions; `settings/nope` shows the HUD
+- A quicklink whose link is `tinycast-dev://window-command/left-half` moves the window without
+  asking. One whose link is another quicklink's says it can't, and nothing loops
+- `raycast://extensions/<owner>/<ext>/<cmd>` and `tinycast-dev://extensions/<owner>/<ext>/<cmd>`
+  still run an installed extension command; `?context=` with a JSON object reaches it as
+  `props.launchContext`
+
 ### Extensions
 
+- Start GitHub sign-in, summon the waiting command and press Escape with an empty search field:
+  the browser session closes and root search works again. Repeat the sign-in, cancel in the browser,
+  then leave the command; closing and reopening the palette must respect Pop to Root Search again.
 - Open `raycast://extensions/linear/linear?source=webstore` from a browser: Settings → Extensions
   offers the exact Store listing with Install (or Reinstall). Close it without installing, then open
   a different Store link and verify its listing replaces the first. Repeat with extensions disabled:

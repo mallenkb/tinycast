@@ -59,7 +59,8 @@ enum Paster {
         writeString(text)
         previousApp?.activate()
         DispatchQueue.main.asyncAfter(deadline: .now() + activationDelay) {
-            postCommandV()
+            guard previousApp?.isTerminated != true else { return }
+            postCommandV(toPid: previousApp?.processIdentifier)
         }
     }
 

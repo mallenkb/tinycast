@@ -220,6 +220,17 @@ struct ExtensionInstaller: Sendable {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
+        let output = ExtensionOutputTail()
+        defer { pipe.fileHandleForReading.readabilityHandler = nil }
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+                output.finish()
+            } else {
+                output.append(chunk)
+            }
+        }
 
         // Closing the install stops the child, so a cancelled build can't outlive its workspace.
         var timeout: Task<Void, Never>?
@@ -229,16 +240,15 @@ struct ExtensionInstaller: Sendable {
                 // One resume, whichever of termination and timeout arrives first.
                 let state = ResumeGuard()
                 process.terminationHandler = { finished in
-                    let data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
+                    let text = output.text()
                     guard state.claim() else { return }
                     continuation.resume(
-                        returning: CommandResult(
-                            status: finished.terminationStatus,
-                            output: String(decoding: data, as: UTF8.self)))
+                        returning: CommandResult(status: finished.terminationStatus, output: text))
                 }
                 do {
                     try process.run()
                 } catch {
+                    pipe.fileHandleForReading.readabilityHandler = nil
                     guard state.claim() else { return }
                     continuation.resume(throwing: error)
                     return

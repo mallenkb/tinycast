@@ -27,6 +27,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>TinycastURLScheme</key>
+	<string>$(TINYCAST_URL_SCHEME)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -35,7 +37,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>raycast</string>
-				<string>tinycast</string>
+				<string>$(TINYCAST_URL_SCHEME)</string>
 				<string>com.raycast</string>
 			</array>
 		</dict>

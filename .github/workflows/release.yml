@@ -92,7 +92,8 @@ jobs:
             "$APP/Contents/Helpers/ClipboardTextHelper" \
             "$APP/Contents/Helpers/FileIndexHelper" \
             "$APP/Contents/Helpers/Tinycast Dictation.app/Contents/MacOS/Tinycast Dictation"; do
-            lipo -verify_arch arm64 x86_64 "$binary"
+            RELEASE_ARCHS=" $(lipo -archs "$binary") "
+            [[ "$RELEASE_ARCHS" == *" arm64 "* && "$RELEASE_ARCHS" == *" x86_64 "* ]]
           done
           hdiutil verify "build/Tinycast-Universal-$VERSION.dmg"
           unzip -tq "build/Tinycast-Universal-$VERSION.zip"

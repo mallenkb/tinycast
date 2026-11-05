@@ -5,7 +5,8 @@
 Version 0.1.0 is the first locally packaged release of `mallenkb/tinycast`. Downloads and the in-app
 update feed use this fork's GitHub releases. The universal DMG and ZIP are self-signed and not
 notarized. Version 0.1.1 additionally scopes cached updates and accepted asset URLs to this fork.
-Version 0.1.2 adds dictionary source selection and idle memory reclamation.
+Version 0.1.2 adds dictionary source selection and idle memory reclamation. Version 0.1.4 integrates
+upstream application fixes, deeplinks, extension authentication and AI protocol updates.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
@@ -77,7 +78,8 @@ Configure these repository Actions secrets before running `Release`:
 - `SIGNING_P12_BASE64`: the PKCS#12 certificate and private key for the existing Tinycast Self-Signed identity.
 - `SIGNING_P12_PASSWORD`: that export's password.
 
-The workflow stops before building if either secret is absent. Using the existing identity preserves
+The workflow stops before building if either secret is absent. When secrets are absent, package
+locally with the existing signing identity and upload the verified assets through the GitHub CLI. Using the existing identity preserves
 in-app update signature checks and permission continuity. CI builds need neither secret. The temporary
 runner keychain and certificate export are removed when the release job finishes.
 

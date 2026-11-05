@@ -277,19 +277,18 @@ selected button. Typing, pasting or clicking Search resets the selection. The Ap
 boundary-arrow hook handles navigation without moving input focus away from Search; marked IME text
 and modified arrows retain their normal editing behavior.
 
-Keyboard selection uses a filled circle and white monochrome glyph, without an outline. Symbols use
+Keyboard selection tints the existing glass circle and draws its glyph in white. Symbols use
 `SymbolImage`, including the appearance-aware outline for Emoji & Symbols. Settings keeps each icon
 beside its name in a command menu, with borderless move/remove controls at the trailing edge.
-The contrast fill sits behind the glyph above `GlassEffectContainer`, where the material cannot wash
-it out. Light uses a medium gray fill; Dark adds a subtle white wash over its existing glass selection.
+The system glass material draws the selected face and contour together; no fill or stroke is painted
+over it. The glyph stays above `GlassEffectContainer` so a morph cannot smear it.
 
 Mouse and keyboard activation synchronously call `LauncherCoordinator.runCommand` in a transaction
 with animations disabled. No merge animation or delayed activation survives beneath the destination
 screen. Palette screens push over root search as before; Show Notes closes the palette and opens
 its existing window. The summon reveal still animates independently.
-A shared scrim mask prevents overlapping surface fills from painting twice beneath the query.
-Selected Dark buttons keep their native glass scrim outside that mask to preserve their highlight.
-The original fill and travel timing is unchanged.
+Both compact and expanded surfaces use native regular glass without a custom scrim.
+The compact capsule and buttons have no additional surface mask or painted fill.
 
 At expanded launcher root, Escape clears the query while setting `forceExpanded`, so clearing and
 collapsing remain separate presses. The next Escape clears that flag and collapses; another closes.
@@ -303,9 +302,11 @@ layer would fill it. See [ui.md](../ui.md#panel-structure) for the shapes and th
 
 ## Window placement
 
-`PaletteWindowController` resolves an anchor (left edge + top edge) **once per summon** and reuses it
+`PaletteWindowController` resolves the visible content anchor (left edge + top edge) **once per summon** and reuses it
 for every compact↔expanded resize, so only the height changes and the top edge never drifts. The
 anchor is dropped on hide, so the next summon re-resolves for wherever the user is then.
+The compact window adds a four-point transparent drawing margin for the native glass rim.
+Its content remains at the same anchor; dragging and snapping convert back to that visible anchor.
 
 All of the arithmetic lives in `PalettePlacement`, which is CoreGraphics-only and takes every screen
 fact as a parameter, so `palette-placement-test` drives the shipped rules rather than a copy of them.
@@ -436,6 +437,9 @@ would sit under the in-flight pinyin. `PalettePanel` publishes the editor's `has
 The same empty `query` would read as "nothing left to delete" to the bare-backspace step back, so
 `PalettePanel.sendEvent` asks the editor's `hasMarkedText()` itself and lets Backspace through to the
 IME while a composition is in flight. That covers every screen, an extension's search field included.
+
+The palette's arrow, ⇥ and esc handlers return `.ignored` while `isComposing` holds, so the IME
+pages, expands and cancels its candidate window with them. An open menu still claims them first.
 
 The observation follows first responder, since SwiftUI hands the window's one field editor to
 whichever field holds focus, and it watches `NSTextView.didChangeSelectionNotification`. Measured,
@@ -597,6 +601,7 @@ editing, and AppKit tears the field editor down and selects the whole string whe
 screen opened with a carried query (the Search Files fallback) came up with that query selected. An
 IME's composition and any other focused field — the inline argument fields, an extension form — are
 left alone: the handler returns `.ignored` for them, and their own `onSubmit` still commits.
+The emoji grid also accepts Return after mouse selection moves focus away from search.
 
 ## The query is one line
 

@@ -21,6 +21,29 @@ The universal DMG and updater ZIP support Apple silicon and Intel on macOS 26 or
 for the packaged build is available at each release tag. Build and signature validation do not establish
 that every feature has passed runtime testing.
 
+## Release 0.1.4
+
+Version 0.1.4 includes application changes through upstream commit `a9eb610f`, immediately before
+its notarization change. This includes atomic imports and cancellation fixes, extension authentication
+and runtime compatibility, OpenAI Responses/MCP handling, consent-aware deeplinks, rich-text clipboard
+capture, window-edge/fullscreen display commands, OpenCode MCP support, thinking expansion and native
+glass/shadow updates. The fork's dictionary selector, feature artwork, memory policy and update feed
+remain in place. Developer ID signing, notarization and upstream publishing workflows are excluded.
+
+Local validation on 5 November 2026 passed 119 background harnesses, the JavaScript runtime fixtures,
+lint and localization checks. The final Debug and Release builds passed without new Swift warnings.
+Onboarding focus and the form-input pixel check were omitted from the background run. Live provider
+calls and multi-display window moves still need manual verification.
+
+The inactive memory probe exercised three rounds of dictionary searches and General, Applications
+and Commands settings, followed by HTML/RTF conversion. Two Release runs peaked at 73.3 MB; closing
+Settings returned them to 48.2–49.5 MB, matching the warmed dictionary baseline. They settled at
+43.4–43.7 MB after all windows closed. Final Debug peaked at 93.2 MB and settled at 62.9 MB.
+Every Settings hosting controller was released. These are macOS physical-footprint measurements in decimal MB; no helper processes
+appeared during this workload. An earlier Debug run reached 102.5 MB, so a strict ceiling across runs
+is still unproven. The measured Release snapshot predates only two lint-equivalent UTF-8 decoding
+edits; the final Debug snapshot matches the current production source.
+
 ## Memory
 
 The local optimization work limits decoded preview sizes and cache retention, cancels obsolete file
