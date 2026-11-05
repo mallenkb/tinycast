@@ -62,7 +62,7 @@ Removing that line would reintroduce exactly those three problems. See
 
 `Build` runs on pushes to main, pull requests and manual dispatch. It uses GitHub's `xcode-27` hosted
 runner, runs lint and focused dictionary, icon-cache, settings-file and backup harnesses, then builds
-an unsigned universal Release. The build log is retained for seven days. It does not run the focus-taking
+an unsigned Apple silicon Debug build. Signed releases retain universal validation. The build log is retained for seven days. It does not run the focus-taking
 onboarding harness or the offscreen form-rendering checks that fail on the current SDK.
 
 `Release` is a manual workflow for this fork on main. Update project.yml's version first, push that

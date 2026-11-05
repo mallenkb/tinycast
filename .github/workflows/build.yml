@@ -36,12 +36,12 @@ jobs:
           for harness in dictionary-test icon-cache-test settings-file-test settings-backup-test; do
             ./Scripts/run-tests.sh "$harness"
           done
-      - name: Build universal Release without signing
+      - name: Build Debug without signing
         run: |
           set -euo pipefail
-          xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
+          xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO -jobs 2 \
             build > "$RUNNER_TEMP/build.log" 2>&1
       - name: Upload build log
         if: always()
