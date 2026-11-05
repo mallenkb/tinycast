@@ -2,11 +2,43 @@ import Foundation
 
 /// The dictionary's action surface: open the screen on a term, and act on the entry it shows.
 @MainActor
+@Observable
 final class DictionaryCoordinator {
     private let paletteCoordinator: PaletteCoordinator
 
-    init(paletteCoordinator: PaletteCoordinator) {
+    @ObservationIgnored private(set) lazy var applicationURL = DictionaryService.applicationURL
+    let session: DictionarySession
+    private let settings: AppSettings
+
+    var preferredSourceID: String { settings.dictionaryPreferredSource }
+
+    init(paletteCoordinator: PaletteCoordinator, session: DictionarySession, settings: AppSettings) {
         self.paletteCoordinator = paletteCoordinator
+        self.session = session
+        self.settings = settings
+    }
+
+    var orderedSources: [DictionaryEntry.Source] {
+        let recent = [preferredSourceID] + settings.dictionaryRecentSources
+        return session.sources.enumerated().sorted { left, right in
+            let leftRank = recent.firstIndex(of: left.element.id) ?? recent.count
+            let rightRank = recent.firstIndex(of: right.element.id) ?? recent.count
+            return leftRank == rightRank ? left.offset < right.offset : leftRank < rightRank
+        }.map(\.element)
+    }
+
+    func selectSource(_ id: String) {
+        if !id.isEmpty {
+            let recent = settings.dictionaryRecentSources.filter { $0 != id }
+            settings.dictionaryRecentSources = Array(([id] + recent).prefix(12))
+        }
+        settings.dictionaryPreferredSource = id
+        session.configure(preferredSourceID: id)
+    }
+
+    func prepare(query: String) {
+        session.configure(preferredSourceID: preferredSourceID)
+        session.lookUp(query)
     }
 
     /// `term` is the fallback row's query, so the screen opens already showing its entry.

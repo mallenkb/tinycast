@@ -20,6 +20,8 @@ enum AppSettingsKey: String, CaseIterable {
     case escapeKeyBehavior = "escapeKeyBehavior"
     case appearance = "appearance"
     case language = "AppleLanguages"
+    case dictionaryRecentSources = "dictionaryRecentSources"
+    case dictionaryPreferredSource = "dictionaryPreferredSource"
     case calcNumberStyle = "calculatorNumberStyle"
     case typography = "typography"
     case interfaceSize = "interfaceSize"

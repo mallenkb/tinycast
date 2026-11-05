@@ -35,6 +35,12 @@ final class AppCore {
     let windowMover = WindowMover()
     let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
+    @ObservationIgnored private(set) lazy var memoryReclaimer = MemoryReclaimer { [weak self] in
+        IconCache.purgeDecoded()
+        ImageThumbnail.purgePreviews()
+        FilePreviewThumbnail.purgePreviews()
+        self?.linkPreviews.purgeBanners()
+    }
     let settings: AppSettings
     /// Mirrors settings into settings.json; nil while the Backup pane's switch is off.
     @ObservationIgnored private var settingsFile: SettingsFileRepository?
@@ -217,7 +223,7 @@ final class AppCore {
         paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
     @ObservationIgnored private(set) lazy var dictionaryCoordinator = DictionaryCoordinator(
-        paletteCoordinator: paletteCoordinator)
+        paletteCoordinator: paletteCoordinator, session: dictionary, settings: settings)
     @ObservationIgnored private(set) lazy var updateCoordinator = UpdateCoordinator(
         store: updateChecker, core: self)
     @ObservationIgnored private(set) lazy var supportCoordinator = SupportCoordinator(
@@ -280,10 +286,16 @@ final class AppCore {
     }
 
     func start(launchedByUser: Bool) {
+        memoryReclaimer.start()
+        track(palette, {
+            _ = $0.query
+            _ = $0.isVisible
+        }, reproject: {
+            $0.memoryReclaimer.schedule()
+        })
         Signposts.interval("AppCore.start") {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
-            CompactFavoritesMigration.run(settingsFileEnabled: settings.settingsFileEnabled)
             NSApp.setActivationPolicy(.accessory)
             dictationAudioDucker.recover()
             applyAppearance()
@@ -576,6 +588,7 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        memoryReclaimer.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         clipboardTextIndexer?.stop()

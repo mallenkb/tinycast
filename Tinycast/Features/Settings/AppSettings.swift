@@ -265,6 +265,14 @@ final class AppSettings {
         didSet { defaults.set(openOnCursorScreen, forKey: Key.openOnCursorScreen.rawValue) }
     }
 
+    var dictionaryRecentSources: [String] {
+        didSet { defaults.set(dictionaryRecentSources, forKey: Key.dictionaryRecentSources.rawValue) }
+    }
+
+    var dictionaryPreferredSource: String {
+        didSet { defaults.set(dictionaryPreferredSource, forKey: Key.dictionaryPreferredSource.rawValue) }
+    }
+
     var autoSwitchInputSourceID: String? {
         didSet {
             guard let autoSwitchInputSourceID else {
@@ -758,6 +766,9 @@ final class AppSettings {
         openOnCursorScreen =
             defaults.object(forKey: Key.openOnCursorScreen.rawValue) == nil
             || defaults.bool(forKey: Key.openOnCursorScreen.rawValue)
+        dictionaryRecentSources =
+            Array((defaults.stringArray(forKey: Key.dictionaryRecentSources.rawValue) ?? []).prefix(12))
+        dictionaryPreferredSource = defaults.string(forKey: Key.dictionaryPreferredSource.rawValue) ?? ""
         autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
         paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
         animationsEnabled =

@@ -4,10 +4,13 @@ This repository is [mallenkb/tinycast](https://github.com/mallenkb/tinycast), an
 [abue-ammar/tinycast](https://github.com/abue-ammar/tinycast). Contact the fork maintainer at
 [@mallenkb on X](https://x.com/mallenkb).
 
-## Releases 0.1.0 and 0.1.1
+## Releases 0.1.0 through 0.1.2
 
 Version 0.1.1 binds the update cache to this fork and rejects assets from other repositories. This
 prevents a cached upstream version from appearing after switching to the fork.
+
+Version 0.1.2 adds a searchable dictionary selector that remembers the preferred source, the native
+Dictionary icon in the empty state, and memory reclamation after searches and Settings activity.
 
 The first fork release includes rich clipboard link previews with Open Graph images, rendered SVG
 previews and type labels, live launcher file results, system or Inter Variable typography, and palette

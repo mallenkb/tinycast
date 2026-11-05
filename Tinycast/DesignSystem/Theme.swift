@@ -271,6 +271,7 @@ enum Theme {
         static let dialogSymbol: CGFloat = 28
         static let dialogSymbolContainer: CGFloat = 52
         /// Shared measurement for dialog accessories and the volume-HUD glyph.
+        static let dictionaryEmptyIcon: CGFloat = 64
         static let dialogIcon: CGFloat = 32
         /// 16:9 at the dialog's own width, so the two surfaces read as siblings.
         static let cameraPreview = CGSize(width: 420, height: 236)

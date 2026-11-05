@@ -16,6 +16,11 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>LSEnvironment</key>
+	<dict>
+		<key>MallocSpaceEfficient</key>
+		<string>1</string>
+	</dict>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>CFBundleShortVersionString</key>

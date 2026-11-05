@@ -386,6 +386,7 @@ final class AppSettings {
     var quicklinkOpensNewWindow = false
     var quicklinkConfirmsBeforeDelete = false
     var interfaceSize = InterfaceSize()
+    var interfaceMetrics: Int { interfaceSize.metrics }
 }
 
 struct InterfaceSize { var metrics: Int { 0 } }

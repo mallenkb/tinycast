@@ -54,6 +54,9 @@ enum SettingsFileSchema {
         case .hyperKeyQuickPress: return bind(settings, \.hyperKeyQuickPress)
         case .hyperKeySecureInputCompatibility:
             return bind(settings, \.hyperKeySecureInputCompatibility)
+        case .dictionaryRecentSources:
+            return bind(settings, \.dictionaryRecentSources) { $0.count <= 12 ? $0 : nil }
+        case .dictionaryPreferredSource: return bind(settings, \.dictionaryPreferredSource)
         case .calcNumberStyle: return bind(settings, \.calcNumberStyle)
         case .launcherShowsSuggestions: return bind(settings, \.launcherShowsSuggestions)
         case .rootSearchSensitivity: return bind(settings, \.rootSearchSensitivity)

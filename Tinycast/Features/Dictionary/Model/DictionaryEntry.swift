@@ -3,6 +3,12 @@ import Foundation
 struct DictionaryEntry: Equatable, Identifiable, Sendable {
     let term: String
     let blocks: [Block]
+    var source: Source?
+
+    struct Source: Equatable, Identifiable, Sendable {
+        let id: String
+        let name: String
+    }
 
     var id: String { term }
 

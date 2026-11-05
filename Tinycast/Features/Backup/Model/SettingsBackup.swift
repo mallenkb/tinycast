@@ -37,6 +37,8 @@ struct SettingsBackup: Codable {
         var escapeKeyBehavior: String?
         var appearance: String?
         var language: String?
+        var dictionaryRecentSources: [String]?
+        var dictionaryPreferredSource: String?
         var calcNumberStyle: String?
         var typography: String?
         var interfaceSize: String?
@@ -154,6 +156,8 @@ extension SettingsBackup {
             escapeKeyBehavior: s.escapeKeyBehavior.rawValue,
             appearance: s.appearance.rawValue,
             language: s.language.rawValue,
+            dictionaryRecentSources: s.dictionaryRecentSources,
+            dictionaryPreferredSource: s.dictionaryPreferredSource,
             calcNumberStyle: s.calcNumberStyle.rawValue,
             typography: s.typography.rawValue,
             interfaceSize: s.interfaceSize.rawValue,
@@ -387,6 +391,14 @@ extension SettingsBackup {
         }
         if let raw = s.language, let language = AppLanguage(rawValue: raw) {
             settings.language = language
+            count += 1
+        }
+        if let recent = s.dictionaryRecentSources {
+            settings.dictionaryRecentSources = Array(recent.prefix(12))
+            count += 1
+        }
+        if let source = s.dictionaryPreferredSource {
+            settings.dictionaryPreferredSource = source
             count += 1
         }
         if let raw = s.calcNumberStyle, let style = CalcNumberStyle(rawValue: raw) {

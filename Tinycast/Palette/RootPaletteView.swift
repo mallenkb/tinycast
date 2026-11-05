@@ -123,7 +123,9 @@ struct RootPaletteView: View {
                 history: core.chatHistory, chat: quickAI, coordinator: core.quickAICoordinator,
                 vm: vm, openActions: openActions, metrics: metrics)
         case .dictionary:
-            return DictionaryScreen(session: dictionary, core: core, vm: vm)
+            return DictionaryScreen(
+                session: dictionary, core: core, vm: vm,
+                openMenuCorner: menuCorner, openInputMenu: openInputOptions)
         case .calculatorHistory:
             return CalculatorHistoryScreen(
                 history: calcHistory, currencyRates: currencyRates, core: core, vm: vm,
@@ -290,7 +292,10 @@ struct RootPaletteView: View {
                 default: metrics.size.formMenuMinimumWidth
                 }
             return headerMenu(
-                inputOptions, width: width, extraRowsHeight: metrics.size.formMenuExtraRowsHeight)
+                inputOptions,
+                width: vm.mode == .dictionary
+                    ? DictionaryScreen.sourceMenuWidth(inputOptions, metrics: metrics) : width,
+                extraRowsHeight: metrics.size.formMenuExtraRowsHeight)
         case .extensionAccessory:
             return extensionCommandScreen?.searchAccessoryMenu(
                 searchQuery: ActionMenuSearchQuery(vm.menuQuery),
@@ -796,6 +801,10 @@ struct RootPaletteView: View {
             if tabOpensChat {
                 headerGutter(width: metrics.spacing.md)
                 quickAITabHint
+            }
+            if !isCollapsed, vm.mode == .dictionary, let dictionaryScreen = screen as? DictionaryScreen {
+                headerGutter(width: metrics.spacing.md)
+                dictionaryScreen.sourceButton()
             }
             if !isCollapsed, vm.mode == .clipboard {
                 headerGutter(width: metrics.spacing.md)

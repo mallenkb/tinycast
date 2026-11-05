@@ -16,12 +16,16 @@ final class SettingsCoordinator {
         window = AppWindowController(
             title: String(localized: "Settings"), contentSize: Theme.Size.settingsWindow, resizable: true,
             autosaveName: "SettingsWindow", activation: core.activationPolicy,
-            onClose: { IconCache.purgeDecoded() })
+            onClose: { [weak core] in
+                IconCache.purgeDecoded()
+                core?.memoryReclaimer.schedule()
+            })
     }
 
     /// A fresh window mounts on `tab`; an open one navigates to it, recording the jump in history.
     /// A nil `tab` only reveals the window, so re-opening a minimised one keeps the pane it was on.
     func showSettings(tab: SettingsTab? = nil, revealing target: SettingsTarget? = nil) {
+        core.memoryReclaimer.schedule()
         if window.focus() {
             if let tab { navigation?.select(tab, revealing: target) }
             return

@@ -725,6 +725,7 @@
 		D4A45373662D6658706E4DA4 /* ClipboardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27773F8955543E8A24CC0D28 /* ClipboardSettingsView.swift */; };
 		D4AC94686EEEF4B792B58593 /* CalendarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0AA95CA13E86370661D01C /* CalendarSettingsView.swift */; };
 		D4F49C93A33488D226BA8664 /* QuickActionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D6EE5144AEF889C95B3758 /* QuickActionCoordinator.swift */; };
+		D4F6ED4C370892010BED8B23 /* MemoryReclaimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E4ADAEE942270526B4C7DB /* MemoryReclaimer.swift */; };
 		D5564B285B7B4E3D8E8684D2 /* FileSearchPreviewKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA09837549B2ABC93D59760 /* FileSearchPreviewKind.swift */; };
 		D68E7585496722BEC72E788C /* AliasStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0AD89CB2C805C50D2C80E1 /* AliasStore.swift */; };
 		D7293913917ABBCD527EB615 /* CalcToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F2E06B7C8613EB3096B94B /* CalcToken.swift */; };
@@ -738,7 +739,6 @@
 		DA781EE329E4D88B9C72788C /* ExtensionActionsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A178C17DB989B6D2D71C021E /* ExtensionActionsPanel.swift */; };
 		DB6B294B3D15B0AABCE5427E /* PaletteScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445B0374FD5D74DBE23243CD /* PaletteScreen.swift */; };
 		DB6DD4D14260500D36E18315 /* HotKeySettingsFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D56AE79EFBE8B3D79CAF6A4 /* HotKeySettingsFile.swift */; };
-		DB806924F37329AB5A782A6D /* CompactFavoritesMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A54E1016C2890963C32AC1F /* CompactFavoritesMigration.swift */; };
 		DC0295A12EF56EF4C8378623 /* WindowCycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B1949D20DAEA3F80649D17 /* WindowCycle.swift */; };
 		DCAC5BBB64C93F559B25E6FD /* ExtensionAnimatedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFBF31AF26A4786B234ABB64 /* ExtensionAnimatedImage.swift */; };
 		DD0A7B02D15113A3D8712413 /* ExtensionListKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA90C7C0B97C4745B8F94C4B /* ExtensionListKey.swift */; };
@@ -1098,6 +1098,7 @@
 		33994DC2FB0A6B23A403CA29 /* AppLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLauncher.swift; sourceTree = "<group>"; };
 		33A73B92320ED5A4F802EE54 /* InProcessInjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InProcessInjection.swift; sourceTree = "<group>"; };
 		34B6E769255C1AA37EDA28E2 /* NoteEditAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditAction.swift; sourceTree = "<group>"; };
+		34E4ADAEE942270526B4C7DB /* MemoryReclaimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryReclaimer.swift; sourceTree = "<group>"; };
 		34F2E06B7C8613EB3096B94B /* CalcToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcToken.swift; sourceTree = "<group>"; };
 		3514AC5995904AFF15855E68 /* DictationTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTokenizer.swift; sourceTree = "<group>"; };
 		357431B54BF1A72C7E9FD24A /* ExtensionVersionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionVersionStore.swift; sourceTree = "<group>"; };
@@ -1123,7 +1124,6 @@
 		39EF327E9EFB308B858B58B8 /* FormTextInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormTextInput.swift; sourceTree = "<group>"; };
 		3A068600862BC729F0565D67 /* ColorDot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorDot.swift; sourceTree = "<group>"; };
 		3A383EB4AC59E07074FE3FBF /* NoteWindowPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowPlacement.swift; sourceTree = "<group>"; };
-		3A54E1016C2890963C32AC1F /* CompactFavoritesMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactFavoritesMigration.swift; sourceTree = "<group>"; };
 		3A5D8DD69E6E38D96B13D1A6 /* WindowLayoutPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutPlan.swift; sourceTree = "<group>"; };
 		3A97F816CB516A9203224A17 /* DictationAudioChunks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationAudioChunks.swift; sourceTree = "<group>"; };
 		3AA3385A84985A52E2DA3596 /* Quicklink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Quicklink.swift; sourceTree = "<group>"; };
@@ -1831,6 +1831,7 @@
 				3BA9F5F7226AD5A91835AF5C /* LaunchAtLogin.swift */,
 				C7C0F66A568B254D17C11355 /* LocalizedResource.swift */,
 				EB76FDBFE1E306C2A5B1A29B /* Memo.swift */,
+				34E4ADAEE942270526B4C7DB /* MemoryReclaimer.swift */,
 				E1FB75182A60F65BA1FB9BA8 /* NotificationToken.swift */,
 				2E5C752F98428A767405AD12 /* PasteboardFiles.swift */,
 				AA7B3EB88881CEEFCE71448D /* Permissions.swift */,
@@ -2632,14 +2633,6 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
-		6C4ED93E6A6FB648F38E96F2 /* Migrations */ = {
-			isa = PBXGroup;
-			children = (
-				3A54E1016C2890963C32AC1F /* CompactFavoritesMigration.swift */,
-			);
-			path = Migrations;
-			sourceTree = "<group>";
-		};
 		6D3312FA1849B303BECA8AEA /* Model */ = {
 			isa = PBXGroup;
 			children = (
@@ -3375,7 +3368,6 @@
 				BCD69CF996AA28C1A52C0D05 /* App */,
 				1FC9BDBE6549F7189CB995AB /* DesignSystem */,
 				95CA98985928A88B33F82556 /* Features */,
-				6C4ED93E6A6FB648F38E96F2 /* Migrations */,
 				BCE065D58E699AFB41A13CD3 /* Palette */,
 				02ADF9B2610482EE749E5C66 /* Platform */,
 				AAC55CF3217A6A536330E9CF /* Resources */,
@@ -4272,7 +4264,6 @@
 				4640C7CC8DCA6E6FA49394A8 /* CommandsSettingsView.swift in Sources */,
 				99749EAA32592C3AD639BC0C /* CompactBar.swift in Sources */,
 				E194B060BA9AB3ABB6CDFAE2 /* CompactBarSelection.swift in Sources */,
-				DB806924F37329AB5A782A6D /* CompactFavoritesMigration.swift in Sources */,
 				0A6B142F6DCEF83FEFF5EF1F /* CompactShortcutsSection.swift in Sources */,
 				A024F68213FEB918BEF31255 /* CountryZoneData.generated.swift in Sources */,
 				2EBB42C7EB17F37628765B17 /* CurrencyData.generated.swift in Sources */,
@@ -4581,6 +4572,7 @@
 				80B87CBA4D7284710465901D /* MeetingRowParts.swift in Sources */,
 				B6C39F046F6B09CD7AA53F6B /* MeetingSpan.swift in Sources */,
 				AAFD2C9276D38719E85B675F /* Memo.swift in Sources */,
+				D4F6ED4C370892010BED8B23 /* MemoryReclaimer.swift in Sources */,
 				9DB4319C835DCF8C0723356D /* MenuBarItem.swift in Sources */,
 				E6E929E9284E8AC361D64D6A /* MenuBarSummary.swift in Sources */,
 				9553DDEBD6FCC205069ED996 /* MenuPanel.swift in Sources */,
@@ -5076,7 +5068,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				DICTATION_EXECUTABLE_NAME = "Tinycast Dev Dictation";
@@ -5097,7 +5089,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -5197,7 +5189,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
@@ -5215,7 +5207,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

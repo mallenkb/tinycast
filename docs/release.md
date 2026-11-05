@@ -5,6 +5,7 @@
 Version 0.1.0 is the first locally packaged release of `mallenkb/tinycast`. Downloads and the in-app
 update feed use this fork's GitHub releases. The universal DMG and ZIP are self-signed and not
 notarized. Version 0.1.1 additionally scopes cached updates and accepted asset URLs to this fork.
+Version 0.1.2 adds dictionary source selection and idle memory reclamation.
 The inherited CI workflow described below is not used for this fork's release.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

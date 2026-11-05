@@ -126,6 +126,11 @@ text over pipes. The coordinator keeps microphone capture, UI and insertion in T
 store starts the helper on demand and reaps it after the selected idle delay or a model switch.
 `AppCore` owns the audio ducker and starts volume recovery on every launch, even when Dictation is off.
 
+`AppCore` also owns `MemoryReclaimer`. Its local event monitor and palette observation reschedule a
+single idle timer. After two seconds it releases disposable image caches, then requests allocator
+relief off-main. Settings schedules the same cleanup when opening, navigating through its coordinator,
+and closing. Teardown cancels the timer and worker and removes the event monitor.
+
 ## Entry points and windows
 
 `TinycastLaunch` (`@main`) pins the interface language, then runs `TinycastApp`, which declares

@@ -34,5 +34,42 @@ no bundled word list.
 | ↵ | Copy Definition — the whole entry, one line per block, then the palette closes |
 | ⌘↵ | Open in Dictionary — `dict://<term>`, for every other enabled dictionary |
 
-The first enabled dictionary that knows the term answers, in Dictionary.app's own order. A term none of
-them knows reads "No definition found".
+The empty state shows Dictionary.app's icon through the shared icon cache, with a prompt to type a word.
+The dictionary name stays in the selector beside the search input rather than repeating above the
+definition. The selector opens one searchable list. Its width fits the longest label up to the palette width and stays fixed while filtering.
+Choosing a dictionary applies immediately and saves it as the preferred source for future lookups.
+Only one dictionary is displayed at a time. "Follow Dictionary.app Order" stays at the top; the selected
+dictionary and recently selected dictionaries follow, with untouched sources in Dictionary.app order.
+Up to 12 recent dictionary identifiers are saved across launches and backups, and mirrored as
+`dictionary.recentSources` in settings.json. Automatic fallback never changes this recent order.
+
+The default follows Dictionary.app's enabled order. Choosing a preferred dictionary tries it first,
+then the other enabled dictionaries in their original order. If the preferred dictionary is unavailable
+or has no entry, a notice explains the fallback.
+The preference uses the dictionary's identifier, survives relaunch and backup, and is mirrored as
+`dictionary.preferredSource` in settings.json. An empty string follows Dictionary.app's order.
+
+Names and identifiers come from runtime-resolved `DCSDictionaryGetName` and
+`DCSDictionaryGetIdentifier`. The menu lists enabled dictionaries exposed by Dictionary Services;
+onlocal Dictionary.app sources such as Wikipedia are not promised. If the private calls are missing,
+the public plain-text result is labeled "System Dictionary" without claiming a specific source.
+
+Only names and identifiers are retained for the menu. Records are read sequentially until a source
+answers, and temporary markup is released after each record. Closing the screen clears the entry and
+source list and cancels pending lookup work.
+
+On 2026-11-05, the original combined Dictionary and Settings workflow peaked at 104.4 MB in Debug
+and 114.8 MB in Release. Info.plist now selects libmalloc's space-efficient policy, which favors eager
+reclamation over allocation throughput. AppCore's idle cleanup drops disposable image caches after two
+seconds without input or query changes, preserving the result being read.
+
+With the shipped renderer and launch configuration, two Debug stress runs peaked at 78.4 and 93.0 MB;
+a Release stress run peaked at 73.7 MB. Each performed three cycles of seven dictionary queries and
+General, Applications and Commands settings. Closing Settings returned to a warmed footprint of
+roughly 50–69 MB; closing both surfaces settled at 45–65 MB. The first Settings use loads shared runtime
+and framework caches, so the warmed baseline is higher than a cold launch. Repeated cycles must settle
+rather than accumulate window-owned memory. A further run also checked idle launcher searches.
+
+These measurements use decimal MB of physical footprint, with noninteractive test panels behind other
+windows on the built-in display. They cover the tested workflow, not every extension or dataset.
+The allocator policy is implemented in [Apple's libmalloc source](https://github.com/apple-oss-distributions/libmalloc/blob/main/src/xzone_malloc/xzone_malloc.c).

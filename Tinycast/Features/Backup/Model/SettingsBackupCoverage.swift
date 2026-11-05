@@ -19,6 +19,8 @@ enum SettingsBackupCoverage {
         "escapeKeyBehavior": .escapeKeyBehavior,
         "appearance": .appearance,
         "language": .language,
+        "dictionaryRecentSources": .dictionaryRecentSources,
+        "dictionaryPreferredSource": .dictionaryPreferredSource,
         "calcNumberStyle": .calcNumberStyle,
         "typography": .typography,
         "interfaceSize": .interfaceSize,

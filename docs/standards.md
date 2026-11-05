@@ -188,12 +188,19 @@ Use `@Observable` for UI state rather than `ObservableObject` or `@Published`:
 
 Budgets, not aspirations:
 
-- **Resident memory under 100 MB, always.** No feature is worth going over. Memory returns to baseline
-  after the palette closes.
+- **Physical footprint under 100 MB.** Measure the Activity Monitor memory figure or `phys_footprint`,
+  including any helper processes. Shared mapped pages make RSS unsuitable for this budget. Closing
+  Settings and dismissing the palette must return to a stable warmed baseline across repeated use.
 - Launch is the thing the app protects most. Work added to `AppCore.start()` or to an initialiser is the
   most expensive place to put it; defer it into a `Task` or do it on first use.
 - The palette must feel instant. Anything on the summon path is resolved once per show, never per render.
 - Zero leaks and no retain cycles. Ownership is a tree with `AppCore` at the root.
+- The app opts into libmalloc's space-efficient allocation policy through `LSEnvironment` in Info.plist.
+  It trades allocation throughput for eager memory reclamation; keep the allocator's security features.
+  `AppCore` owns `MemoryReclaimer`, which drops disposable image caches after two seconds without app
+  input or search changes and requests allocator relief off-main. It also runs after Settings closes.
+  Visible results keep their content. First-use framework and Swift runtime caches may raise the
+  warmed baseline above the cold launch footprint; they are not window-owned allocations.
 
 Beyond that:
 
