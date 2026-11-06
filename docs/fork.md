@@ -92,6 +92,11 @@ selectors together on the right; the guide, speaker and Slow toggle occupy the s
 Debug builds, localization synchronization and lint passed. These layout changes were not verified
 with runtime or visual tests, and memory was not remeasured for this update.
 
+## Release 0.1.8
+
+The Changelog menu opens `mallenkb/tinycast` releases through `ReleaseFeed.repository`, the same
+repository setting used by the updater. Debug compilation and lint passed; no runtime check was run.
+
 ## Memory
 
 The local optimization work limits decoded preview sizes and cache retention, cancels obsolete file
@@ -103,7 +108,7 @@ active screen, and operating system, so an unconditional under-100-MB claim is n
 
 ## Distribution status
 
-- Downloads and update checks use `mallenkb/tinycast` releases.
+- Downloads, update checks and the Changelog menu use `mallenkb/tinycast` releases.
 - Release builds use `com.tinycast.app`, the same identity as upstream stable. Dev builds use
   `com.tinycast.app.dev` and keep separate data.
 - Releases are packaged locally with the fork's self-signed certificate. It is not notarized.

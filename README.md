@@ -21,7 +21,7 @@ and AGPL-3.0-or-later license are preserved.
 
 [Contact @mallenkb on X](https://x.com/mallenkb) ·
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
-[Download v0.1.7](https://github.com/mallenkb/tinycast/releases/tag/v0.1.7) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
+[Download v0.1.8](https://github.com/mallenkb/tinycast/releases/tag/v0.1.8) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
 ## App preview
 

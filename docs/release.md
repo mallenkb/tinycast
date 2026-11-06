@@ -10,6 +10,7 @@ upstream application fixes, deeplinks, extension authentication and AI protocol 
 Version 0.1.5 adds recorded English pronunciation, readable guides and source credits.
 Version 0.1.6 adds native speech alongside recordings, a compact pronunciation card and deeper Dark mode.
 Version 0.1.7 adds an Updates section in About, centered visual previews and a two-row pronunciation card.
+Version 0.1.8 points the Changelog menu to this fork's releases through the updater's repository setting.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
