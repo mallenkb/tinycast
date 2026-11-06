@@ -38,7 +38,7 @@ private struct FileSearchPreviewStage: View {
     var body: some View {
         stage
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.top, metrics.spacing.xl)
+            .padding(.vertical, metrics.spacing.xl)
     }
 
     /// Unmounting is the teardown: an ordered-out panel keeps its tree.

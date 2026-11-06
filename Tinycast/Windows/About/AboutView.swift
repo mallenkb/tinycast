@@ -33,6 +33,7 @@ struct AboutView: View {
                         .padding(.vertical, Theme.Spacing.lg)
                 }
                 .settingsAnchor(.aboutAbout)
+                updates
                 links
                 support
             }
@@ -68,18 +69,34 @@ struct AboutView: View {
                     .overlay(
                         Capsule().strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
                     )
-                Button {
-                    core.updateCoordinator.checkForUpdates()
-                } label: {
-                    SettingsRowTitle(.aboutAbout, "Check for Updates")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
             }
 
             Text("A tiny, native macOS launcher.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var updates: some View {
+        Section {
+            HStack(spacing: Theme.Spacing.xl) {
+                Label {
+                    Text("Software Update")
+                } icon: {
+                    SymbolImage(name: "arrow.triangle.2.circlepath", size: 13, monochrome: true)
+                }
+                Spacer(minLength: Theme.Spacing.lg)
+                Button {
+                    core.updateCoordinator.checkForUpdates()
+                } label: {
+                    SettingsRowTitle(.aboutUpdates, "Check for Updates")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.Colors.brand)
+                .controlSize(.regular)
+            }
+        } header: {
+            SettingsSectionHeader(.aboutUpdates)
         }
     }
 

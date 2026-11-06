@@ -55,6 +55,7 @@ no appcast: the app reads `mallenkb/tinycast` releases directly.
   in-flight automatic request, so neither a response nor a cached release can raise a new prompt.
   The preference travels through settings backups and `general.automaticallyCheckForUpdates` in
   settings.json; release metadata and skipped versions stay in the feature's own cache file.
+  About has a separate Updates section above Links, with a primary Check for Updates button.
 - **The window shows the changelog and nothing else.** CI writes install instructions below
   `<!-- tinycast:install -->`, and `ReleaseNotes.summary` — the single reader of that marker, called
   where the feed is parsed so the cache holds the cut text too — drops them. An app that installs its

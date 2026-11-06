@@ -130,6 +130,7 @@ extension SettingsAnchor {
     static let backupSettingsFile = Self(tab: .backup, title: "Settings File")
 
     static let aboutAbout = Self(tab: .about, title: "About")
+    static let aboutUpdates = Self(tab: .about, title: "Updates")
     static let aboutLinks = Self(tab: .about, title: "Links")
 }
 

@@ -77,6 +77,21 @@ Dark mode uses a deeper tint on the native palette glass and lower-opacity selec
 Light mode is unchanged. The signed Debug build and 38 appearance assertions passed; a visual check
 of the darker tint was not performed. The combined memory measurements above predate the tint change.
 
+## Release 0.1.7
+
+About has a separate Updates section above Links, with a primary Check for Updates button. Settings
+search points to the new section, and its heading is translated into all eight supported languages.
+
+Clipboard visual previews are centered above Information, including images, SVG, web cards, color
+swatches and file/media previews. File Search uses balanced vertical preview padding. Image-only
+extension Detail results are centered in their viewport, while text keeps its document alignment.
+
+The pronunciation card uses two rows separated by a divider. Sounds like stays on the left with both
+selectors together on the right; the guide, speaker and Slow toggle occupy the second row.
+
+Debug builds, localization synchronization and lint passed. These layout changes were not verified
+with runtime or visual tests, and memory was not remeasured for this update.
+
 ## Memory
 
 The local optimization work limits decoded preview sizes and cache retention, cancels obsolete file

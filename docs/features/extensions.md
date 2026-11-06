@@ -279,7 +279,8 @@ screens hold (see [palette.md](palette.md)).
   since the grid draws one column count throughout.
   A tile may be a bare `{color}` swatch instead of an image, stated in any notation `ColorValue`
   reads — a colour picker writes `oklch()`, not hex.
-- **Detail** — markdown rendered block-by-block (headings, lists, code fences, quotes, rules, tables, fetched
+- **Detail** — image-only previews are centered in their viewport. Markdown with text keeps its
+  document alignment. Markdown is rendered block-by-block (headings, lists, code fences, quotes, rules, tables, fetched
   and inline images) with `AttributedString` handling inline styling, plus `Detail.Metadata` — a
   sidebar on a Detail screen, appended below the markdown in a `List`'s detail pane. An image
   draws at its own size, shrunk to fit the pane and never enlarged, unless `?raycast-width=` /

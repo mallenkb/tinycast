@@ -20,6 +20,5 @@ struct ColorPreview: View {
                 .truncationMode(.middle)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, metrics.spacing.xxl)
     }
 }

@@ -24,29 +24,35 @@ struct ExtensionDetailBody: View {
     }
 
     private func markdownPane(trailing metadata: RenderNode?) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: metrics.spacing.md) {
-                if isLoading && (markdown ?? "").isEmpty {
-                    Text("Loading…").foregroundStyle(.secondary)
+        let artworkOnly = metadata == nil && ExtensionMarkdownView.isArtworkOnly(markdown ?? "")
+        return GeometryReader { viewport in
+            ScrollView {
+                VStack(alignment: .leading, spacing: metrics.spacing.md) {
+                    if isLoading && (markdown ?? "").isEmpty {
+                        Text("Loading…").foregroundStyle(.secondary)
+                    }
+                    if let markdown, !markdown.isEmpty {
+                        ExtensionMarkdownView(markdown: markdown)
+                    }
+                    if let metadata {
+                        ExtensionMetadataView(metadata: metadata, assetsPath: assetsPath, inline: true)
+                            .padding(.top, (markdown ?? "").isEmpty ? 0 : metrics.spacing.xxl)
+                    }
                 }
-                if let markdown, !markdown.isEmpty {
-                    ExtensionMarkdownView(markdown: markdown)
-                }
-                if let metadata {
-                    ExtensionMetadataView(metadata: metadata, assetsPath: assetsPath, inline: true)
-                        .padding(.top, (markdown ?? "").isEmpty ? 0 : metrics.spacing.xxl)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(
+                    .horizontal, stacksMetadata ? metrics.scaled(Self.stackedInset) : metrics.spacing.lg
+                )
+                .padding(.vertical, metrics.spacing.md)
+                .frame(
+                    minHeight: artworkOnly ? viewport.size.height : 0,
+                    alignment: artworkOnly ? .center : .topLeading)
+                .hideNativeScrollers()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(
-                .horizontal, stacksMetadata ? metrics.scaled(Self.stackedInset) : metrics.spacing.lg
-            )
-            .padding(.vertical, metrics.spacing.md)
-            .hideNativeScrollers()
+            .edgeDissolve()
+            .thinScrollbar()
         }
         .frame(maxWidth: .infinity)
-        .edgeDissolve()
-        .thinScrollbar()
     }
 
     private static let metadataWidth: CGFloat = 240
@@ -257,6 +263,14 @@ struct ExtensionMarkdownView: View {
         case rule
         case image(URL)
         case table([[String]])
+    }
+
+    static func isArtworkOnly(_ markdown: String) -> Bool {
+        let blocks = parse(markdown)
+        return !blocks.isEmpty && blocks.allSatisfy {
+            if case .image = $0 { return true }
+            return false
+        }
     }
 
     var body: some View {

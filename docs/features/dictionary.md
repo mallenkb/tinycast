@@ -78,8 +78,10 @@ The allocator policy is implemented in [Apple's libmalloc source](https://github
 ## Pronunciation card
 
 One compact card appears directly below the headword. It shows a single Sounds like guide, a speaker
-button, Slow, and source/accent selectors. Equivalent IPA variants collapse to one readable guide;
-recordings with equivalent accent labels collapse to one choice. The first representative guide is
+button, Slow, and source/accent selectors. The header keeps Sounds like on the left and both selectors
+together on the right. A horizontal divider separates it from the guide, speaker and Slow toggle on
+the second row. Equivalent IPA variants collapse to one readable guide; recordings with equivalent
+accent labels collapse to one choice. The first representative guide is
 approximate, not a claim that every recording or system voice follows an identical transcription.
 The selected dictionary's written pronunciation is the fallback when no readable online guide exists.
 

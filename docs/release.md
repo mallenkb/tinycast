@@ -9,6 +9,7 @@ Version 0.1.2 adds dictionary source selection and idle memory reclamation. Vers
 upstream application fixes, deeplinks, extension authentication and AI protocol updates.
 Version 0.1.5 adds recorded English pronunciation, readable guides and source credits.
 Version 0.1.6 adds native speech alongside recordings, a compact pronunciation card and deeper Dark mode.
+Version 0.1.7 adds an Updates section in About, centered visual previews and a two-row pronunciation card.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

@@ -310,7 +310,9 @@ struct ClipboardPreview: View {
         if palette.isVisible, let item {
             VStack(alignment: .leading, spacing: 0) {
                 content(for: item)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .frame(
+                        maxWidth: .infinity, maxHeight: .infinity,
+                        alignment: .center)
                 ClipboardInfoSection(item: item, imageURL: store.imageURL(for: item))
             }
             .padding(.horizontal, 12)

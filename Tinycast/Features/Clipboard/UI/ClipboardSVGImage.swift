@@ -29,6 +29,7 @@ struct ClipboardSVGImage<Placeholder: View>: View {
                 Image(decorative: image, scale: 1)
                     .resizable()
                     .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 placeholder()
             }

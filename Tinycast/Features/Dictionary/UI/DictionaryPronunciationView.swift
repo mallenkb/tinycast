@@ -23,6 +23,7 @@ struct DictionaryPronunciationView: View {
                     .disabled(accentItems.isEmpty)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { accentFrame = $0 }
             }
+            Divider()
             HStack(spacing: metrics.spacing.sm) {
                 if let guide = session.guide {
                     Text(verbatim: guide)
@@ -43,12 +44,12 @@ struct DictionaryPronunciationView: View {
                 .disabled(!session.isPlaying && (!session.playbackAvailable || session.sourceLoading))
                 .accessibilityLabel(session.isPlaying ? Text("Stop pronunciation") : Text("Play pronunciation"))
                 .help(session.error ?? "")
-                Spacer(minLength: 0)
+                Spacer(minLength: metrics.spacing.sm)
+                Toggle("Slow", isOn: Binding(get: { session.slow }, set: { session.slow = $0 }))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .fixedSize()
             }
-            Toggle("Slow", isOn: Binding(get: { session.slow }, set: { session.slow = $0 }))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .fixedSize()
         }
         .textSelection(.disabled)
         .font(metrics.typography.rowTrailing)

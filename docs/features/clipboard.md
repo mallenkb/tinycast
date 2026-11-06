@@ -561,6 +561,9 @@ one entry pasted twice, another skipped. A queue would replay a held shortcut as
 
 ### Preview memory lifecycle
 
+All visual previews are centered horizontally and vertically above the Information block, including
+images, files, rendered SVG, web cards and color swatches. Plain text remains aligned to the top.
+
 Hiding the palette unmounts the clipboard preview artwork while preserving its selection and query.
 Link titles and favicons remain cached separately from banners. Hiding purges the banner cache and
 invalidates pending banner publication; reopening can fetch the selected banner again.
