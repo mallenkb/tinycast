@@ -60,8 +60,10 @@ jobs:
         run: |
           set -euo pipefail
           ./Scripts/lint.sh
-          for harness in dictionary-test pronunciation-respelling-test dictionary-pronunciation-provider-test \
-            dictionary-pronunciation-session-test icon-cache-test settings-file-test settings-backup-test; do
+          for harness in dictionary-test pronunciation-respelling-test dictionary-pronunciation-display-test \
+            dictionary-pronunciation-provider-test dictionary-recording-session-test dictionary-speech-voice-test \
+            dictionary-speech-session-test dictionary-pronunciation-session-test \
+            icon-cache-test settings-file-test settings-backup-test; do
             ./Scripts/run-tests.sh "$harness"
           done
       - name: Import existing signing identity

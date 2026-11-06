@@ -65,7 +65,7 @@ struct DictionaryScreen: PaletteScreen {
 
     func body(selection: Int, scroll: ScrollIntent) -> AnyView {
         AnyView(
-            DictionaryContentView(query: term, isVisible: vm.isVisible)
+            DictionaryContentView(query: term, isVisible: vm.isVisible, openInputMenu: openInputMenu)
                 .environment(core.dictionaryCoordinator))
     }
 }
@@ -123,6 +123,7 @@ private struct DictionaryContentView: View {
     @Environment(\.metrics) private var metrics
     let query: String
     let isVisible: Bool
+    let openInputMenu: (PopoverMenuContent, MenuPanelCorner, Int) -> Void
 
     private var session: DictionarySession { coordinator.session }
     private var entry: DictionaryEntry? { session.lookup?.entry }
@@ -165,7 +166,7 @@ private struct DictionaryContentView: View {
                 text: String(localized: "Type a word to define"),
                 detail: String(localized: "Choose active dictionaries in Dictionary.app."))
         } else if let entry {
-            DictionaryEntryView(entry: entry)
+            DictionaryEntryView(entry: entry, openInputMenu: openInputMenu)
                 .id(entry.source?.id)
         } else if session.lookup?.term == query {
             DictionaryEmptyView(text: String(localized: "No definition found"))

@@ -25,6 +25,7 @@ struct RootPaletteView: View {
     @Environment(ExtensionManager.self) private var extensions
     @Environment(AppSettings.self) private var settings
     @Environment(\.metrics) private var metrics
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
     @FocusState private var searchFocused: Bool
     /// Kept apart from the search field's own focus. See docs/features/palette.md.
@@ -354,7 +355,9 @@ struct RootPaletteView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // Hidden rather than unmounted, so expanding never shows a frame without glass.
                 .background(
-                    GlassEffectView(cornerRadius: metrics.radius.panel)
+                    GlassEffectView(
+                        cornerRadius: metrics.radius.panel,
+                        tint: colorScheme == .dark ? Theme.Colors.paletteGlassTint : nil)
                         .mask {
                             let shape = RoundedRectangle(
                                 cornerRadius: metrics.radius.panel, style: .continuous)

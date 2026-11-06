@@ -438,9 +438,10 @@ enum Theme {
         static let tooltipShadow = adaptive(
             dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
 
+        static let paletteGlassTint = adaptive(dark: .srgbInk(0, alpha: 0.55), light: .clear)
         /// Selection fill, shared by every list so they look identical.
-        static let selection = ramp(dark: 0.10, light: 0.09)
-        static let rowHover = ramp(dark: 0.05, light: 0.045)
+        static let selection = ramp(dark: 0.08, light: 0.09)
+        static let rowHover = ramp(dark: 0.03, light: 0.045)
         static let emojiCell = ramp(dark: 0.045, light: 0.04)
         static let emojiHoverBorder = ramp(dark: 0.42, light: 0.34)
         static let emojiSelectionBorder = ramp(dark: 0.92, light: 0.72)

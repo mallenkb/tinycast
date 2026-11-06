@@ -3,135 +3,168 @@ import SwiftUI
 struct DictionaryPronunciationView: View {
     @Environment(DictionaryCoordinator.self) private var coordinator
     @Environment(\.metrics) private var metrics
+    @State private var sourceFrame = CGRect.zero
+    @State private var accentFrame = CGRect.zero
     let term: String
+    let writtenPronunciation: String?
+    let openInputMenu: (PopoverMenuContent, MenuPanelCorner, Int) -> Void
 
     private var session: DictionaryPronunciationSession { coordinator.pronunciation }
 
     var body: some View {
         VStack(alignment: .leading, spacing: metrics.spacing.sm) {
-            if session.term != term || session.loading {
-                HStack(spacing: metrics.spacing.sm) {
-                    ProgressView().controlSize(.small)
-                    Text("Loading pronunciation…")
-                }
-            } else if let recording = session.selectedRecording {
-                recordingView(recording)
-            } else if session.error == nil {
-                Text("No recording available.")
+            HStack(spacing: metrics.spacing.sm) {
+                Text("Sounds like")
+                    .foregroundStyle(Theme.Colors.textTertiary)
+                Spacer(minLength: metrics.spacing.sm)
+                selector(title: sourceTitle, action: openSources)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { sourceFrame = $0 }
+                selector(title: accentTitle, action: openAccents)
+                    .disabled(accentItems.isEmpty)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { accentFrame = $0 }
             }
-            if let error = session.error {
-                HStack(spacing: metrics.spacing.sm) {
-                    Text(error)
-                    Button("Try Again") { session.retry() }
-                        .buttonStyle(.plain)
-                }
-            }
-        }
-        .textSelection(.disabled)
-        .font(metrics.typography.rowTrailing)
-        .foregroundStyle(Theme.Colors.textSecondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, metrics.spacing.md)
-        .onAppear { session.prepare(term: term) }
-        .onChange(of: term) { session.prepare(term: term) }
-    }
-
-    @ViewBuilder private func recordingView(_ recording: DictionaryPronunciation.Recording) -> some View {
-        let transcriptions = recording.ipa.map { [$0] } ?? recording.ipaVariants
-        let hasGuide = transcriptions.contains { PronunciationRespelling.english($0) != nil }
-        HStack(alignment: .firstTextBaseline, spacing: metrics.spacing.sm) {
-            Text("English pronunciation")
-                .foregroundStyle(Theme.Colors.textTertiary)
-            Spacer(minLength: metrics.spacing.sm)
-            accentLabel(recording.title)
-        }
-        if hasGuide { Text("Sounds like").foregroundStyle(Theme.Colors.textTertiary) }
-        HStack(alignment: .center, spacing: metrics.spacing.sm) {
-            VStack(alignment: .leading, spacing: metrics.spacing.xs) {
-                ForEach(transcriptions, id: \.self) { ipa in
-                    Text(verbatim: PronunciationRespelling.english(ipa) ?? ipa)
+            HStack(spacing: metrics.spacing.sm) {
+                if let guide = session.guide {
+                    Text(verbatim: guide)
                         .font(metrics.typography.calcResult.weight(.semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .help("Approximate pronunciation guide")
                 }
-            }
-            BarButton(isCompact: true, action: session.togglePlayback) {
-                if session.loadingAudio {
-                    ProgressView().controlSize(.small)
-                } else {
-                    SymbolImage(
-                        name: session.isPlaying ? "stop.fill" : "speaker.wave.2.fill",
-                        size: metrics.size.menuIcon)
+                BarButton(isCompact: true, action: session.togglePlayback) {
+                    if session.sourceLoading, !session.isPlaying {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        SymbolImage(
+                            name: session.isPlaying ? "stop.fill" : "speaker.wave.2.fill",
+                            size: metrics.size.menuIcon)
+                    }
                 }
+                .disabled(!session.isPlaying && (!session.playbackAvailable || session.sourceLoading))
+                .accessibilityLabel(session.isPlaying ? Text("Stop pronunciation") : Text("Play pronunciation"))
+                .help(session.error ?? "")
+                Spacer(minLength: 0)
             }
-            .accessibilityLabel(session.isPlaying ? Text("Stop pronunciation") : Text("Play pronunciation"))
-            .disabled(session.loadingAudio)
-            Spacer(minLength: 0)
-        }
-        if !transcriptions.isEmpty {
-            VStack(alignment: .leading, spacing: metrics.spacing.xs) {
-                if hasGuide {
-                    Text("Approximate guide")
-                    Text(verbatim: transcriptions.joined(separator: " · "))
-                }
-                if transcriptions.count > 1 {
-                    Text("The recording may use one of these pronunciations.")
-                }
-            }
-            .foregroundStyle(Theme.Colors.textTertiary)
-        }
-        controls
-        HStack(spacing: metrics.spacing.sm) {
-            Link("Audio: Wikimedia Commons", destination: recording.sourceURL)
-            if let url = recording.licenseURL {
-                Link(destination: url) { Text(verbatim: recording.licenseName) }
-            } else {
-                Text(verbatim: recording.licenseName)
-            }
-        }
-        .foregroundStyle(Theme.Colors.textSecondary)
-        if !transcriptions.isEmpty, let url = recording.phoneticsURL {
-            Link("Phonetics: Wiktionary", destination: url)
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        Text(verbatim: recording.author)
-            .foregroundStyle(Theme.Colors.textTertiary)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func accentLabel(_ title: String) -> Text {
-        switch title.lowercased() {
-        case "ga": Text("General American")
-        case "us": Text("American")
-        case "uk": Text("British")
-        case "rp": Text("Received Pronunciation")
-        case "au": Text("Australian")
-        default: Text(verbatim: title)
-        }
-    }
-
-    private var controls: some View {
-        HStack(spacing: metrics.spacing.md) {
             Toggle("Slow", isOn: Binding(get: { session.slow }, set: { session.slow = $0 }))
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .fixedSize()
-            if session.recordings.count > 1 {
-                ScrollView(.horizontal) {
-                    HStack(spacing: metrics.spacing.xs) {
-                        ForEach(session.recordings) { recording in
-                            BarButton(
-                                isSelected: recording.id == session.selectedRecording?.id,
-                                action: { session.selectRecording(id: recording.id) }
-                            ) {
-                                accentLabel(recording.title)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
+        }
+        .textSelection(.disabled)
+        .font(metrics.typography.rowTrailing)
+        .foregroundStyle(Theme.Colors.textSecondary)
+        .padding(metrics.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: metrics.radius.row).fill(Theme.Colors.cardFill))
+        .onAppear { prepare() }
+        .onChange(of: term) { prepare() }
+        .onChange(of: writtenPronunciation) { prepare() }
+    }
+
+    private func prepare() {
+        session.prepare(term: term, writtenPronunciation: writtenPronunciation)
+    }
+
+    private func selector(title: String, action: @escaping () -> Void) -> some View {
+        BarButton(action: action) {
+            HStack(spacing: metrics.spacing.xs) {
+                Text(title).lineLimit(1)
+                SymbolImage(name: "chevron.down", size: metrics.spacing.md)
             }
         }
+    }
+
+    private var sourceTitle: String {
+        session.source == .nativeSpeech
+            ? LocalizedStringResource("Native speech").resolved()
+            : LocalizedStringResource("Recorded audio").resolved()
+    }
+
+    private func title(for key: String, fallback: String) -> String {
+        switch key {
+        case "en-US": LocalizedStringResource("American").resolved()
+        case "en-GB": LocalizedStringResource("British").resolved()
+        case "en-AU": LocalizedStringResource("Australian").resolved()
+        default: fallback
+        }
+    }
+
+    private var accentTitle: String {
+        if session.source == .nativeSpeech {
+            guard let voice = session.speech.selectedVoice else {
+                return LocalizedStringResource("Accent").resolved()
+            }
+            return title(for: voice.language, fallback: voice.name)
+        }
+        if let recording = session.recording.selectedRecording {
+            return title(for: DictionaryPronunciationDisplay.accentKey(recording.title), fallback: recording.title)
+        }
+        return LocalizedStringResource("Accent").resolved()
+    }
+
+    private var accentItems: [PopoverMenuItem] {
+        if session.source == .nativeSpeech {
+            return session.speech.voices.map { voice in
+                PopoverMenuItem(
+                    title: title(for: voice.language, fallback: voice.name),
+                    systemImage: voice.id == session.speech.selectedVoice?.id ? "checkmark" : "waveform"
+                ) { session.selectAccent(id: voice.id) }
+            }
+        }
+        return session.recordingChoices.map { recording in
+            PopoverMenuItem(
+                title: title(for: DictionaryPronunciationDisplay.accentKey(recording.title), fallback: recording.title),
+                systemImage: recording.id == session.recording.selectedRecording?.id ? "checkmark" : "waveform"
+            ) { session.selectAccent(id: recording.id) }
+        }
+    }
+
+    private func openAccents() {
+        let items = accentItems
+        guard !items.isEmpty else { return }
+        let selected = items.firstIndex { $0.icon == .symbol("checkmark") } ?? 0
+        openInputMenu(PopoverMenuContent(items: items), .belowControl(accentFrame), selected)
+    }
+
+    private func openSources() {
+        var items = [
+            PopoverMenuItem(
+                title: LocalizedStringResource("Native speech").resolved(),
+                systemImage: session.source == .nativeSpeech ? "checkmark" : "speaker.wave.2"
+            ) { session.source = .nativeSpeech },
+            PopoverMenuItem(
+                title: LocalizedStringResource("Recorded audio").resolved(),
+                systemImage: session.source == .recordedAudio ? "checkmark" : "waveform"
+            ) { session.source = .recordedAudio }
+        ]
+        if session.error != nil || !session.playbackAvailable {
+            items.append(PopoverMenuItem(
+                title: LocalizedStringResource("Try Again").resolved(), systemImage: "arrow.clockwise"
+            ) { session.retry() })
+        }
+        if let recording = session.referenceRecording {
+            items.append(PopoverMenuItem(
+                title: recording.author, icon: .blank, isEnabled: false,
+                sectionTitle: LocalizedStringResource("Recording credits").resolved(), startsSection: true) {})
+            items.append(PopoverMenuItem(
+                title: LocalizedStringResource("Recording source").resolved(), systemImage: "link"
+            ) { AppLauncher.open(recording.sourceURL) })
+            if let url = recording.licenseURL {
+                items.append(PopoverMenuItem(title: recording.licenseName, systemImage: "link") {
+                    AppLauncher.open(url)
+                })
+            }
+            if recording.licenseURL == nil {
+                items.append(PopoverMenuItem(title: recording.licenseName, icon: .blank, isEnabled: false) {})
+            }
+            if let url = recording.phoneticsURL {
+                items.append(PopoverMenuItem(
+                    title: LocalizedStringResource("Phonetics: Wiktionary").resolved(), systemImage: "link"
+                ) { AppLauncher.open(url) })
+            }
+        }
+        openInputMenu(
+            PopoverMenuContent(items: items), .belowControl(sourceFrame),
+            session.source == .nativeSpeech ? 0 : 1)
     }
 }

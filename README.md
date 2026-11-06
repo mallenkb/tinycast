@@ -21,7 +21,7 @@ and AGPL-3.0-or-later license are preserved.
 
 [Contact @mallenkb on X](https://x.com/mallenkb) ·
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
-[Download v0.1.5](https://github.com/mallenkb/tinycast/releases/tag/v0.1.5) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
+[Download v0.1.6](https://github.com/mallenkb/tinycast/releases/tag/v0.1.6) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
 ## App preview
 
@@ -40,6 +40,9 @@ and typography controls. This screenshot shows the development build of the feat
 
 ## Fork highlights
 
+- **Compact pronunciation card.** Choose native system speech or recorded audio, with one Sounds like
+  guide, accent choices and slow playback. Source credits remain available in the source menu.
+- **Deeper Dark mode.** Darker native palette glass and selection fills. Light mode is unchanged.
 - **Rich clipboard link previews.** See a copied page’s title, site icon, and preview image without
   opening the browser, with a loading indicator while metadata is fetched.
 - **Rendered SVG previews.** View copied SVG markup as an image in the clipboard preview, with an

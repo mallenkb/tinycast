@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Pins `AGENTS.md`: a token's dark branch is the literal the forced-dark build shipped.
+/// Pins the explicit appearance values, including intentional Dark theme revisions.
 @main
 @MainActor
 struct AppearanceTests {
@@ -47,8 +47,8 @@ struct AppearanceTests {
         print("# dark branches are the shipped literals")
         dark("dialogDimming", c.dialogDimming, is: Color.black.opacity(0.34))
         dark("tooltipShadow", c.tooltipShadow, is: Color.black.opacity(0.18))
-        dark("selection", c.selection, is: Color.white.opacity(0.10))
-        dark("rowHover", c.rowHover, is: Color.white.opacity(0.05))
+        dark("selection", c.selection, is: Color.white.opacity(0.08))
+        dark("rowHover", c.rowHover, is: Color.white.opacity(0.03))
         dark("menuHover", c.menuHover, is: Color.white.opacity(0.10))
         dark("separator", c.separator, is: Color.white.opacity(0.10))
         dark("controlSurface", c.controlSurface, is: Color.white.opacity(0.10))

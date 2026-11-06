@@ -8,6 +8,7 @@ notarized. Version 0.1.1 additionally scopes cached updates and accepted asset U
 Version 0.1.2 adds dictionary source selection and idle memory reclamation. Version 0.1.4 integrates
 upstream application fixes, deeplinks, extension authentication and AI protocol updates.
 Version 0.1.5 adds recorded English pronunciation, readable guides and source credits.
+Version 0.1.6 adds native speech alongside recordings, a compact pronunciation card and deeper Dark mode.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

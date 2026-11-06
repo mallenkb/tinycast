@@ -58,6 +58,25 @@ and repeated muted playback with Settings. The final Release memory run peaked a
 settled at 49.7 MB. The separately authorized rendered-control pass verified Play/Stop, Slow and accent switching,
 including the updated recording source and licence.
 
+## Release 0.1.6
+
+Version 0.1.6 offers native system speech and recorded Wikimedia audio in one compact card
+below the word. It shows one Sounds like guide, Play/Stop and Slow, with source/accent selectors.
+Equivalent guides and accent labels are deduplicated. Source credits and licences are available
+through the source menu. The native option does not wait for online phonetic metadata to play.
+
+Native speech selects installed standard voices, preferring a shared US/UK public-name family.
+Enhanced/premium, novelty and Personal Voice entries are excluded. Source switching stops the other
+playback path. The background suite passed 127 harnesses; the unchanged onboarding focus harness
+was not rerun for this change. The signed Dev build and localization/lint checks passed. The final combined-source Release probe
+peaked at 90.0 MB including new speech/audio helpers, with a conservative lifetime-peak sum of
+94.0 MB and a warmed closed combined footprint of 67.8 MB. The compact apple card passed passive
+layout inspection.
+
+Dark mode uses a deeper tint on the native palette glass and lower-opacity selection and hover fills.
+Light mode is unchanged. The signed Debug build and 38 appearance assertions passed; a visual check
+of the darker tint was not performed. The combined memory measurements above predate the tint change.
+
 ## Memory
 
 The local optimization work limits decoded preview sizes and cache retention, cancels obsolete file

@@ -34,8 +34,10 @@ jobs:
       - name: Run focused regression checks
         run: |
           set -euo pipefail
-          for harness in dictionary-test pronunciation-respelling-test dictionary-pronunciation-provider-test \
-            dictionary-pronunciation-session-test icon-cache-test settings-file-test settings-backup-test; do
+          for harness in dictionary-test pronunciation-respelling-test dictionary-pronunciation-display-test \
+            dictionary-pronunciation-provider-test dictionary-recording-session-test dictionary-speech-voice-test \
+            dictionary-speech-session-test dictionary-pronunciation-session-test \
+            icon-cache-test settings-file-test settings-backup-test; do
             ./Scripts/run-tests.sh "$harness"
           done
       - name: Build Debug without signing

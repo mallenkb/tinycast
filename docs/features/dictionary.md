@@ -3,8 +3,8 @@
 `Define Word` is a launcher command and a fallback. The command opens the dictionary screen (`.dictionary`)
 empty; the fallback opens it on whatever was typed. The search field stays the term, so a different
 word is one edit away. Definitions come from the dictionaries enabled in Dictionary.app. The
-English pronunciation card retrieves human recordings and phonetic text through public Wiktionary and
-Wikimedia Commons APIs without an API key.
+English pronunciation card uses installed macOS system voices. Definitions and written pronunciation
+come from the selected native dictionary; no pronunciation service or API key is needed.
 
 ## Invariants
 
@@ -75,46 +75,37 @@ These measurements use decimal MB of physical footprint, with noninteractive tes
 windows on the built-in display. They cover the tested workflow, not every extension or dataset.
 The allocator policy is implemented in [Apple's libmalloc source](https://github.com/apple-oss-distributions/libmalloc/blob/main/src/xzone_malloc/xzone_malloc.c).
 
-## Recorded pronunciation
+## Pronunciation card
 
-The English pronunciation card appears below the headword. Metadata loads after a short debounce;
-recording bytes download only when Play is pressed. Changing the query, recording or screen cancels
-obsolete work. An unavailable recording and a failed request have distinct states, with retry for
-failures. Definitions remain available offline.
+One compact card appears directly below the headword. It shows a single Sounds like guide, a speaker
+button, Slow, and source/accent selectors. Equivalent IPA variants collapse to one readable guide;
+recordings with equivalent accent labels collapse to one choice. The first representative guide is
+approximate, not a claim that every recording or system voice follows an identical transcription.
+The selected dictionary's written pronunciation is the fallback when no readable online guide exists.
 
-Accent choices use the recording's source labels. IPA is paired only with a compatible accent.
-When the source lists several variants without identifying the recording, the card shows the variants
-and explains that the recording may use one of them. It never selects a variant as an exact match. The Sounds like line is a conservative,
-approximate English respelling with uppercase primary stress. It retains the original IPA alongside it.
-Unsupported notation omits the guide while leaving the recording usable. Slow plays at 75% speed.
-The audio source, author, licence and phonetic source links remain visible independently of the native
-definition source.
+Native speech is the default audio source. It uses installed standard English voices through
+AVSpeechSynthesizer; a shared public-name family is preferred for US/UK choices to reduce provider
+loading. Enhanced, premium, novelty and Personal Voice entries are excluded. Discovery runs off-main,
+refreshes when installed voices change, and preserves an available choice across word changes.
+Native playback does not wait for Wiktionary metadata and remains usable when that service fails.
 
-Requests use a private ephemeral session without URL caching, cookies or credentials. Metadata is
-bounded to 1 MiB and audio to 2 MiB; at most four recordings are retained as metadata. Downloads use
-advertised Wikimedia URLs and accept only approved HTTPS hosts. Rate-limit responses delay further
-requests according to Retry-After, including after the user changes words. There is no bundled voice model,
-WebKit view, persistent audio cache or speech-synthesis fallback. The player is created on demand and
-released on completion, failure, cancellation or dismissal. Resource release schedules the app's
-existing idle memory cleanup.
+Recorded audio remains selectable and uses the bounded Wikimedia provider. Its word metadata may
+also supply the card's readable guide. Only pressing Play downloads recording bytes. Requests use a
+private ephemeral session without URL caching, respect Retry-After, and validate Wikimedia URLs.
+Recording author, licence and source links are available in the source menu, not repeated on the card.
+There is no persistent audio cache.
 
-Pronunciation validation on 5 November 2026 passed 123 background harnesses and the separately
-authorized onboarding focus harness, with affected tests rerun after the final provider and playback
-changes. Live public-API checks downloaded attributed
-recordings for library, bulwark and rice. The session harness covers 48 lifecycle and cooldown checks;
-its simulated player emits no sound. A separate Release probe performed nine real muted playbacks
-across three Dictionary and Settings cycles. Every player and Settings hosting controller released. A separate no-window test also completed
-normal and slow playback at the player's default volume without changing system volume.
+Changing the source stops the previous audio path and cancels pending recorded playback. Changing
+words or closing the screen stops both paths. Native engines, utterances and recorded players are
+released after completion/cancellation; cleanup schedules the app's existing idle memory reclamation.
+Slow changes recorded playback speed directly and restarts native speech at the new rate. Source,
+speed and native voice choices survive word changes for the current app session.
 
-The final probe peaked at 75.2 MB combined physical footprint. Closing Settings settled at 53.4 to
-55.4 MB, and closing the test windows settled at 49.7 MB. An earlier selectable-card variant peaked
-at 102.2 MB during inspection and 95.5 MB without inspection. The final pronunciation card disables
-inherited text selection on its controls and labels while leaving definitions selectable. These are
-measurements of the tested workload, not an unconditional limit across all data and runtime states.
-
-A separately authorized foreground interaction pass verified the actual rendered Play/Stop button,
-Slow switch and accent selector. Selecting American updated the header, Commons recording source
-and licence. Both guide rows and their IPA/source information fit the held library card without
-visible clipping. The isolated test app closed afterward. The onboarding focus check also passed;
-the form-input harness passed after correcting its Light-mode ink detection. This brings coverage
-to all 124 harnesses across the background suite and focused reruns.
+The final combined-source Release probe on 5 November 2026 completed recorded playback and native
+US/UK playback, with all player, synthesizer, utterance and Settings-host weak references released.
+Main-process peak was 74.5 MB. Sampled combined main plus speech/audio helpers peaked at 90.0 MB;
+the sum of their separate lifetime peaks was 94.0 MB. Closed warmed combined footprint was 67.8 MB,
+including 49.0 MB main and 18.7 MB of OS speech/audio helpers. Shared preexisting system daemons
+were listed separately, and no system helpers were killed. The inactive apple card showed one guide
+in a compact card below the word without clipping or visible attribution. Menus were not clicked in
+this passive visual check. The background suite passed 127 harnesses; signed build and lint passed.

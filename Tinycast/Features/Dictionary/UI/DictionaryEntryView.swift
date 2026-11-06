@@ -3,13 +3,25 @@ import SwiftUI
 struct DictionaryEntryView: View {
     @Environment(\.metrics) private var metrics
     let entry: DictionaryEntry
+    let openInputMenu: (PopoverMenuContent, MenuPanelCorner, Int) -> Void
+
+    private var writtenPronunciation: String? {
+        for block in entry.blocks {
+            if case .headword(_, _, let pronunciation) = block { return pronunciation }
+        }
+        return nil
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: metrics.spacing.md) {
                 ForEach(entry.blocks.indices, id: \.self) { index in
                     DictionaryBlockView(block: entry.blocks[index], leadsPage: index == 0)
-                    if index == 0 { DictionaryPronunciationView(term: entry.term) }
+                    if index == 0 {
+                        DictionaryPronunciationView(
+                            term: entry.term, writtenPronunciation: writtenPronunciation,
+                            openInputMenu: openInputMenu)
+                    }
                 }
             }
             .textSelection(.enabled)
@@ -36,7 +48,7 @@ private struct DictionaryBlockView: View {
 
     var body: some View {
         switch block {
-        case .headword(let word, let homograph, let pronunciation):
+        case .headword(let word, let homograph, _):
             HStack(alignment: .firstTextBaseline, spacing: metrics.spacing.md) {
                 HStack(alignment: .firstTextBaseline, spacing: metrics.spacing.xxs) {
                     Text(word)
@@ -47,11 +59,6 @@ private struct DictionaryBlockView: View {
                             .foregroundStyle(Theme.Colors.textSecondary)
                             .baselineOffset(metrics.spacing.md)
                     }
-                }
-                if let pronunciation {
-                    Text(verbatim: "| \(pronunciation) |")
-                        .font(metrics.typography.rowTitle)
-                        .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
             // A homograph's page follows the one before it, so it needs the room of a new entry.

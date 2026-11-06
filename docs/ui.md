@@ -11,7 +11,9 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 ## The look, in one paragraph
 
 Tinycast is a **command palette**: a borderless floating panel whose surface is native Liquid Glass,
-without an additional palette scrim. Everything on that surface uses an appearance-aware ink ramp.
+without an additional palette scrim. Dark uses a black tint on the native palette glass for a deeper
+background, with lower-opacity selection and hover fills. Light keeps untinted glass. Everything on
+that surface uses an appearance-aware ink ramp.
 The header and bottom bar **float over the list as fully transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the bars, they
 **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the
 action pill, the menu circle, popover menus) are **Liquid Glass**.

@@ -158,9 +158,13 @@ If a change touches anything in the right column, the harness on the left is man
 | `dictation-inference-test` | Dictation byte BPE, Fourier/mel features and non-overlapping audio chunks; no downloaded models |
 | `dictation-worker-test` | Dictation's framed channel, worker reuse/switching, removal, cancellation and broken pipes with a fixture helper |
 | `fallback-test` | `Launcher/Model/Fallback.swift`, plus the `CommandID` and `Quicklink` ids it is built from |
-| `pronunciation-respelling-test` | Approximate English IPA guides, stress, syllables, rhotic contrasts and unsupported notation |
-| `dictionary-pronunciation-provider-test` | Wiktionary sections and accent matching, Commons attribution, API errors, bounded retry and unsafe URL rejection; live small-file checks are opt-in |
-| `dictionary-pronunciation-session-test` | Stale requests, cancellation, playback resource release, slow playback, retries and size/duration limits without audible output |
+| `pronunciation-respelling-test` | Approximate English IPA guides and unsupported notation |
+| `dictionary-pronunciation-display-test` | One guide per word, duplicate accent grouping and native written fallback |
+| `dictionary-pronunciation-provider-test` | Bounded Wikimedia requests, source attribution, retries and URL validation |
+| `dictionary-recording-session-test` | Recording playback, cancellation, stale results, cooldown and resource release |
+| `dictionary-speech-session-test` | Native voice discovery, selection, speed, notifications, stale callbacks and resource release |
+| `dictionary-speech-voice-test` | Deterministic installed English voice selection, quality, locale ordering and deduplication |
+| `dictionary-pronunciation-session-test` | Source switching, preventing overlap, guide selection and independent native/recorded availability |
 | `dictionary-test` | `Dictionary/Model/DictionaryEntry.swift`, `DictionaryMarkup.swift` — a real XHTML record and the plain-text fallback, read into page blocks |
 | `callout-test` | `DesignSystem/Theme.swift`, `HotKeys/UI/CalloutPlacement.swift` |
 | `system-action-test` | `SystemActions/Model/SystemAction.swift` |

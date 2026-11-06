@@ -375,12 +375,28 @@ run fallback-test          Tinycast/Features/Launcher/Model/Fallback.swift \
                            Tinycast/Features/Snippets/Model/Snippet.swift \
                            Tinycast/Platform/LocalizedResource.swift
 run pronunciation-respelling-test Tinycast/Features/Dictionary/Model/PronunciationRespelling.swift
+run dictionary-pronunciation-display-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
+                           Tinycast/Features/Dictionary/Model/PronunciationRespelling.swift \
+                           Tinycast/Features/Dictionary/Model/DictionaryPronunciationDisplay.swift
 run dictionary-pronunciation-provider-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
                            Tinycast/Features/Dictionary/Service/DictionaryPronunciationProvider.swift
-run dictionary-pronunciation-session-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
+run dictionary-recording-session-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
                            Tinycast/Features/Dictionary/Service/DictionaryPronunciationProvider.swift \
-                           Tinycast/Features/Dictionary/Service/DictionaryPronunciationSession.swift \
+                           Tinycast/Features/Dictionary/Service/DictionaryRecordingSession.swift \
                            Tinycast/Platform/LocalizedResource.swift
+run dictionary-speech-voice-test Tinycast/Features/Dictionary/Model/DictionarySpeechVoice.swift
+run dictionary-speech-session-test Tinycast/Features/Dictionary/Model/DictionarySpeechVoice.swift \
+                           Tinycast/Features/Dictionary/Service/DictionarySpeechSession.swift \
+                           Tinycast/Platform/LocalizedResource.swift Tinycast/Platform/NotificationToken.swift
+run dictionary-pronunciation-session-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
+                           Tinycast/Features/Dictionary/Model/DictionarySpeechVoice.swift \
+                           Tinycast/Features/Dictionary/Model/PronunciationRespelling.swift \
+                           Tinycast/Features/Dictionary/Model/DictionaryPronunciationDisplay.swift \
+                           Tinycast/Features/Dictionary/Service/DictionaryPronunciationProvider.swift \
+                           Tinycast/Features/Dictionary/Service/DictionaryRecordingSession.swift \
+                           Tinycast/Features/Dictionary/Service/DictionarySpeechSession.swift \
+                           Tinycast/Features/Dictionary/Service/DictionaryPronunciationSession.swift \
+                           Tinycast/Platform/LocalizedResource.swift Tinycast/Platform/NotificationToken.swift
 run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.swift \
                            Tinycast/Features/Dictionary/Model/DictionaryMarkup.swift
 run dictation-test         Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift
