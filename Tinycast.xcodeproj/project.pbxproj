@@ -191,6 +191,7 @@
 		36784C964DB27B94A62EEAA3 /* tinycast.icon in Resources */ = {isa = PBXBuildFile; fileRef = 6621A88681E993D49EEF07A3 /* tinycast.icon */; };
 		36968DFA1E201E681F0BCD42 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1306524F57602D90FCF153C /* Theme.swift */; };
 		36A6FC9C41CDBD4ADA1F8E87 /* AIModelDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = A68649D40F987D1CD24D1112 /* AIModelDiscovery.swift */; };
+		372F1C8FF9329160DE6A11EC /* DictionarySavedWordsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108860A5DC654F51BAC0EE19 /* DictionarySavedWordsStore.swift */; };
 		383A577E1A70AF702C474B0F /* ClipDragPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6491D532351DEB940B4FBD1A /* ClipDragPayload.swift */; };
 		3891DA96CC148D13893F4494 /* ShortcutCaptureSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B235DFF451FF4D52A8E44D00 /* ShortcutCaptureSession.swift */; };
 		3917193B62450F226297B3F1 /* SelectionReveal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648F0F43FEEE537F6451756B /* SelectionReveal.swift */; };
@@ -414,6 +415,7 @@
 		6E6C27BE575CACD8A0070311 /* LauncherSettingsFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65369C9F6E1AE2770348BD6 /* LauncherSettingsFile.swift */; };
 		6F076223EA47A68C1490F674 /* FolderPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236934966557373B61455B3C /* FolderPicker.swift */; };
 		6F644313A467DB269FDBAED6 /* FilePreviewThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC0CEDE9677C9C2485586B3 /* FilePreviewThumbnail.swift */; };
+		71529A7DCA3863E3A68D4DDC /* DictionarySavedWordsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27166F050A2AEAD37ADE3E43 /* DictionarySavedWordsScreen.swift */; };
 		71AA40FC4B8C57FFDE5F8DFC /* SystemAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72CE02F853ACE956627347 /* SystemAction.swift */; };
 		7320E4B2ABFAE8C1D76A3526 /* ExtensionArgumentsAccessory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154222C91EFDB4D4490B6CE2 /* ExtensionArgumentsAccessory.swift */; };
 		73C3912866D29C26E4CED1D2 /* AIModelSelectionRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D1EA2460590C49B4A66C64 /* AIModelSelectionRows.swift */; };
@@ -1012,6 +1014,7 @@
 		102B53830D247FAE19479BCA /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		1037A76A7501EA4BCCD545B5 /* CustomCommandListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomCommandListScreen.swift; sourceTree = "<group>"; };
 		106F9FEF3F0C36E0C5686DA7 /* AIRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRequest.swift; sourceTree = "<group>"; };
+		108860A5DC654F51BAC0EE19 /* DictionarySavedWordsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionarySavedWordsStore.swift; sourceTree = "<group>"; };
 		1095A5EC0F5CE50ADB8C5D03 /* RoomParking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomParking.swift; sourceTree = "<group>"; };
 		10A05EA2484C7E9EC8B05A69 /* MCPOAuthHTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPOAuthHTTP.swift; sourceTree = "<group>"; };
 		112551581ECF83B53D405334 /* BackupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSettingsView.swift; sourceTree = "<group>"; };
@@ -1084,6 +1087,7 @@
 		26AD346C8FD5F2D4F00FF2B6 /* HotKeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyCenter.swift; sourceTree = "<group>"; };
 		27021D72339800AA6DA3D3FF /* AIScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIScreen.swift; sourceTree = "<group>"; };
 		2702F140F8DBF373D2ED11A5 /* SelectionFollowing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionFollowing.swift; sourceTree = "<group>"; };
+		27166F050A2AEAD37ADE3E43 /* DictionarySavedWordsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionarySavedWordsScreen.swift; sourceTree = "<group>"; };
 		273827EB5CC04F1951C40387 /* VolumeLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeLevel.swift; sourceTree = "<group>"; };
 		27773F8955543E8A24CC0D28 /* ClipboardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSettingsView.swift; sourceTree = "<group>"; };
 		2858A6BD41085BF9C1679259 /* ExtensionMenuBarHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionMenuBarHost.swift; sourceTree = "<group>"; };
@@ -2987,6 +2991,7 @@
 				689BCE88E88994874CB8CF13 /* DictionaryPronunciationProvider.swift */,
 				9034F9EE6D6F8DBC9A1480CD /* DictionaryPronunciationSession.swift */,
 				047AA636571A5920D28A4A80 /* DictionaryRecordingSession.swift */,
+				108860A5DC654F51BAC0EE19 /* DictionarySavedWordsStore.swift */,
 				732AEAA3A5C5DE559B739295 /* DictionaryService.swift */,
 				53E2A503ABA6A28E229C6FD6 /* DictionarySession.swift */,
 				6DBF153A048D3F0F3C523F1C /* DictionarySpeechSession.swift */,
@@ -3224,6 +3229,7 @@
 				B7DE05BCC5E8CD91E8B0A26E /* DictionaryCoordinator.swift */,
 				65BCE97EB19D934F786DFAA0 /* DictionaryEntryView.swift */,
 				D1CCDE67A4E25CBD4142C1EB /* DictionaryPronunciationView.swift */,
+				27166F050A2AEAD37ADE3E43 /* DictionarySavedWordsScreen.swift */,
 				1447366E9AD0C934A7050EB4 /* DictionaryScreen.swift */,
 			);
 			path = UI;
@@ -4529,6 +4535,8 @@
 				BE59F820367C34AE2273512A /* DictionaryPronunciationSession.swift in Sources */,
 				A3E5DC87CEED7F24FEA6502A /* DictionaryPronunciationView.swift in Sources */,
 				268CDCBE43C0115EAFFE7955 /* DictionaryRecordingSession.swift in Sources */,
+				71529A7DCA3863E3A68D4DDC /* DictionarySavedWordsScreen.swift in Sources */,
+				372F1C8FF9329160DE6A11EC /* DictionarySavedWordsStore.swift in Sources */,
 				AEF27CACA736D81B31C5E6BE /* DictionaryScreen.swift in Sources */,
 				05A237890B4BD21EE91D8090 /* DictionaryService.swift in Sources */,
 				BD0C138940A1B20828610D05 /* DictionarySession.swift in Sources */,
@@ -5298,7 +5306,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				DICTATION_EXECUTABLE_NAME = "Tinycast Dev Dictation";
@@ -5319,7 +5327,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -5420,7 +5428,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
@@ -5438,7 +5446,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

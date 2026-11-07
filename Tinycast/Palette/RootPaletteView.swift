@@ -130,6 +130,8 @@ struct RootPaletteView: View {
             return DictionaryScreen(
                 session: dictionary, core: core, vm: vm,
                 openMenuCorner: menuCorner, openInputMenu: openInputOptions)
+        case .dictionarySavedWords:
+            return DictionarySavedWordsScreen(coordinator: core.dictionaryCoordinator, query: vm.query)
         case .calculatorHistory:
             return CalculatorHistoryScreen(
                 history: calcHistory, currencyRates: currencyRates, core: core, vm: vm,
@@ -795,7 +797,10 @@ struct RootPaletteView: View {
             headerGutter(width: metrics.spacing.md * 2)
             // Every sub-screen leaves the same way, so the slot reads the same on all of them.
             if vm.mode != .launcher {
-                HeaderBackButton(help: String(localized: "Back to main search"), action: returnToLauncher)
+                HeaderBackButton(
+                    help: vm.mode == .dictionarySavedWords
+                        ? String(localized: "Back") : String(localized: "Back to main search"),
+                    action: returnToLauncher)
             } else {
                 Image(systemName: vm.mode.systemImage)
                     .font(metrics.typography.headerIcon)
@@ -1020,8 +1025,16 @@ struct RootPaletteView: View {
     ) -> some View {
         // Floating controls, no bar; the edge dissolve ghosts the rows passing beneath.
         HStack(spacing: 0) {
-            appMenuButton
-                .modifier(ExtensionToastSlot(extensions: extensions, showing: vm.mode == .extensionCommand))
+            HStack(spacing: metrics.spacing.sm) {
+                appMenuButton
+                if vm.mode == .dictionary || vm.mode == .dictionarySavedWords {
+                    DictionarySavedWordsButton(isOpen: vm.mode == .dictionarySavedWords) {
+                        closeMenus()
+                        core.dictionaryCoordinator.toggleSavedWords()
+                    }
+                }
+            }
+            .modifier(ExtensionToastSlot(extensions: extensions, showing: vm.mode == .extensionCommand))
             if showActionGroup {
                 actionGroup(
                     pillLabel: pillLabel, formPrimaryShortcut: formPrimaryShortcut,
@@ -1042,7 +1055,7 @@ struct RootPaletteView: View {
         } else {
             BarButton(isSelected: openMenu == .app, action: toggleAppMenu) {
                 HStack(spacing: metrics.spacing.sm) {
-                    if vm.mode == .dictionary {
+                    if vm.mode == .dictionary || vm.mode == .dictionarySavedWords {
                         FeatureIconView(name: "FeatureDictionary", size: metrics.size.resultRowIcon)
                     } else if let tab = vm.mode.featureTab {
                         FeatureIconView(name: tab.iconAsset, size: metrics.size.resultRowIcon)
@@ -1566,6 +1579,10 @@ struct RootPaletteView: View {
 
     private func returnToLauncher() {
         closeMenus()
+        if vm.mode == .dictionarySavedWords {
+            core.dictionaryCoordinator.toggleSavedWords()
+            return
+        }
         if vm.mode.isNativeEditor { goBack() }
         if vm.mode == .extensionCommand {
             core.extensionCoordinator.popExtensionToRoot()
@@ -1701,7 +1718,7 @@ private extension PaletteMode {
         case .launcher: nil
         case .clipboard: .clipboard
         case .ai, .aiHistory: .ai
-        case .calculatorHistory, .dictionary: nil
+        case .calculatorHistory, .dictionary, .dictionarySavedWords: nil
         case .emoji: .emoji
         case .fileSearch, .uninstall: .fileSearch
         case .menuSearch, .switchWindows: .navigation
@@ -1718,7 +1735,7 @@ private extension PaletteMode {
         switch self {
         case .clipboard: String(localized: "Clipboard History")
         case .calculatorHistory: String(localized: "Calculator History")
-        case .dictionary: String(localized: "Dictionary")
+        case .dictionary, .dictionarySavedWords: String(localized: "Dictionary")
         case .launcher: String(localized: "Tinycast")
         default: featureTab?.title ?? ""
         }

@@ -35,6 +35,12 @@ come from the selected native dictionary; no pronunciation service or API key is
 | ↵ | Copy Definition — the whole entry, one line per block, then the palette closes |
 | ⌘↵ | Open in Dictionary — `dict://<term>`, for every other enabled dictionary |
 
+The bookmark next to the headword saves or removes the displayed word and fills when saved. The
+Saved Words button opens a searchable list inside the palette and fills while the list is active.
+Click a word or select it and press Return to look it up. The Actions menu removes a selected word.
+Back restores the previous lookup. Tinycast keeps the list locally across launches, most recent first.
+Each lookup uses the current dictionary preference.
+
 The empty state shows Dictionary.app's icon through the shared icon cache, with a prompt to type a word.
 The dictionary name stays in the selector beside the search input rather than repeating above the
 definition. The selector opens one searchable list. Its width fits the longest label up to the palette width and stays fixed while filtering.

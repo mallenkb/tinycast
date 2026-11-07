@@ -13,6 +13,7 @@ Version 0.1.7 adds an Updates section in About, centered visual previews and a t
 Version 0.1.8 points the Changelog menu to this fork's releases through the updater's repository setting.
 Version 0.1.9 adds on-device search by description, visual content search for images and sampled
 video frames, and centered SVG previews. Visual descriptions require macOS 27 and Apple Intelligence.
+Version 0.1.10 adds a searchable Saved Words screen and one-click dictionary bookmarks.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

@@ -5,6 +5,8 @@ import Foundation
 @Observable
 final class DictionaryCoordinator {
     private let paletteCoordinator: PaletteCoordinator
+    private let palette: PaletteState
+    private let savedWords: DictionarySavedWordsStore
 
     @ObservationIgnored private(set) lazy var applicationURL = DictionaryService.applicationURL
     let pronunciation: DictionaryPronunciationSession
@@ -12,15 +14,35 @@ final class DictionaryCoordinator {
     private let settings: AppSettings
 
     var preferredSourceID: String { settings.dictionaryPreferredSource }
+    var savedTerms: [String] { savedWords.words }
 
     init(
-        paletteCoordinator: PaletteCoordinator, session: DictionarySession, settings: AppSettings,
-        pronunciation: DictionaryPronunciationSession
+        paletteCoordinator: PaletteCoordinator, palette: PaletteState, session: DictionarySession, settings: AppSettings,
+        pronunciation: DictionaryPronunciationSession, savedWords: DictionarySavedWordsStore
     ) {
         self.paletteCoordinator = paletteCoordinator
+        self.palette = palette
         self.session = session
         self.pronunciation = pronunciation
         self.settings = settings
+        self.savedWords = savedWords
+    }
+
+    func isSaved(_ word: String) -> Bool { savedWords.contains(word) }
+
+    func toggleSaved(_ word: String) { savedWords.toggle(word) }
+
+    func toggleSavedWords() {
+        if palette.mode == .dictionarySavedWords {
+            _ = palette.pop()
+        } else if palette.mode == .dictionary {
+            palette.push(mode: .dictionarySavedWords)
+        }
+    }
+
+    func openSavedWord(_ word: String) {
+        guard palette.mode == .dictionarySavedWords, palette.pop() else { return }
+        palette.rewriteQuery(word)
     }
 
     var orderedSources: [DictionaryEntry.Source] {

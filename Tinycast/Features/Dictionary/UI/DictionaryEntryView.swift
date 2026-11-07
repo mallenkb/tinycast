@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DictionaryEntryView: View {
+    @Environment(DictionaryCoordinator.self) private var coordinator
     @Environment(\.metrics) private var metrics
     let entry: DictionaryEntry
     let openInputMenu: (PopoverMenuContent, MenuPanelCorner, Int) -> Void
@@ -16,11 +17,16 @@ struct DictionaryEntryView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: metrics.spacing.md) {
                 ForEach(entry.blocks.indices, id: \.self) { index in
-                    DictionaryBlockView(block: entry.blocks[index], leadsPage: index == 0)
                     if index == 0 {
+                        HStack(spacing: metrics.spacing.sm) {
+                            DictionaryBlockView(block: entry.blocks[index], leadsPage: true)
+                            bookmarkButton
+                        }
                         DictionaryPronunciationView(
                             term: entry.term, writtenPronunciation: writtenPronunciation,
                             openInputMenu: openInputMenu)
+                    } else {
+                        DictionaryBlockView(block: entry.blocks[index], leadsPage: false)
                     }
                 }
             }
@@ -34,6 +40,22 @@ struct DictionaryEntryView: View {
         .thinScrollbar()
         // A new term starts at its headword, not wherever the last one was scrolled to.
         .id(entry.term)
+    }
+
+    private var bookmarkButton: some View {
+        let isSaved = coordinator.isSaved(entry.term)
+        let label = isSaved ? String(localized: "Remove Saved Word") : String(localized: "Save Word")
+        return BarButton(isSelected: isSaved, isCompact: true, action: { coordinator.toggleSaved(entry.term) }) {
+            Image(isSaved ? "DictionaryBookmarkFilled" : "DictionaryBookmark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: metrics.size.menuBrandIcon, height: metrics.size.menuBrandIcon)
+                .foregroundStyle(isSaved ? Theme.Colors.textPrimary : Theme.Colors.textSecondary)
+                .frame(width: metrics.size.menuIcon, height: metrics.size.menuIcon)
+        }
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isSaved ? .isSelected : [])
+        .help(label)
     }
 }
 

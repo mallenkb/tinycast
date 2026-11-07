@@ -43,8 +43,18 @@ struct DictionaryScreen: PaletteScreen {
                     title: String(localized: "Open in Dictionary"), systemImage: "book", shortcut: "⌘↵"
                 ) {
                     core.dictionaryCoordinator.openInDictionary(entry)
-                }
+                },
+                saveAction(for: entry.term)
             ])
+    }
+
+    private func saveAction(for word: String) -> PopoverMenuItem {
+        let coordinator = core.dictionaryCoordinator
+        let saved = coordinator.isSaved(word)
+        return PopoverMenuItem(
+            title: saved ? String(localized: "Remove Saved Word") : String(localized: "Save Word"),
+            icon: .asset(saved ? "DictionaryBookmarkFilled" : "DictionaryBookmark")
+        ) { coordinator.toggleSaved(word) }
     }
 
     func activate(at selection: Int) {
@@ -67,6 +77,33 @@ struct DictionaryScreen: PaletteScreen {
         AnyView(
             DictionaryContentView(query: term, isVisible: vm.isVisible, openInputMenu: openInputMenu)
                 .environment(core.dictionaryCoordinator))
+    }
+}
+
+struct DictionarySavedWordsButton: View {
+    @Environment(\.metrics) private var metrics
+    let isOpen: Bool
+    let action: () -> Void
+
+    var body: some View {
+        BarButton(isSelected: isOpen, action: action) {
+            HStack(spacing: metrics.spacing.sm) {
+                Image(isOpen ? "DictionaryBookmarkFilled" : "DictionaryBookmark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: metrics.size.menuBrandIcon, height: metrics.size.menuBrandIcon)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .accessibilityHidden(true)
+                Text("Saved Words")
+                    .font(metrics.typography.bar)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(metrics.spacing.xs)
+        .frame(height: metrics.size.barButtonHeight + metrics.spacing.xs * 2)
+        .frosted(in: Capsule())
+        .accessibilityAddTraits(isOpen ? .isSelected : [])
     }
 }
 
