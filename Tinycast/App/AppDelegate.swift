@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         terminationRequestInFlight = true
         Task { @MainActor [weak self] in
             await AppCore.shared.stopDictationForTermination()
+            await AppCore.shared.fileImageContentIndexer.stop()
             // A 300 ms-debounced draft still has to reach disk, but it can no longer veto the quit.
             await AppCore.shared.flushNotesForTermination()
             self?.terminationRequestInFlight = false

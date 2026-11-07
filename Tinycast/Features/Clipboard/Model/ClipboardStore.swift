@@ -172,6 +172,41 @@ enum ClipboardChord: CaseIterable, Sendable {
 final class ClipboardStore {
     enum UpdateError: Error { case tooLong, writeFailed }
 
+    struct DescriptionQuery: Sendable, Equatable {
+        let text: String
+        let kind: ClipboardItem.Kind?
+        let dates: DateInterval?
+        let alternativeTexts: [String]
+        let linksOnly: Bool
+        let videosOnly: Bool
+        let website: String?
+
+        init(
+            text: String, kind: ClipboardItem.Kind?, dates: DateInterval?, alternativeTexts: [String] = [],
+            linksOnly: Bool = false, website: String? = nil, videosOnly: Bool = false
+        ) {
+            self.text = text
+            self.kind = kind
+            self.dates = dates
+            self.alternativeTexts = alternativeTexts
+            self.linksOnly = linksOnly
+            self.videosOnly = videosOnly
+            self.website = website
+        }
+
+        func matches(_ item: ClipboardItem) -> Bool {
+            if videosOnly { return item.filePath.map { ClipboardFileKind.of(path: $0) == .movie } ?? false }
+            guard linksOnly else { return true }
+            guard item.textForm == .link, let text = item.text else { return false }
+            guard let website else { return true }
+            let candidate = text.contains("://") ? text : "https://" + text
+            guard let host = URLComponents(string: candidate)?.host?.lowercased() else { return false }
+            if website.contains(".") { return host == website || host.hasSuffix("." + website) }
+            let labels = host.split(separator: ".")
+            return labels.count >= 2 && labels[labels.count - 2] == website
+        }
+    }
+
     /// Newest-first with pins in place, every pin resident. docs/features/clipboard.md
     private(set) var items: [ClipboardItem] = [] {
         didSet {
@@ -194,18 +229,25 @@ final class ClipboardStore {
     @ObservationIgnored private var textSearchActive = true
     @ObservationIgnored private var textSearchTask: Task<Void, Never>?
     @ObservationIgnored private var textSearchNeedsRefresh = false
-    @ObservationIgnored private var textSearchQuery: String?
-    @ObservationIgnored private var textSearchFilter: ClipboardFilter?
+    @ObservationIgnored private var textSearchKey: SearchKey?
     @ObservationIgnored private var textSearchRequest: UUID?
     @ObservationIgnored private var textSearchMatches: [ClipboardItem] = []
+
+    @ObservationIgnored private var interpretedQuery: (raw: String, description: DescriptionQuery)?
+    @ObservationIgnored private let describeQuery: (String) -> DescriptionQuery?
 
     var maxAge: TimeInterval = ClipboardRetention.threeMonths.maxAge
 
     /// One-entry memo so repeated renders reuse the FTS result; cleared when `items` changes.
-    @ObservationIgnored private var searchCache:
-        (query: String, filter: ClipboardFilter, result: [ClipboardItem])?
+    @ObservationIgnored private var searchCache: (key: SearchKey, result: [ClipboardItem])?
     /// Same memo for the empty query, so the pinned split runs once per mutation.
     @ObservationIgnored private var orderedCache: [ClipboardItem]?
+
+    private struct SearchKey: Equatable {
+        let query: String
+        let filter: ClipboardFilter
+        let description: DescriptionQuery?
+    }
 
     /// Longest text history holds; a longer copy is skipped, since truncation would lose the tail.
     nonisolated static let maxTextLength = 32_000
@@ -265,6 +307,10 @@ final class ClipboardStore {
         CREATE TABLE IF NOT EXISTS item_text_failures(
           item_id TEXT NOT NULL UNIQUE, attempts INTEGER NOT NULL, retry_at REAL NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS item_text_versions(item_id TEXT NOT NULL UNIQUE, version INTEGER NOT NULL);
+        CREATE TRIGGER IF NOT EXISTS items_extract_version_ad AFTER DELETE ON items BEGIN
+          DELETE FROM item_text_versions WHERE item_id = old.id;
+        END;
         CREATE TRIGGER IF NOT EXISTS items_extract_failure_ad AFTER DELETE ON items BEGIN
           DELETE FROM item_text_failures WHERE item_id = old.id;
         END;
@@ -286,7 +332,8 @@ final class ClipboardStore {
     @ObservationIgnored private var deleteStaleStmt: OpaquePointer?
 
     /// `directory` defaults to the per-channel store; the harness passes a throwaway one.
-    init(directory: URL? = nil) {
+    init(directory: URL? = nil, describeQuery: @escaping (String) -> DescriptionQuery? = { _ in nil }) {
+        self.describeQuery = describeQuery
         let base = directory ?? Self.defaultDirectory
         imagesDir = base.appendingPathComponent("images", isDirectory: true)
         dbURL = base.appendingPathComponent("clipboard.sqlite3")
@@ -309,6 +356,8 @@ final class ClipboardStore {
     /// Every accessor is statement-guarded, so a closed store answers as an empty history.
     func close() {
         setTextSearchEnabled(false)
+        interpretedQuery = nil
+        invalidateSearch()
         extractionGeneration = UUID()
         captureGeneration = UUID()
         closeDatabase()
@@ -497,14 +546,15 @@ final class ClipboardStore {
         return true
     }
 
-    func nextExtractionItem(now: Date = Date()) -> ClipboardItem? {
+    func nextExtractionItem(now: Date = Date(), version: Int = 1) -> ClipboardItem? {
         guard textSearchEnabled else { return nil }
         guard
             let stmt = prepare(
                 """
                 SELECT id, kind, text, image_path, created_at, source_app, pinned_at
                 FROM items WHERE kind IN ('image', 'file')
-                  AND id NOT IN (SELECT item_id FROM item_text)
+                  AND id NOT IN (SELECT t.item_id FROM item_text t JOIN item_text_versions v ON v.item_id = t.item_id
+                    WHERE v.version >= ?2)
                   AND id NOT IN (SELECT item_id FROM item_text_failures
                     WHERE attempts >= 3 OR retry_at > ?1)
                 ORDER BY rowid DESC LIMIT 1
@@ -512,15 +562,21 @@ final class ClipboardStore {
         else { return nil }
         defer { sqlite3_finalize(stmt) }
         sqlite3_bind_double(stmt, 1, now.timeIntervalSince1970)
+        sqlite3_bind_int(stmt, 2, Int32(version))
         return sqlite3_step(stmt) == SQLITE_ROW ? Self.row(stmt) : nil
     }
 
-    var nextExtractionRetry: Date? {
+    func nextExtractionRetry(version: Int = 1) -> Date? {
         guard textSearchEnabled,
             let stmt = prepare(
-                "SELECT MIN(retry_at) FROM item_text_failures WHERE attempts < 3")
+                """
+                SELECT MIN(f.retry_at) FROM item_text_failures f
+                LEFT JOIN item_text_versions v ON v.item_id = f.item_id
+                WHERE f.attempts < 3 AND COALESCE(v.version, 0) < ?1
+                """)
         else { return nil }
         defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(version))
         guard sqlite3_step(stmt) == SQLITE_ROW, sqlite3_column_type(stmt, 0) != SQLITE_NULL else {
             return nil
         }
@@ -544,8 +600,23 @@ final class ClipboardStore {
 
     /// Selects the row rather than naming it, so an item deleted mid-recognition stays deleted.
     @discardableResult
-    func setExtractedText(_ text: String, for item: ClipboardItem, generation: UUID) -> Bool {
-        guard textSearchEnabled, generation == extractionGeneration,
+    func setExtractedText(
+        _ text: String, for item: ClipboardItem, generation: UUID, version: Int = 1, completed: Bool = true
+    ) -> Bool {
+        guard textSearchEnabled, generation == extractionGeneration else { return false }
+        guard sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else { return false }
+        var committed = false
+        defer { if !committed { sqlite3_exec(db, "ROLLBACK", nil, nil, nil) } }
+        if let remove = prepare("""
+            DELETE FROM item_text WHERE item_id = ?1 AND
+                COALESCE((SELECT version FROM item_text_versions WHERE item_id = ?1), 0) < ?2
+            """) {
+            sqlite3_bind_text(remove, 1, item.id.uuidString, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(remove, 2, Int32(version))
+            sqlite3_step(remove)
+            sqlite3_finalize(remove)
+        }
+        guard
             let stmt = prepare(
                 """
                 INSERT OR IGNORE INTO item_text(item_id, text)
@@ -557,11 +628,20 @@ final class ClipboardStore {
         let stored = sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db) > 0
         sqlite3_finalize(stmt)
         guard stored else { return false }
-        if let stmt = prepare("DELETE FROM item_text_failures WHERE item_id = ?1") {
+        if let stmt = prepare("INSERT OR REPLACE INTO item_text_versions(item_id, version) VALUES(?1, ?2)") {
+            sqlite3_bind_text(stmt, 1, item.id.uuidString, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(stmt, 2, Int32(version))
+            let updated = sqlite3_step(stmt) == SQLITE_DONE
+            sqlite3_finalize(stmt)
+            guard updated else { return false }
+        } else { return false }
+        if completed, let stmt = prepare("DELETE FROM item_text_failures WHERE item_id = ?1") {
             sqlite3_bind_text(stmt, 1, item.id.uuidString, -1, SQLITE_TRANSIENT)
             sqlite3_step(stmt)
             sqlite3_finalize(stmt)
         }
+        guard sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else { return false }
+        committed = true
         invalidateSearch(preservingMatches: true)
         searchRevision += 1
         return true
@@ -587,15 +667,39 @@ final class ClipboardStore {
         // Load-bearing: a settled OCR query changes the answer without `items` changing.
         _ = searchRevision
         let q = query.trimmingCharacters(in: .whitespaces)
-        updateTextSearch(q, filter: filter)
+        let interpreted = interpretedQuery?.raw == query ? interpretedQuery?.description : nil
+        let description = interpreted ?? describeQuery(q)
+        let key = SearchKey(query: q, filter: filter, description: description)
+        updateTextSearch(key, rawQuery: query)
         // The filter joins the key: `rows` rebuilds per render, so a query-only memo goes stale.
-        if let searchCache, searchCache.query == q, searchCache.filter == filter {
+        if let searchCache, searchCache.key == key {
             return searchCache.result
         }
         // Filtering after the split leaves a matching pin in the Pinned section, in pin order.
-        let result = filter.apply(to: unfiltered(q, filter: filter))
-        searchCache = (q, filter, result)
+        let result = filter.apply(to: description == nil ? unfiltered(q, filter: filter) : textSearchMatches)
+        searchCache = (key, result)
         return result
+    }
+
+    func setInterpretedQuery(_ description: DescriptionQuery?, for raw: String) {
+        guard interpretedQuery?.description != description || (description != nil && interpretedQuery?.raw != raw)
+        else { return }
+        interpretedQuery = description.map { (raw, $0) }
+        invalidateSearch()
+        searchRevision += 1
+    }
+
+    var knownWebsiteHosts: [String] {
+        var hosts = Set<String>()
+        for item in items where item.textForm == .link {
+            guard let text = item.text else { continue }
+            let candidate = text.contains("://") ? text : "https://" + text
+            if let host = URLComponents(string: candidate)?.host?.lowercased() {
+                hosts.insert(host.hasPrefix("www.") ? String(host.dropFirst(4)) : host)
+            }
+            if hosts.count >= 48 { break }
+        }
+        return hosts.sorted()
     }
 
     /// Row index of `item` as currently listed, so the palette can follow a row that moved.
@@ -654,10 +758,9 @@ final class ClipboardStore {
         textSearchTask?.cancel()
         textSearchTask = nil
         textSearchRequest = nil
-        textSearchNeedsRefresh = preservingMatches && textSearchQuery != nil
+        textSearchNeedsRefresh = preservingMatches && textSearchKey != nil
         if !preservingMatches {
-            textSearchQuery = nil
-            textSearchFilter = nil
+            textSearchKey = nil
             textSearchMatches = []
         }
     }
@@ -665,30 +768,36 @@ final class ClipboardStore {
     func setTextSearchActive(_ active: Bool) {
         guard textSearchActive != active else { return }
         textSearchActive = active
-        guard textSearchEnabled else { return }
         invalidateSearch()
         searchRevision += 1
     }
 
-    private func updateTextSearch(_ query: String, filter: ClipboardFilter) {
-        guard textSearchEnabled, textSearchActive, !query.isEmpty,
-            filter == .all || filter == .image || filter == .file
+    private func updateTextSearch(_ key: SearchKey, rawQuery: String) {
+        let (query, filter, description) = (key.query, key.filter, key.description)
+        guard textSearchActive, db != nil, !query.isEmpty,
+            description != nil || (textSearchEnabled && (filter == .all || filter == .image || filter == .file))
         else {
-            if textSearchQuery != nil { invalidateSearch() }
+            if textSearchKey != nil { invalidateSearch() }
             return
         }
-        guard textSearchQuery != query || textSearchFilter != filter || textSearchNeedsRefresh else { return }
-        invalidateSearch(preservingMatches: textSearchQuery == query && textSearchFilter == filter)
+        guard textSearchKey != key || textSearchNeedsRefresh else { return }
+        invalidateSearch(preservingMatches: textSearchKey == key)
         textSearchNeedsRefresh = false
-        textSearchQuery = query
-        textSearchFilter = filter
+        textSearchKey = key
         let request = UUID()
         textSearchRequest = request
         let url = dbURL
         let residentIDs = query.count < 3 ? Set(items.map(\.id)) : nil
+        let includeRecognizedText = textSearchEnabled
         textSearchTask = Task(priority: .userInitiated) { [weak self] in
+            guard !Task.isCancelled else { return }
             let worker = Task.detached(priority: .userInitiated) {
-                Self.extractedMatches(in: url, query: query, filter: filter, residentIDs: residentIDs)
+                if let description {
+                    return Self.describedMatches(
+                        in: url, description: description, filter: filter,
+                        includeRecognizedText: includeRecognizedText)
+                }
+                return Self.extractedMatches(in: url, query: query, filter: filter, residentIDs: residentIDs)
             }
             let matches = await withTaskCancellationHandler {
                 await worker.value
@@ -701,11 +810,92 @@ final class ClipboardStore {
             self.textSearchTask = nil
             self.searchCache = nil
             self.searchRevision += 1
-            if let previous, previous.query == query {
-                let current = self.search(query, filter: previous.filter)
+            if let previous, previous.key == key {
+                let current = self.search(rawQuery, filter: filter)
                 self.onSearchResultsChanged?(query, previous.result, current)
             }
         }
+    }
+
+    nonisolated private static func describedMatches(
+        in url: URL, description: DescriptionQuery, filter: ClipboardFilter, includeRecognizedText: Bool
+    ) -> [ClipboardItem] {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            sqlite3_close_v2(db)
+            return []
+        }
+        defer { sqlite3_close_v2(db) }
+        sqlite3_exec(db, "PRAGMA cache_size=-2048", nil, nil, nil)
+        sqlite3_progress_handler(db, 1000, { _ in Task.isCancelled ? 1 : 0 }, nil)
+        let text = description.text
+        let kind = description.kind?.rawValue
+        let terms = ([text] + description.alternativeTexts).filter { !$0.isEmpty }
+        let usesFTS = !terms.isEmpty && terms.allSatisfy { $0.count >= 3 }
+        let imageTerms = description.kind == .image || (description.kind == nil && !description.linksOnly)
+            ? ImageContent.terms(in: text) : []
+        let imageParameter = 6 + terms.count
+        let imageUsesFTS = !imageTerms.isEmpty && imageTerms.allSatisfy { $0.count >= 3 }
+        func contains(_ column: String) -> String {
+            terms.indices.map { "instr(lower(\(column)), lower(?\(6 + $0))) > 0" }.joined(separator: " OR ")
+        }
+        let ordinary = usesFTS
+            ? "i.rowid IN (SELECT rowid FROM items_fts WHERE items_fts MATCH ?1)"
+            : "(\(contains("i.text")))"
+        let recognizedPhrase = usesFTS
+            ? "i.id IN (SELECT t.item_id FROM item_text t JOIN item_text_fts f ON f.rowid = t.rowid WHERE item_text_fts MATCH ?1)"
+            : "i.id IN (SELECT item_id FROM item_text WHERE \(contains("text")))"
+        let imagePredicates = imageTerms.indices.map {
+            "instr(lower(text), lower(?\(imageParameter + $0))) > 0"
+        }.joined(separator: " AND ")
+        let recognizedImage = imageUsesFTS
+            ? "i.id IN (SELECT t.item_id FROM item_text t JOIN item_text_fts f ON f.rowid=t.rowid WHERE item_text_fts MATCH ?\(imageParameter))"
+            : "i.id IN (SELECT item_id FROM item_text WHERE \(imagePredicates))"
+        let recognized = imageTerms.isEmpty ? recognizedPhrase
+            : "(\(recognizedPhrase) OR \(recognizedImage))"
+        let match = terms.isEmpty ? "1" : includeRecognizedText ? "(\(ordinary) OR \(recognized))" : ordinary
+        let sql = """
+            SELECT i.id, i.kind, i.text, i.image_path, i.created_at, i.source_app, i.pinned_at
+            FROM items i WHERE (?2 IS NULL OR i.kind = ?2) AND i.created_at >= ?3 AND i.created_at < ?4 AND \(match)
+              AND (?5 IS NULL OR instr(lower(i.text), ?5) > 0)
+            ORDER BY i.pinned_at IS NULL, i.pinned_at, i.rowid DESC
+            """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(statement) }
+        let term = usesFTS
+            ? terms.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: " OR ")
+            : text
+        sqlite3_bind_text(statement, 1, term, -1, SQLITE_TRANSIENT)
+        if let kind { sqlite3_bind_text(statement, 2, kind, -1, SQLITE_TRANSIENT) }
+        sqlite3_bind_double(statement, 3, description.dates?.start.timeIntervalSince1970 ?? -Double.greatestFiniteMagnitude)
+        sqlite3_bind_double(statement, 4, description.dates?.end.timeIntervalSince1970 ?? Double.greatestFiniteMagnitude)
+        if let website = description.website {
+            sqlite3_bind_text(statement, 5, website, -1, SQLITE_TRANSIENT)
+        }
+        if !usesFTS {
+            for (offset, term) in terms.enumerated() {
+                sqlite3_bind_text(statement, Int32(6 + offset), term, -1, SQLITE_TRANSIENT)
+            }
+        }
+        if imageUsesFTS {
+            let match = imageTerms.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
+                .joined(separator: " AND ")
+            sqlite3_bind_text(statement, Int32(imageParameter), match, -1, SQLITE_TRANSIENT)
+        } else {
+            for (offset, term) in imageTerms.enumerated() {
+                sqlite3_bind_text(statement, Int32(imageParameter + offset), term, -1, SQLITE_TRANSIENT)
+            }
+        }
+        var results: [ClipboardItem] = []
+        var unpinned = 0
+        while !Task.isCancelled, sqlite3_step(statement) == SQLITE_ROW {
+            guard let item = row(statement), filter.matches(item), description.matches(item) else { continue }
+            results.append(item)
+            if !item.isPinned { unpinned += 1 }
+            if unpinned >= searchLimit { break }
+        }
+        return Task.isCancelled ? [] : results
     }
 
     nonisolated private static func extractedMatches(

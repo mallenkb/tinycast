@@ -1,7 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {},
+    "" : {
+
+    },
     "%@ %@ is available" : {
       "localizations" : {
         "de" : {
@@ -22394,6 +22396,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "某个应用或网页请求 Tinycast 运行此项。请只允许你信任的链接。"
+          }
+        }
+      }
+    },
+    "Analyze images and sampled video frames on this Mac while idle." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilder und ausgewählte Videobilder auf diesem Mac im Leerlauf analysieren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analiza imágenes y fotogramas de muestra en este Mac mientras está inactivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyse les images et un échantillon des images vidéo sur ce Mac lorsqu’il est inactif."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このMacのアイドル時に画像と抽出した動画フレームを解析します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 Mac이 유휴 상태일 때 이미지와 추출한 비디오 프레임을 분석합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analisa imagens e uma amostra de fotogramas de vídeo neste Mac enquanto está inativo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Анализировать изображения и выборочные кадры видео на этом Mac во время простоя."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在此 Mac 空闲时分析图像和抽取的视频帧。"
           }
         }
       }
@@ -105167,6 +105221,110 @@
         }
       }
     },
+    "Search image and video content" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bild- und Videoinhalte durchsuchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar contenido de imágenes y vídeos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher dans le contenu des images et vidéos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像と動画の内容を検索"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미지 및 비디오 콘텐츠 검색"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pesquisar conteúdo de imagens e vídeos"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск по содержимому изображений и видео"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索图像和视频内容"
+          }
+        }
+      }
+    },
+    "Search image, video and PDF content" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bild-, Video- und PDF-Inhalte durchsuchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar contenido de imágenes, vídeos y PDF"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher dans le contenu des images, vidéos et PDF"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像、動画、PDFの内容を検索"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미지, 비디오 및 PDF 콘텐츠 검색"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pesquisar conteúdo de imagens, vídeos e PDF"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск по содержимому изображений, видео и PDF"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索图像、视频和 PDF 内容"
+          }
+        }
+      }
+    },
     "Search layouts…" : {
       "localizations" : {
         "de" : {
@@ -105735,58 +105893,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "搜索系统操作…"
-          }
-        }
-      }
-    },
-    "Search text in images and PDFs" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text in Bildern und PDFs durchsuchen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar texto en imágenes y PDF"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechercher du texte dans les images et les PDF"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "画像とPDF内のテキストを検索"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이미지 및 PDF의 텍스트 검색"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar texto em imagens e PDFs"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поиск текста в изображениях и PDF"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "搜索图像和 PDF 中的文本"
           }
         }
       }

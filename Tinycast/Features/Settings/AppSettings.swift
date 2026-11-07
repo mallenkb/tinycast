@@ -353,6 +353,9 @@ final class AppSettings {
             added: fileSearchIgnorePatterns, removedDefaults: fileSearchRemovedDefaultPatterns)
     }
 
+    var fileSearchImageContentEnabled: Bool {
+        didSet { defaults.set(fileSearchImageContentEnabled, forKey: Key.fileSearchImageContentEnabled.rawValue) }
+    }
     var fileSearchShowInLauncher: Bool {
         didSet {
             defaults.set(fileSearchShowInLauncher, forKey: Key.fileSearchShowInLauncher.rawValue)
@@ -803,6 +806,7 @@ final class AppSettings {
             defaults.stringArray(forKey: Key.fileSearchIgnorePatterns.rawValue) ?? []
         fileSearchRemovedDefaultPatterns =
             defaults.stringArray(forKey: Key.fileSearchRemovedDefaultPatterns.rawValue) ?? []
+        fileSearchImageContentEnabled = defaults.bool(forKey: Key.fileSearchImageContentEnabled.rawValue)
         fileSearchShowInLauncher =
             defaults.object(forKey: Key.fileSearchShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.fileSearchShowInLauncher.rawValue)

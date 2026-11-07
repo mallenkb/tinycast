@@ -358,6 +358,7 @@ final class AppIndex {
         let visibilityRevision: Int
         let favoritesRevision: Int
         let hotKeysRevision: Int
+        let interpretedCommandID: String?
         let showsSuggestions: Bool
         /// Suggestions and usage order age with the clock, which no revision tracks.
         let minute: Int
@@ -367,6 +368,51 @@ final class AppIndex {
     @ObservationIgnored private var matchMemo = Memo<MatchKey, Results>()
     @ObservationIgnored private var resultsMemo = Memo<ResultsKey, Results>()
     private var entriesRevision = 0
+    private var interpretedCommand: (query: String, id: String)?
+
+    func setInterpretedCommand(_ id: String?, for query: String) {
+        guard interpretedCommand?.id != id || (id != nil && interpretedCommand?.query != query) else { return }
+        interpretedCommand = id.map { (query, $0) }
+    }
+
+    func searchIntentCommands(visibility: VisibilityStore) -> [SearchIntent.Command] {
+        searchEntries.filter {
+            [.command, .windowCommand, .systemAction, .customCommand].contains($0.kind) && visibility.isVisible($0)
+        }.map { SearchIntent.Command(id: $0.id, title: $0.name) }
+    }
+
+    func visibleSearchEntry(_ id: String, visibility: VisibilityStore) -> AppEntry? {
+        searchEntries.first { $0.id == id && visibility.isVisible($0) }
+    }
+
+    func isInterpretedLauncherCommand(_ id: String, for query: String, visibility: VisibilityStore) -> Bool {
+        interpretedLauncherEntry(for: query, visibility: visibility)?.id == id
+    }
+
+    func containsSearchResult(_ id: String, for query: String, visibility: VisibilityStore) -> Bool {
+        searchResults(query).entries.contains { $0.id == id && visibility.isVisible($0) }
+            || isInterpretedLauncherCommand(id, for: query, visibility: visibility)
+    }
+
+    private func interpretedLauncherEntry(for query: String, visibility: VisibilityStore) -> AppEntry? {
+        guard let interpretedCommand, interpretedCommand.query == query,
+            let entry = visibleSearchEntry(interpretedCommand.id, visibility: visibility)
+        else { return nil }
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard AppEntry.Kind.named(by: LauncherOrder.CategoryQuery(q)) == nil else { return nil }
+        return hasExactSearchMatch(q, visibility: visibility) ? nil : entry
+    }
+
+    func hasExactSearchMatch(_ query: String, visibility: VisibilityStore) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = FuzzyMatch.normalized(q)
+        let matches = searchResults(q)
+        return matches.entries.prefix(matches.matchCount).contains {
+            guard visibility.isVisible($0) else { return false }
+            return FuzzyMatch.normalized($0.name) == normalized
+                || aliases.alias(for: $0.preferenceKey).map(FuzzyMatch.normalized) == normalized
+        }
+    }
 
     private static let systemActionEntries: [AppEntry] = SystemActionCatalog.all
         .map { command in
@@ -741,16 +787,23 @@ final class AppIndex {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let showsSuggestions = settings?.launcherShowsSuggestions ?? true
         let usage = ranking.snapshot()
+        let interpreted = interpretedLauncherEntry(for: query, visibility: visibility)
         let key = ResultsKey(
             match: matchKey(q, limit: 200), visibilityRevision: visibility.revision,
             favoritesRevision: favorites.revision, hotKeysRevision: hotKeys.revision,
+            interpretedCommandID: interpreted?.id,
             showsSuggestions: showsSuggestions, minute: Int(usage.now.timeIntervalSince1970 / 60))
         return resultsMemo.value(for: key) {
             // Filtering stays downstream of `matches` so that memo is never keyed on hidden state.
             let matched = searchResults(q)
-            let visible = matched.entries.filter(visibility.isVisible)
+            var visible = matched.entries.filter(visibility.isVisible)
             guard q.isEmpty else {
-                let matchCount = matched.entries.prefix(matched.matchCount).count(where: visibility.isVisible)
+                var matchCount = matched.entries.prefix(matched.matchCount).count(where: visibility.isVisible)
+                if let interpreted, matchCount < 200, !visible.prefix(matchCount).contains(where: { $0.id == interpreted.id }) {
+                    visible.removeAll { $0.id == interpreted.id }
+                    visible.insert(interpreted, at: matchCount)
+                    matchCount += 1
+                }
                 return Results(entries: visible, matchCount: matchCount)
             }
             let split = favorites.ordered(visible.filter(\.isPrimaryInstallation))

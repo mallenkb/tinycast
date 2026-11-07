@@ -20,7 +20,8 @@ final class FileSearchSession {
     @ObservationIgnored private var pending: (request: Request, revision: Int)?
     @ObservationIgnored private var workerTask: Task<Void, Never>?
     @ObservationIgnored private var activeSearch: Task<[FileSearchResult], Never>?
-    @ObservationIgnored private let searchOperation: SearchOperation
+    @ObservationIgnored private let searchOperation:
+        @Sendable (String, FileSearchFilter, SearchDescription?) async -> [FileSearchResult]
     /// Kept across closes, so the blank screen opens on its rows instead of on nothing.
     @ObservationIgnored private var recent: [FileSearchResult]?
     @ObservationIgnored private var recentStamp = 0
@@ -32,34 +33,48 @@ final class FileSearchSession {
 
         let query: String
         let filter: FileSearchFilter
+        var description: SearchDescription?
     }
 
     /// No debounce: a search costs milliseconds, and the worker already runs only the newest.
     init(index: FileIndex) {
-        searchOperation = { query, filter in
+        searchOperation = { query, filter, interpreted in
             let cancelled = Atomic(false)
-            return await withTaskCancellationHandler {
-                await Task.detached(priority: .userInitiated) {
+            let worker = Task.detached(priority: .userInitiated) {
                     let isCancelled: @Sendable () -> Bool = { cancelled.load(ordering: .relaxed) }
-                    guard let prepared = FileSearchQuery.prepare(query) else {
+                    let description = interpreted ?? SearchDescription(query, now: Date(), calendar: .current)
+                    let ordinary: [FileSearchResult]
+                    if let description {
+                        ordinary = index.search(description: description, filter: filter, isCancelled: isCancelled)
+                    } else if let prepared = FileSearchQuery.prepare(query) {
+                        ordinary = index.search(prepared, filter: filter, isCancelled: isCancelled)
+                    } else {
                         return index.recent(filter: filter, isCancelled: isCancelled)
                     }
-                    return index.search(prepared, filter: filter, isCancelled: isCancelled)
-                }.value
+                    let images = index.imageContentMatches(
+                        query: query, description: description, filter: filter, isCancelled: isCancelled)
+                    let ids = Set(ordinary.map(\.id))
+                    return Array((ordinary + images.filter { !ids.contains($0.id) }).prefix(FileSearchQuery.resultLimit))
+            }
+            return await withTaskCancellationHandler {
+                await worker.value
             } onCancel: {
+                worker.cancel()
                 cancelled.store(true, ordering: .relaxed)
             }
         }
     }
 
     init(searchOperation: @escaping SearchOperation) {
-        self.searchOperation = searchOperation
+        self.searchOperation = { query, filter, _ in await searchOperation(query, filter) }
     }
 
     /// An empty query is a request too: the blank screen lists what changed recently.
     func search(_ rawQuery: String, filter: FileSearchFilter = .all) {
-        let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        let request = Request(query: query, filter: filter)
+        let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : rawQuery
+        let request = Request(
+            query: query, filter: filter,
+            description: self.request?.query == query ? self.request?.description : nil)
         guard request != self.request else { return }
         enqueue(request)
         guard request == .recent, let recent else { return }
@@ -67,8 +82,27 @@ final class FileSearchSession {
         state = .ready
     }
 
+    func describedResults(for query: String) -> [FileSearchResult] {
+        guard request?.query == query, state == .ready else { return [] }
+        return results
+    }
+
+    func applyDescription(_ description: SearchDescription, for query: String, filter: FileSearchFilter) {
+        guard request?.query == query else { return }
+        let updated = Request(query: query, filter: filter, description: description)
+        if updated != request { enqueue(updated) }
+    }
+
+    func clearDescription(resumingSearch: Bool) {
+        guard var request, request.description != nil else { return }
+        guard resumingSearch else { cancel(); return }
+        request.description = nil
+        enqueue(request)
+    }
+
     /// Re-runs the published request; Recent's kept rows follow even behind a typed query.
-    func refresh() {
+    func refresh(clearingResults: Bool = false) {
+        if clearingResults { results = [] }
         if let request { enqueue(request) }
         if request != .recent { refreshRecent() }
     }
@@ -106,6 +140,7 @@ final class FileSearchSession {
 
     private func enqueue(_ request: Request) {
         revision &+= 1
+        if request != self.request, request.description != nil || self.request?.description != nil { results = [] }
         self.request = request
         state = .searching
         activeSearch?.cancel()
@@ -134,10 +169,11 @@ final class FileSearchSession {
     @discardableResult
     private func run(_ request: Request) async -> [FileSearchResult] {
         guard !Task.isCancelled else { return [] }
-        guard request == .recent else { return await searchOperation(request.query, request.filter) }
+        let query = request.query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard request == .recent else { return await searchOperation(query, request.filter, request.description) }
         recentStamp &+= 1
         let stamp = recentStamp
-        let found = await searchOperation(request.query, request.filter)
+        let found = await searchOperation(query, request.filter, request.description)
         if stamp == recentStamp, !Task.isCancelled { recent = found }
         return found
     }

@@ -65,6 +65,15 @@ final class LauncherCoordinator {
     func launch(
         _ app: AppEntry, searchQuery: String? = nil, arguments: [String: String] = [:]
     ) {
+        if let searchQuery {
+            guard core.palette.mode == .launcher, core.palette.query == searchQuery else { return }
+            if [.command, .windowCommand, .systemAction, .customCommand].contains(app.kind),
+                CommandCatalog.command(for: app) != .openInBrowser, core.palette.argumentEntryID != app.id
+            {
+                guard core.appIndex.containsSearchResult(app.id, for: searchQuery, visibility: core.visibility)
+                else { return }
+            }
+        }
         // A category word is no search for the row: learning it would rank the row under "s".
         if !CommandCatalog.isQueryDriven(app) {
             let term = searchQuery.flatMap {
@@ -72,6 +81,7 @@ final class LauncherCoordinator {
             }
             ranking.visit(itemKey: app.preferenceKey, query: term)
         }
+        if core.searchIntentCoordinator.openSearchResult(app.id, query: searchQuery) { return }
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
             guard let id = CommandCatalog.command(for: app) else { return }
@@ -181,6 +191,7 @@ final class LauncherCoordinator {
         case .calculatorHistory:
             paletteCoordinator.togglePalette(mode: .calculatorHistory)
         case .clipboardHistory:
+            guard core.settings.clipboardEnabled else { return }
             paletteCoordinator.togglePalette(mode: .clipboard)
         case .pasteSequentially:
             core.clipboardCoordinator.pasteNextInSequence()

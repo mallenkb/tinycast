@@ -73,6 +73,84 @@ final class FileIndex: Sendable {
 
     private let state = Mutex(State())
     private let lister = Mutex(FileIndexCrawler.Lister())
+    private let imageContentURL = Mutex<URL?>(nil)
+
+    func setImageContentURL(_ url: URL?) { imageContentURL.withLock { $0 = url } }
+
+    func containsImagePath(_ path: String) -> Bool {
+        state.withLock { state in
+            if let entry = state.added[path] { return !entry.isDirectory }
+            guard let snapshot = state.snapshot, let row = snapshot.lookup(path) else { return false }
+            return !state.isDead(row) && !snapshot.isDirectory(row)
+        }
+    }
+
+    func imageBatch(after cursor: Int) -> (paths: [String], next: Int, complete: Bool, scope: String) {
+        let state = state.withLock { $0 }
+        guard let snapshot = state.snapshot, let policy = state.policy else { return ([], 0, true, "") }
+        var types = TypeFilter(filter: .images)
+        var videos = TypeFilter(filter: .video)
+        var paths: [String] = []
+        let end = min(cursor + 2048, snapshot.entryCount)
+        if cursor < end {
+            for row in cursor..<end where row >= snapshot.rootCount && !state.isDead(row) {
+                let matches = types.accepts(name: snapshot.name(row), isDirectory: snapshot.isDirectory(row))
+                    || videos.accepts(name: snapshot.name(row), isDirectory: snapshot.isDirectory(row))
+                if matches { paths.append(snapshot.path(of: row)) }
+            }
+        }
+        let overlayStart = max(0, cursor - snapshot.entryCount)
+        let overlayEnd = min(overlayStart + (2048 - max(0, end - cursor)), state.added.count)
+        if end == snapshot.entryCount || cursor >= snapshot.entryCount {
+            for (offset, element) in state.added.enumerated() where offset >= overlayStart && offset < overlayEnd {
+                let (path, entry) = element
+                var name = entry.name
+                if name.withUTF8({
+                    types.accepts(name: $0, isDirectory: entry.isDirectory)
+                        || videos.accepts(name: $0, isDirectory: entry.isDirectory)
+                }) { paths.append(path) }
+            }
+        }
+        let next = max(end, min(cursor, snapshot.entryCount)) + overlayEnd
+        return (paths, next, next >= snapshot.entryCount + state.added.count, String(policy.fingerprint))
+    }
+
+    func imageContentMatches(
+        query: String, description: SearchDescription?, filter: FileSearchFilter,
+        isCancelled: @Sendable () -> Bool
+    ) -> [FileSearchResult] {
+        guard [.all, .images, .video].contains(filter),
+            description.map({ [.any, .files, .images, .video].contains($0.kind) }) ?? true,
+            let url = imageContentURL.withLock({ $0 })
+        else { return [] }
+        let state = state.withLock { $0 }
+        guard let policy = state.policy else { return [] }
+        let folder = description?.folder.map { name in
+            let path = (policy.homeDirectory.path as NSString).appendingPathComponent(name)
+            guard let resolved = realpath(path, nil) else { return path }
+            defer { free(resolved) }
+            return String(cString: resolved)
+        }
+        let paths = ImageContentStore(url: url).search(
+            text: description?.text ?? query, scope: String(policy.fingerprint), dates: description?.dates,
+            limit: FileSearchQuery.resultLimit, accepts: { path, _ in
+                let type = FileSearchFilter.contentType(extension: (path as NSString).pathExtension, isDirectory: false)
+                let requested: FileSearchFilter = description?.kind == .images ? .images
+                    : description?.kind == .video ? .video : .all
+                guard type?.conforms(to: .image) == true || type?.conforms(to: .movie) == true,
+                    filter.accepts(contentType: type, isDirectory: false),
+                    requested.accepts(contentType: type, isDirectory: false),
+                    folder.map({ path.hasPrefix($0 + "/") }) ?? true,
+                    description?.fileExtension.map({ (path as NSString).pathExtension.lowercased() == $0 }) ?? true
+                else { return false }
+                if let added = state.added[path] { return !added.isDirectory }
+                guard let snapshot = state.snapshot, let row = snapshot.lookup(path), !state.isDead(row),
+                    !snapshot.isDirectory(row)
+                else { return false }
+                return true
+            }, isCancelled: isCancelled)
+        return paths.map { FileSearchResult(url: URL(fileURLWithPath: $0), isDirectory: false, homeDirectory: policy.homeDirectory) }
+    }
 
     var snapshot: FileIndexSnapshot? { state.withLock { $0.snapshot } }
 
@@ -149,6 +227,109 @@ final class FileIndex: Sendable {
         }
         guard !isCancelled() else { return [] }
         return Self.results(ranked, limit: limit, policy: policy)
+    }
+
+    func search(
+        description: SearchDescription, filter: FileSearchFilter,
+        isCancelled: @Sendable () -> Bool = { false }
+    ) -> [FileSearchResult] {
+        let state = state.withLock { $0 }
+        guard let snapshot = state.snapshot, let policy = state.policy else { return [] }
+        let describedFilter: FileSearchFilter
+        switch description.kind {
+        case .any, .files: describedFilter = .all
+        case .folders: describedFilter = .folders
+        case .documents, .text: describedFilter = .documents
+        case .images: describedFilter = .images
+        case .audio: describedFilter = .audio
+        case .video: describedFilter = .video
+        case .archives: describedFilter = .archives
+        case .links: return []
+        }
+        let folderPath = description.folder.map { folder in
+            let path = (policy.homeDirectory.path as NSString).appendingPathComponent(folder)
+            guard let resolved = realpath(path, nil) else { return path }
+            defer { free(resolved) }
+            return String(cString: resolved)
+        }
+        let folderRanges = folderPath.map { path -> [Range<Int>] in
+            if let index = snapshot.lookup(path) { return [snapshot.subtree(of: index)] }
+            return snapshot.roots.enumerated().compactMap { root, rootPath in
+                rootPath.hasPrefix(path + "/") ? snapshot.subtree(of: root) : nil
+            }
+        }
+        let queries = ([description.text] + description.alternativeTexts).compactMap(FileSearchQuery.prepare)
+        let suffix = description.fileExtension.map { Array(("." + $0).utf8) }
+        let base = Self.collect(snapshot, limit: FileSearchQuery.resultLimit) { range, top in
+            var types = TypeFilter(filter: filter)
+            var describedTypes = TypeFilter(filter: describedFilter)
+            for index in range {
+                if index == range.lowerBound || index & 255 == 0, isCancelled() { return }
+                guard !state.isDead(index),
+                    description.includes(timestamp: Double(snapshot.mtime[index])),
+                    folderRanges?.contains(where: { $0.contains(index) }) ?? true
+                else { continue }
+                let name = snapshot.name(index)
+                let directory = snapshot.isDirectory(index)
+                guard description.kind != .files || !directory,
+                    types.accepts(name: name, isDirectory: directory),
+                    describedTypes.accepts(name: name, isDirectory: directory)
+                else { continue }
+                if let suffix {
+                    guard name.count >= suffix.count,
+                        FileSearchQuery.find(suffix, in: UnsafeBufferPointer(rebasing: name.suffix(suffix.count))) == 0
+                    else { continue }
+                }
+                let score: Int?
+                if !queries.isEmpty {
+                    var best: Int?
+                    for query in queries {
+                        if let match = FileSearchQuery.score(
+                            query, name: name, mask: snapshot.nameMask[Int(snapshot.nameID[index])],
+                            prior: snapshot.prior[index])
+                        { best = max(best ?? match, match) }
+                    }
+                    score = best
+                } else {
+                    score = Int(snapshot.mtime[index])
+                }
+                if let score { top.insert(score, index) }
+            }
+        }
+        guard !isCancelled() else { return [] }
+        var ranked = base.map {
+            Ranked(score: $0.score, path: snapshot.path(of: $0.index), isDirectory: snapshot.isDirectory($0.index))
+        }
+        var types = TypeFilter(filter: filter)
+        var describedTypes = TypeFilter(filter: describedFilter)
+        for (path, entry) in state.added {
+            guard !isCancelled() else { return [] }
+            guard description.includes(timestamp: Double(entry.mtime)),
+                folderPath.map({ path.hasPrefix($0 + "/") }) ?? true,
+                description.kind != .files || !entry.isDirectory
+            else { continue }
+            if let ext = description.fileExtension, (entry.name as NSString).pathExtension.lowercased() != ext { continue }
+            var name = entry.name
+            let score = name.withUTF8 { bytes -> Int? in
+                guard types.accepts(name: bytes, isDirectory: entry.isDirectory),
+                    describedTypes.accepts(name: bytes, isDirectory: entry.isDirectory)
+                else { return nil }
+                guard !queries.isEmpty else { return Int(entry.mtime) }
+                var best: Int?
+                for query in queries {
+                    if let match = FileSearchQuery.score(query, name: bytes, mask: entry.mask, prior: entry.prior) {
+                        best = max(best ?? match, match)
+                    }
+                }
+                return best
+            }
+            if let score { ranked.append(Ranked(score: score, path: path, isDirectory: entry.isDirectory)) }
+            if ranked.count >= FileSearchQuery.resultLimit * 2 {
+                ranked.sort { $0.score > $1.score }
+                ranked.removeLast(ranked.count - FileSearchQuery.resultLimit)
+            }
+        }
+        return isCancelled() ? [] : Self.results(ranked, limit: FileSearchQuery.resultLimit, policy: policy)
     }
 
     func recent(

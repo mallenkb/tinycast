@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
@@ -5,6 +6,18 @@ import UniformTypeIdentifiers
 @main
 nonisolated enum ClipboardTextHelper {
     static func main() async {
+        if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "image-content" {
+            guard setiopolicy_np(
+                IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES, IOPOL_SCOPE_PROCESS,
+                IOPOL_MATERIALIZE_DATALESS_FILES_OFF
+            ) == 0 else { exit(1) }
+            do {
+                let content = try await ImageContentExtractor.extract(
+                    at: URL(fileURLWithPath: CommandLine.arguments[2]))
+                try FileHandle.standardOutput.write(contentsOf: JSONEncoder().encode(content))
+                return
+            } catch { exit(1) }
+        }
         if CommandLine.arguments.count == 5, CommandLine.arguments[1] == "thumbnail" {
             exit(writeThumbnail() ? 0 : 1)
         }

@@ -21,7 +21,12 @@ struct FileSearchSurface: View {
     @ViewBuilder private var surface: some View {
         let sniffed = self.sniffed?.url == url ? self.sniffed : nil
         switch FileSearchPreviewKind(pathExtension: url.pathExtension) ?? sniffed?.kind {
-        case .quickLook: QuickLookSurface(url: url)
+        case .quickLook:
+            if url.pathExtension.lowercased() == "svg" {
+                SVGFileSurface(url: url)
+            } else {
+                QuickLookSurface(url: url)
+            }
         case .pdf: PDFSurface(url: url)
         case .media: FileSearchMediaPlayer(url: url)
         case .text: PlainTextSurface(text: sniffed?.text ?? "")

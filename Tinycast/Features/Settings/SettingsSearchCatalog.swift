@@ -368,6 +368,9 @@ enum SettingsSearchCatalog {
             .fileSearchFileSearch, "Enable File Search",
             keywords: ["index", "disk", "show in launcher", "root search"]),
         .init(
+            .fileSearchFileSearch, "Search image and video content",
+            keywords: ["image", "photo", "appearance", "description", "OCR", "local", "idle"]),
+        .init(
             group: .fileSearchFullDiskAccess, "Full Disk Access",
             keywords: ["permission", "privacy", "grant", "fda"]),
         .init(
@@ -521,8 +524,8 @@ enum SettingsSearchCatalog {
             .clipboardHistory, "Keep history for",
             keywords: ["retention", "delete", "privacy", "expire"]),
         .init(
-            .clipboardHistory, "Search text in images and PDFs",
-            keywords: ["OCR", "recognize", "scan", "screenshot", "background", "idle"]),
+            .clipboardHistory, "Search image, video and PDF content",
+            keywords: ["OCR", "recognize", "scan", "screenshot", "appearance", "description", "background", "idle"]),
         .init(
             .clipboardHistory, "Default action",
             keywords: ["enter", "return", "paste", "copy", "primary"]),

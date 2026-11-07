@@ -9,8 +9,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.8"
-    CURRENT_PROJECT_VERSION: "9"
+    MARKETING_VERSION: "0.1.9"
+    CURRENT_PROJECT_VERSION: "10"
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Manual
@@ -53,6 +53,7 @@ targets:
         excludes:
           - Features/Clipboard/Service/ClipboardTextExtractor.swift
           - Features/Clipboard/Service/ClipboardTextHelper.swift
+          - Features/ImageSearch/Helper
           - Features/Dictation/Helper
           - Features/FileSearch/Helper
           - Resources/EmojiKeywords
@@ -115,6 +116,8 @@ targets:
     sources:
       - Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift
       - Tinycast/Features/Clipboard/Service/ClipboardTextHelper.swift
+      - Tinycast/Features/ImageSearch/Helper/ImageContentExtractor.swift
+      - Tinycast/Features/ImageSearch/Model/ImageContent.swift
     settings:
       base:
         # Pinned, or release.yml's PRODUCT_NAME renames the binary `ClipboardTextWorker` looks for.

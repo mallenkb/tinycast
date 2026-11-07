@@ -17,7 +17,22 @@ final class AppCore {
     let roomParking = RoomParkingLedger(
         fileURL: AppPaths.applicationSupport().appendingPathComponent("room-parking.json"))
     let roomSession = RoomSession()
-    let clipboardStore = ClipboardStore()
+    let clipboardStore = ClipboardStore(describeQuery: { query in
+        guard let description = SearchDescription(query, now: Date(), calendar: .current),
+            description.folder == nil, description.fileExtension == nil
+        else { return nil }
+        let kind: ClipboardItem.Kind
+        switch description.kind {
+        case .images: kind = .image
+        case .files, .video: kind = .file
+        case .text, .links: kind = .text
+        default: return nil
+        }
+        return ClipboardStore.DescriptionQuery(
+            text: description.text, kind: kind, dates: description.dates,
+            linksOnly: description.kind == .links, website: description.website, videosOnly: description.kind == .video)
+    })
+    @ObservationIgnored private(set) lazy var searchIntentCoordinator = SearchIntentCoordinator(core: self)
     let linkPreviews = LinkPreviewStore()
     @ObservationIgnored private var clipboardTextIndexer: ClipboardTextIndexer?
     let clipboardManager: ClipboardManager
@@ -67,6 +82,16 @@ final class AppCore {
     let runningApps = RunningAppsMonitor()
     let palette = PaletteState()
     let fileIndexer = FileIndexer()
+    @ObservationIgnored private(set) lazy var fileImageContentIndexer = FileImageContentIndexer(
+        index: fileIndexer.index, directory: AppPaths.applicationSupport().appending(path: "ImageContent"),
+        canRun: { [weak self] in
+            ClipboardTextIndexer.isSystemIdle && self?.clipboardTextIndexer?.isExtracting != true
+        }, onContentChanged: { [weak self] in
+            guard let self, palette.isVisible, palette.selection == 0, !palette.menuOpen,
+                palette.mode == .fileSearch || palette.mode == .launcher
+            else { return }
+            fileSearch.refresh()
+        }, onAccessLost: { [weak self] in self?.fileIndexer.refreshAccess() })
     @ObservationIgnored private(set) lazy var fileSearch = FileSearchSession(index: fileIndexer.index)
     let dictionary = DictionarySession()
     @ObservationIgnored private(set) lazy var dictionaryPronunciation = DictionaryPronunciationSession(
@@ -296,6 +321,19 @@ final class AppCore {
 
     func start(launchedByUser: Bool) {
         memoryReclaimer.start()
+        clipboardStore.setTextSearchActive(false)
+        clipboardStore.onSearchResultsChanged = { [weak self] query, previous, current in
+            self?.clipboardCoordinator.followSearchResults(query: query, previous: previous, current: current)
+        }
+        track(palette, {
+            _ = $0.query
+            _ = $0.mode
+            _ = $0.isVisible
+            _ = $0.isComposing
+        }, reproject: {
+            $0.clipboardStore.setTextSearchActive($0.palette.isVisible && $0.palette.mode == .clipboard)
+            $0.searchIntentCoordinator.update()
+        })
         track(palette, {
             _ = $0.query
             _ = $0.isVisible
@@ -580,7 +618,6 @@ final class AppCore {
     func applyClipboardTextSearch() {
         guard settings.clipboardEnabled, settings.clipboardTextSearchEnabled else {
             clipboardStore.onItemsChanged = nil
-            clipboardStore.onSearchResultsChanged = nil
             clipboardStore.setTextSearchEnabled(false)
             clipboardTextIndexer?.stop()
             return
@@ -591,16 +628,15 @@ final class AppCore {
                 tone: .danger)
             return
         }
-        clipboardStore.setTextSearchActive(palette.isVisible)
+        clipboardStore.setTextSearchActive(palette.isVisible && palette.mode == .clipboard)
         // Kept across a disable: the indexer reschedules itself once a cancelled run winds down.
         let indexer =
             clipboardTextIndexer
-            ?? ClipboardTextIndexer(store: clipboardStore, canRun: { ClipboardTextIndexer.isSystemIdle })
+            ?? ClipboardTextIndexer(store: clipboardStore, canRun: { [weak self] in
+                ClipboardTextIndexer.isSystemIdle && self?.fileImageContentIndexer.isExtracting != true
+            })
         clipboardTextIndexer = indexer
         clipboardStore.onItemsChanged = { [weak indexer] in indexer?.schedule() }
-        clipboardStore.onSearchResultsChanged = { [weak self] query, previous, current in
-            self?.clipboardCoordinator.followSearchResults(query: query, previous: previous, current: current)
-        }
         indexer.start()
     }
 
@@ -614,10 +650,12 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        searchIntentCoordinator.cancel()
         memoryReclaimer.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         clipboardTextIndexer?.stop()
+        fileImageContentIndexer.setEnabled(false)
         // HID remaps first: they outlive the process.
         hyperKey.prepareForTermination()
         dictationKey.prepareForTermination()
@@ -729,6 +767,7 @@ final class AppCore {
         track(
             { _ = $0.clipboardTextSearchEnabled }, reproject: { $0.applyClipboardTextSearch() })
         track({ _ = $0.fileSearchEnabled }, reproject: { $0.fileSearchCoordinator.applyEnabled() })
+        track({ _ = $0.fileSearchImageContentEnabled }, reproject: { $0.fileSearchCoordinator.applyImageContent() })
         track(
             { _ = $0.fileSearchShowInLauncher },
             reproject: { $0.fileSearchCoordinator.applyLauncherFiles() })

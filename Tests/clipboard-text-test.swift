@@ -248,7 +248,7 @@ struct ClipboardTextTests {
             })
         store.onItemsChanged = { [weak indexer] in indexer?.schedule() }
         indexer.start()
-        try await waitUntil { calls == 3 && store.nextExtractionRetry == nil }
+        try await waitUntil { calls == 3 && store.nextExtractionRetry() == nil }
         try await Task.sleep(for: .milliseconds(100))
         expect(calls == 3, "persistent failures stop after three attempts")
         expect(store.nextExtractionItem() == nil, "exhausted failure does not spin in queue")
@@ -261,7 +261,7 @@ struct ClipboardTextTests {
         indexer.start()
         try await waitUntil { calls == 4 && store.nextExtractionItem() == nil }
         try await waitUntil { store.search("RECOVERED", filter: .file).count == 1 }
-        expect(store.nextExtractionRetry == nil, "success removes retry state")
+        expect(store.nextExtractionRetry() == nil, "success removes retry state")
         indexer.stop()
         await indexer.waitUntilStopped()
 
@@ -283,9 +283,9 @@ struct ClipboardTextTests {
         indexer.stop()
         await indexer.waitUntilStopped()
         store.remove(item)
-        expect(store.nextExtractionRetry == nil, "deletion removes retry state")
+        expect(store.nextExtractionRetry() == nil, "deletion removes retry state")
         store.recordExtractionFailure(for: item, generation: generation, retryAt: now)
-        expect(store.nextExtractionRetry == nil, "late failure cannot recreate deleted row")
+        expect(store.nextExtractionRetry() == nil, "late failure cannot recreate deleted row")
         store.clearAll()
         store.addFiles(["/tmp/empty.pdf"], sourceBundleID: nil)
         let empty = store.items[0]

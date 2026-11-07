@@ -16,7 +16,7 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │                                                                            │
 │ SearchRelevance · LauncherMatch · EntryNaming · ScriptRomanization ·       │
 │ LauncherOrder · LauncherSuggestions · LauncherRankingStore · SearchScopes · │
-│ FileSearch{Query,Result,Scope} ·                                           │
+│ SearchDescription · FileSearch{Query,Result,Scope} ·                        │
 │ Calculator/* · EmojiCatalog · EmojiGridGeometry · SystemAction ·            │
 │ VolumeLevel ·                                                              │
 │ WindowCommand · WindowPlacementEngine · WindowActionMemory · WindowLayout/* ·      │
@@ -82,9 +82,15 @@ The boundary keeps effects out of decisions: `CalcEngine.evaluate` is handed a f
 Confirmation gates live in the coordinator, never in the runner — which is why `ShellCommandRunner`
 and `SystemActionRunner` stay harness-compilable while the "are you sure?" step still cannot be bypassed.
 
-Two things sit deliberately outside a feature folder: `Features/PaletteRowIndex.swift`, because the
-palette rather than any one feature owns the flat selection index, and `DesignSystem/` + `Platform/`,
-the shared primitives and system shims every feature draws on. Neither may depend on a feature.
+Shared pure values live directly under `Features/`: `PaletteRowIndex.swift` describes the palette's
+flat selection index, and `SearchDescription.swift` parses file and clipboard descriptions using an
+injected clock and calendar. `Features/IntelligentSearch/` owns the on-device intent resolver,
+validation policy and AppCore-owned coordinator; it passes plain constraints into existing search
+stores. `Features/ImageSearch/` owns image-description extraction and the file image content cache.
+AppCore owns its background indexer; clipboard and file indexing share the disposable OCR helper
+and coordinate admission so only one background image extraction runs at a time.
+`DesignSystem/` and `Platform/` hold shared visual components and system
+helpers. They may not depend on a feature.
 
 ## Single-owner core
 

@@ -21,13 +21,14 @@ nonisolated enum ClipboardTextWorker {
     }
 
     static func extract(
-        at url: URL, isPDF: Bool, executable: URL, timeout: Duration = .seconds(60)
+        at url: URL, isPDF: Bool, executable: URL, timeout: Duration = .seconds(60),
+        includeImageDescription: Bool = false
     ) async throws -> String {
         try Task.checkCancellation()
         let process = Process()
         let output = Pipe()
         process.executableURL = executable
-        process.arguments = [isPDF ? "pdf" : "image", url.path]
+        process.arguments = [includeImageDescription ? "image-content" : isPDF ? "pdf" : "image", url.path]
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
@@ -42,7 +43,9 @@ nonisolated enum ClipboardTextWorker {
         let result = await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 queue.async {
-                    continuation.resume(returning: collect(from: process, awaiting: exit, reading: output))
+                    continuation.resume(returning: collect(
+                        from: process, awaiting: exit, reading: output,
+                        maximumBytes: includeImageDescription ? 256_000 : maximumOutputBytes))
                 }
             }
         } onCancel: {
@@ -55,7 +58,7 @@ nonisolated enum ClipboardTextWorker {
 
     /// Blocking throughout, and the only place a helper is reaped: every exit runs the `defer`.
     private static func collect(
-        from process: Process, awaiting exit: ProcessExit, reading output: Pipe
+        from process: Process, awaiting exit: ProcessExit, reading output: Pipe, maximumBytes: Int
     ) -> Result<String, Failure> {
         let reader = output.fileHandleForReading
         defer {
@@ -67,7 +70,7 @@ nonisolated enum ClipboardTextWorker {
         do {
             while let chunk = try reader.read(upToCount: readSize), !chunk.isEmpty {
                 data.append(chunk)
-                if data.count > maximumOutputBytes { return .failure(.outputLimit) }
+                if data.count > maximumBytes { return .failure(.outputLimit) }
             }
         } catch {
             return .failure(.recognition)

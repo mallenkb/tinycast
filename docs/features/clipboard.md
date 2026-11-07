@@ -188,8 +188,9 @@ capture-time pruning from hitching.
 
 ## Image and PDF text search
 
-**Search text in images and PDFs is off by default.** The per-machine switch is excluded from
-settings backups. A cold disabled launch creates no OCR schema, indexer, search task or Vision request,
+**Search image content and PDF text is off by default.** The per-machine switch is excluded from
+settings backups. It includes saved on-device visual descriptions when supported; see
+[image-search.md](image-search.md). A cold disabled launch creates no OCR schema, indexer, search task or Vision request,
 and loads no extracted strings. Existing derived data stays on disk when disabled and is reused on
 reenabling; deletion and retention still remove it with its original item.
 
@@ -571,3 +572,20 @@ invalidates pending banner publication; reopening can fetch the selected banner 
 Image and file thumbnail caches each keep only one large preview, with a 4 MiB cost limit, and
 a separate 4 MiB row cache. Quick Look receives the pixel budget at scale 1, avoiding a second
 Retina multiplication. Row sizes and the on-screen preview size are unchanged.
+
+## Search by description
+
+Clipboard History accepts English descriptions such as `screenshots from yesterday containing
+Tinycast Dev`, `images from last week`, `files named invoice` and `text containing meeting notes`.
+The date refers to capture time. The content phrase matches copied text, file paths, or recognized
+text and saved image or video-frame descriptions when visual content search is enabled. Screenshots use the image
+category. With Apple Intelligence available, broader descriptions use the on-device intent resolver.
+Requests such as `links from flaticons` filter actual URL hostnames, not mentions of a website in
+ordinary text. Without the model, unknown grammar retains ordinary clipboard search.
+
+`AppCore` supplies the shared description parser as an injected closure. The store accepts only a
+text, optional kind, website and date query value and retains its standalone Foundation and SQLite boundary. A
+cancellable background reader applies all constraints before limiting unpinned matches to 200,
+retains matching pins in pin order, and respects the current type dropdown. Its SQLite cache is
+limited to 2 MiB. The database reader reuses stored OCR text, starts no extraction job, and
+closes the reader when finished. Leaving the screen cancels the query and releases its results.

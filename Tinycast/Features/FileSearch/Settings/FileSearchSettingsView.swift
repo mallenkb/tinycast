@@ -17,6 +17,13 @@ struct FileSearchSettingsView: View {
                 showsHeader: false)
 
             FileSearchAccessSection()
+            Section {
+                Toggle(isOn: $settings.fileSearchImageContentEnabled) {
+                    SettingsRowTitle(.fileSearchFileSearch, "Search image and video content")
+                    Text("Analyze images and sampled video frames on this Mac while idle.")
+                }
+            }
+            .settingsEnabled(settings.fileSearchEnabled)
             FileSearchIndexSection()
                 .settingsEnabled(settings.fileSearchEnabled)
             FeatureCommandsSection(owner: .fileSearch, anchor: .fileSearchCommands)

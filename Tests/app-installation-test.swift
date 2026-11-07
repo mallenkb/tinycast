@@ -89,6 +89,40 @@ struct AppInstallationTest {
         func results(_ query: String) -> AppIndex.Results {
             index.orderedResults(query: query, visibility: visibility, favorites: favorites, hotKeys: hotKeys)
         }
+        let description = "look up a word"
+        let define = CommandID.define.rawValue
+        func offersDefine() -> Bool {
+            index.searchIntentCommands(visibility: visibility).contains { $0.id == define }
+        }
+        func findsDefine(_ query: String) -> Bool { results(query).entries.contains { $0.id == define } }
+        check("literal search does not already match dictionary", !findsDefine(description))
+        check("listed dictionary is offered for interpretation", offersDefine())
+        check(
+            "apps are excluded from command candidates",
+            !index.searchIntentCommands(visibility: visibility).contains { $0.id == id })
+        index.setInterpretedCommand(define, for: description)
+        check(
+            "interpretation invalidates the cached literal results",
+            results(description).entries.first?.id == define)
+        check("another query cannot reuse the interpreted command", !findsDefine("bring up the old invoices"))
+        visibility.setItemVisible(false, forKey: define)
+        check(
+            "hidden commands are excluded from candidates and interpreted results",
+            !offersDefine() && !findsDefine(description))
+        visibility.setItemVisible(true, forKey: define)
+        index.setCommandsListed([.define], false)
+        check(
+            "unlisted commands are excluded from candidates and interpreted results",
+            !offersDefine() && !findsDefine(description))
+        index.setCommandsListed([.define], true)
+        aliases.setAlias(description, for: id)
+        check("exact user alias wins over description", results(description).entries.first?.bundleID == id)
+        aliases.setAlias("", for: id)
+        check(
+            "removing the alias reveals the interpreted command",
+            results(description).entries.first?.id == define)
+        index.setInterpretedCommand(nil, for: description)
+        check("clearing the interpretation invalidates the cached command", !findsDefine(description))
         let copies = results("Android Studio").entries.filter { $0.bundleID == id }
         check("all four installations survive indexing", copies.count == 4)
         check(
@@ -528,7 +562,7 @@ struct AppInstallationTest {
     }
 }
 
-// Empty feature catalogs keep this harness focused on the shipped launcher.
+// Feature fixtures keep this harness focused on the shipped launcher.
 enum SettingsTab: Sendable {
     case ai
     var iconAsset: String { "FeatureAI" }
@@ -541,6 +575,7 @@ enum IconCache {
 }
 enum CommandID: String, Sendable {
     case fixture
+    case define = "command:define"
     var sfSymbol: String { "" }
     var hotKeyAction: HotKeyAction? { nil }
     var isQueryDriven: Bool { false }
@@ -549,8 +584,10 @@ enum CommandID: String, Sendable {
     var owner: SettingsTab? { nil }
 }
 enum CommandCatalog {
-    static let all: [AppEntry] = []
-    static func command(for entry: AppEntry) -> CommandID? { nil }
+    static let all = [AppEntry(
+        id: CommandID.define.rawValue, name: "Define Word", url: URL(string: "tinycast://define")!,
+        bundleID: nil, kind: .command)]
+    static func command(for entry: AppEntry) -> CommandID? { CommandID(rawValue: entry.id) }
 }
 enum HotKeyAction: Hashable, Sendable {
     case togglePalette, dictation, command(CommandID)

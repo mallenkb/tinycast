@@ -11,6 +11,8 @@ final class FileSearchCoordinator {
     private let windowController: PaletteWindowController
     private var sharePicker: NSSharingServicePicker?
     private unowned let core: AppCore
+    private var imageScope: UInt64?
+    private var imageSearchEnabled = false
 
     init(
         settings: AppSettings, appIndex: AppIndex, session: FileSearchSession,
@@ -25,24 +27,46 @@ final class FileSearchCoordinator {
         self.paletteCoordinator = paletteCoordinator
         self.windowController = windowController
         self.core = core
-        indexer.onIndexChanged = { [weak session] in session?.refresh() }
-        indexer.onRecentChanged = { [weak session] in session?.refreshRecent() }
+        indexer.onIndexChanged = { [weak self] in
+            self?.applyImageContent()
+            self?.core.fileImageContentIndexer.schedule()
+        }
+        indexer.onRecentChanged = { [weak self] in
+            self?.session.refreshRecent()
+            self?.core.fileImageContentIndexer.schedule()
+        }
     }
 
     func applyEnabled() {
         appIndex.setCommandsVisible([.searchFiles], settings.fileSearchEnabled)
         indexer.setEnabled(settings.fileSearchEnabled)
+        applyImageContent()
         guard !settings.fileSearchEnabled else { return }
         session.cancel()
         if palette.mode == .fileSearch { palette.prepare(mode: .launcher) }
     }
 
     func applyPolicy() {
-        indexer.apply(
-            FileSearchPolicy(
-                scopes: settings.fileSearchScopes,
-                ignorePatterns: settings.fileSearchEffectiveIgnorePatterns,
-                homeDirectory: FileManager.default.homeDirectoryForCurrentUser))
+        let policy = FileSearchPolicy(
+            scopes: settings.fileSearchScopes,
+            ignorePatterns: settings.fileSearchEffectiveIgnorePatterns,
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser)
+        if imageScope != policy.fingerprint {
+            core.fileImageContentIndexer.setEnabled(false, purging: imageScope != nil || policy.roots.isEmpty)
+            imageScope = policy.fingerprint
+        }
+        indexer.apply(policy)
+        applyImageContent()
+    }
+
+    func applyImageContent() {
+        let permitted = settings.fileSearchEnabled && settings.fileSearchImageContentEnabled
+            && Permissions.hasFullDiskAccess()
+        let enabled = permitted && indexer.hasIndex && indexer.index.snapshot?.fingerprint == imageScope
+        core.fileImageContentIndexer.setEnabled(enabled, purging: !permitted)
+        let clearingResults = imageSearchEnabled && !enabled
+        imageSearchEnabled = enabled
+        session.refresh(clearingResults: clearingResults)
     }
 
     var showsFilesInLauncher: Bool {
@@ -62,6 +86,9 @@ final class FileSearchCoordinator {
         }
         indexer.refreshAccess()
         session.search(query)
+        if let description = core.searchIntentCoordinator.launcherFileDescription(for: query) {
+            session.applyDescription(description, for: query, filter: .all)
+        }
     }
 
     /// Checks the switch before reading the session, so with it off the launcher observes nothing.
@@ -69,6 +96,11 @@ final class FileSearchCoordinator {
         guard settings.fileSearchEnabled, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
             return []
+        }
+        if core.searchIntentCoordinator.launcherFileDescription(for: query) != nil
+            || SearchDescription(query, now: Date(), calendar: .current) != nil
+        {
+            return showsFilesInLauncher ? session.describedResults(for: query) : []
         }
         let results = showsFilesInLauncher && FileSearchQuery.answersLauncher(query) ? session.results : []
         return FileSearchQuery.launcherResults(query, favorites: favoriteFiles, indexed: results)

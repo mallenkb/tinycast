@@ -865,3 +865,28 @@ The ⌘K menu samples `isRunning` **once, when it opens** (`RootPaletteView.open
 launching or quitting elsewhere can't add or drop those rows while the menu is up — the same freeze
 the rest of the menu already has ([palette.md](palette.md)). Only `LauncherList` observes
 `RunningAppsMonitor` live, for the running dot.
+
+## Search by description
+
+`SearchIntentCoordinator`, owned by `AppCore`, interprets multiword queries after a short debounce.
+`SearchIntentResolver` uses Apple's installed Foundation Models model on device. It requires Apple
+Intelligence availability; it never requests a model download, API key or cloud inference. Ordinary
+fuzzy search runs immediately and remains available if interpretation fails or is unavailable.
+
+The model chooses from the enabled, visible command catalog or file/clipboard search. Command
+shortlisting uses Apple's English sentence embedding when the catalog exceeds 40 entries. Results
+are suggestions, never automatic actions. Exact names and user aliases take priority. Selecting a
+clipboard or file search suggestion carries the description into that screen. File results also
+appear inline when Show in launcher is enabled.
+
+Model output becomes validated search constraints, not executable code or invented search results.
+Changing the query or leaving search invalidates pending work. The coordinator retains only the
+current interpretation. A header spinner marks pending interpretation.
+
+Examples include `links from flaticons`, `find the screenshot showing memory usage`,
+`PDF invoices I downloaded last week`, `put this window on the left` and `look up a word`.
+Interpretation is probabilistic. File matching uses indexed paths and metadata; screenshot topics
+match recognized text when text recognition is enabled, not arbitrary visual contents.
+
+`description-search-test` covers file/clipboard filtering. `app-installation-test` checks interpreted
+command suggestions through the shipped index, including visibility and alias precedence.

@@ -5,12 +5,13 @@ import OSLog
 final class ClipboardTextIndexer {
     private let store: ClipboardStore
     private let canRun: () -> Bool
-    private let extract: @Sendable (ClipboardItem) async throws -> String
+    private let extract: @Sendable (ClipboardItem) async throws -> ImageContent
     private let retryDelay: TimeInterval
     private let delay: Duration
     private var task: Task<Void, Never>?
     private var isEnabled = false
     private var waitingForRetry = false
+    private(set) var isExtracting = false
     /// Recognition only starts in a lull, and a busy Mac is rechecked no sooner than the same lull.
     private static let idleWindow: TimeInterval = 2
     private static let logger = Logger(subsystem: "com.tinycast", category: "ClipboardText")
@@ -18,13 +19,17 @@ final class ClipboardTextIndexer {
     init(
         store: ClipboardStore, delay: Duration = .milliseconds(250), retryDelay: TimeInterval = 30,
         canRun: @escaping () -> Bool,
-        extract: @escaping @Sendable (ClipboardItem) async throws -> String = ClipboardTextWorker.extract
+        extract: (@Sendable (ClipboardItem) async throws -> String)? = nil
     ) {
         self.store = store
         self.delay = delay
         self.retryDelay = retryDelay
         self.canRun = canRun
-        self.extract = extract
+        if let extract {
+            self.extract = { ImageContent(text: try await extract($0), caption: "") }
+        } else {
+            self.extract = ImageContentWorker.extract
+        }
     }
 
     isolated deinit {
@@ -61,13 +66,15 @@ final class ClipboardTextIndexer {
             defer {
                 self?.task = nil
                 self?.waitingForRetry = false
+                self?.isExtracting = false
                 if Task.isCancelled, self?.isEnabled == true { self?.schedule() }
             }
             while !Task.isCancelled {
                 do { try await Task.sleep(for: delay) } catch { return }
                 guard let self, self.isEnabled else { return }
-                guard let item = self.store.nextExtractionItem() else {
-                    guard let retry = self.store.nextExtractionRetry else { return }
+                let version = ImageContentWorker.version
+                guard let item = self.store.nextExtractionItem(version: version) else {
+                    guard let retry = self.store.nextExtractionRetry(version: version) else { return }
                     self.waitingForRetry = true
                     do { try await Task.sleep(for: .seconds(max(0, retry.timeIntervalSinceNow))) } catch {
                         return
@@ -81,15 +88,22 @@ final class ClipboardTextIndexer {
                 }
                 let generation = self.store.extractionGeneration
                 let extract = self.extract
+                self.isExtracting = true
                 let worker = Task.detached(priority: .background) { try await extract(item) }
                 do {
-                    let text = try await withTaskCancellationHandler {
+                    let content = try await withTaskCancellationHandler {
                         try await worker.value
                     } onCancel: {
                         worker.cancel()
                     }
                     try Task.checkCancellation()
-                    self.store.setExtractedText(text, for: item, generation: generation)
+                    self.store.setExtractedText(
+                        content.searchText, for: item, generation: generation,
+                        version: content.version, completed: content.version >= version)
+                    if content.version < version {
+                        self.store.recordExtractionFailure(
+                            for: item, generation: generation, retryAt: Date().addingTimeInterval(self.retryDelay))
+                    }
                 } catch is CancellationError {
                     return
                 } catch {
@@ -100,6 +114,7 @@ final class ClipboardTextIndexer {
                         for: item, generation: generation,
                         retryAt: Date().addingTimeInterval(self.retryDelay))
                 }
+                self.isExtracting = false
             }
         }
     }

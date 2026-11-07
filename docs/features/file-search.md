@@ -80,6 +80,10 @@ into place.
 
 ## Searching
 
+The optional **Search image and video content** switch adds matches from saved OCR and on-device image
+descriptions after filename matches. It defaults off and covers images and sampled video frames
+in the configured file index. Processing and capability limits are in [image-search.md](image-search.md).
+
 `FileSearchQuery.prepare` folds the query (lowercase, no diacritics) into terms and ORs their character
 masks. `FileIndex.search` runs in two passes, each split across the cores with `concurrentPerform`. The
 first scores every **distinct name** once: it skips a name whose mask lacks a query character, then
@@ -325,3 +329,30 @@ keyed on the entry's `preferenceKey`. The entry behind it comes from
 `CommandCatalog.entry(for:)` rather than `AppIndex`, because the index drops the command entirely while
 the feature switch is off — exactly when the pane still has to draw the row. Hiding the command leaves
 the shortcut working, as it does for every other feature.
+
+## Search by description
+
+English descriptions combine the existing filename search with type, folder and modification-date
+filters. For example, `PDFs in Downloads from last week containing invoice` searches PDF filenames in
+Downloads modified during the previous calendar week. `files from yesterday` lists matching files
+without a filename term. The type dropdown still narrows these results.
+
+Descriptions start with files, folders, documents, PDFs, images, photos, screenshots, audio, music,
+videos or archives, optionally preceded by `find`, `show` or `search for` and qualifiers such as
+`all`, `my` or `the`. For example, `all pdf from last week` applies no filename constraint. Add `in Downloads`,
+`Documents`, `Desktop`, `Pictures`, `Movies` or `Music` for a folder under the home directory. Dates
+use `from today`, `from yesterday`, `from this week` or `from last week`, in the local calendar.
+Finish with `containing`, `with`, `named` or `called` followed by filename text. Text after that marker
+is literal. Unrecognized phrases retain ordinary filename matching.
+
+The same descriptions work in root search when Show in launcher is enabled. Only indexed matches
+appear, so favorites cannot bypass a description's constraints. All filters run before the 200-result
+limit, including live index changes. Document contents are not inspected. Opt-in visual content matching
+uses saved image and sampled video-frame descriptions.
+These structured phrases also work without Apple Intelligence. For broader descriptions,
+`SearchIntentResolver` uses Apple's installed on-device model and validates its constraints before
+passing them to the same index. There is no API key, model download or additional file index.
+The shared pure `SearchDescription` value receives its clock and calendar from the service.
+
+SVG previews use a bounded native raster fitted to the center of the preview card. They bypass
+Quick Look’s document canvas, which can pin small SVG artwork to the upper-left corner.

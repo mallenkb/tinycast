@@ -30,7 +30,7 @@ struct ClipboardSettingsView: View {
                     SettingsRowTitle(.clipboardHistory, "Keep history for")
                 }
                 Toggle(isOn: $settings.clipboardTextSearchEnabled) {
-                    SettingsRowTitle(.clipboardHistory, "Search text in images and PDFs")
+                    SettingsRowTitle(.clipboardHistory, "Search image, video and PDF content")
                     Text("Recognized on this Mac while idle.")
                 }
                 Picker(selection: $settings.clipboardDefaultAction) {

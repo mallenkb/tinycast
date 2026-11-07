@@ -120,16 +120,26 @@ run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift 
                            $L/LauncherMatch.swift $L/EntryNaming.swift $L/LauncherOrder.swift \
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift
 FS=Tinycast/Features/FileSearch
-FILE_INDEX="$FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+SEARCH_DESCRIPTION=Tinycast/Features/SearchDescription.swift
+SEARCH_INTENT=Tinycast/Features/IntelligentSearch/Model
+IMAGE_CONTENT=Tinycast/Features/ImageSearch/Model/ImageContent.swift
+IMAGE_STORE=Tinycast/Features/ImageSearch/Service/ImageContentStore.swift
+FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+run description-search-test $FS/Model/*.swift $FILE_INDEX $FS/Service/FileSearchSession.swift \
+                           $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift Tinycast/Features/Clipboard/Model/*.swift \
+                           Tinycast/Platform/Images/ImageDerivative.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
+run index search-intent-live-test $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift \
+                           Tinycast/Features/IntelligentSearch/Service/SearchIntentResolver.swift
 run file-search-test       $FS/Model/*.swift
-run file-index-test        $FS/Model/*.swift $FILE_INDEX
-run file-search-session-test $FS/Model/*.swift $FS/Service/FileSearchSession.swift $FILE_INDEX
+run file-index-test        $FS/Model/*.swift $SEARCH_DESCRIPTION $FILE_INDEX
+run file-search-session-test $FS/Model/*.swift $SEARCH_DESCRIPTION $FS/Service/FileSearchSession.swift $FILE_INDEX
 run menu-search-test       $L/SearchRelevance.swift \
                            Tinycast/Features/MenuSearch/Model/*.swift \
                            Tinycast/Features/MenuSearch/Service/*.swift
 run window-switch-test     $L/SearchRelevance.swift \
                            Tinycast/Features/WindowSwitcher/Model/*.swift
-run index file-search-performance $FS/Model/*.swift $FILE_INDEX
+run index file-search-performance $FS/Model/*.swift $SEARCH_DESCRIPTION $FILE_INDEX
 run ranking-test           $L/SearchRelevance.swift $L/ScriptRomanization.swift \
                            $L/LauncherMatch.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
@@ -141,6 +151,7 @@ run app-installation-test  $L/SearchRelevance.swift $L/ScriptRomanization.swift 
                            $L/LauncherMatch.swift $L/EntryNaming.swift $L/LauncherOrder.swift \
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift $L/SearchScopes.swift \
                            Tinycast/Features/Launcher/Service/AppIndex.swift \
+                           $SEARCH_INTENT/SearchIntent.swift $SEARCH_DESCRIPTION \
                            Tinycast/Features/Launcher/Service/AppLauncher.swift \
                            Tinycast/Features/Launcher/Service/RunningAppsMonitor.swift \
                            Tinycast/Features/Launcher/Service/FavoritesStore.swift \
@@ -184,7 +195,7 @@ run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift \
                            Tinycast/Features/Calendar/UI/EventEditorSession.swift
-run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+run clipboard-test         $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -192,7 +203,7 @@ run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swif
                            Tinycast/Features/Clipboard/Model/ColorFormat.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift
 run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinator.swift \
-                           Tinycast/Features/Clipboard/Model/*.swift \
+                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Palette/PaletteState.swift Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/HoverArming.swift \
@@ -203,7 +214,7 @@ run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinat
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run file-preview-thumbnail-test Tinycast/Platform/Images/FilePreviewThumbnail.swift \
                            Tinycast/Platform/Images/ThumbnailCache.swift
-run clipboard-thumbnail-test Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+run clipboard-thumbnail-test $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -215,15 +226,16 @@ run clipboard-thumbnail-test Tinycast/Features/Clipboard/Model/ClipboardStore.sw
                            Tinycast/Platform/Images/ThumbnailCache.swift
 # `Q` is the URL detector a drag payload builds its link with, rather than a second one.
 Q=Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
-run clipboard-search-test  Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q
-run paste-sequence-test    Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q
-run clipboard-text-test    Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q \
+run clipboard-search-test  $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q
+run paste-sequence-test    $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q
+run clipboard-text-test    $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q \
                            Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardTextIndexer.swift \
+                           Tinycast/Features/ImageSearch/Service/ImageContentWorker.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardTextWorker.swift \
                            Tinycast/Platform/ProcessExit.swift
 run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -234,7 +246,7 @@ run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Features/Clipboard/Service/Paster.swift
 run index clipboard-file-performance \
                            Tinycast/Platform/PasteboardFiles.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -323,7 +335,7 @@ run palette-navigation-test Tinycast/Palette/PaletteState.swift \
                            Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/HoverArming.swift \
                            Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -701,7 +713,7 @@ run slow -O raycast-test   Tinycast/Features/Backup/Model/RaycastImportError.swi
                            Tinycast/Features/Backup/Service/Scrypt.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
                            Tinycast/Features/Clipboard/Model/RaycastClipboardImport.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \

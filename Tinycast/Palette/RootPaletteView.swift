@@ -13,6 +13,7 @@ struct RootPaletteView: View {
     @Environment(EmojiIndex.self) private var emojiIndex
     @Environment(FrequentEmojiStore.self) private var frequentEmoji
     @Environment(FileSearchSession.self) private var fileSearch
+    @Environment(SearchIntentCoordinator.self) private var searchIntent
     @Environment(DictionarySession.self) private var dictionary
     @Environment(MenuSearchSession.self) private var menuSearch
     @Environment(WindowSwitchSession.self) private var windowSwitch
@@ -808,6 +809,12 @@ struct RootPaletteView: View {
             // One structural position: a field inside a branch loses first responder when it flips.
             headerField
                 .simultaneousGesture(TapGesture().onEnded { resetCompactSelection() })
+            if searchIntent.isResolving {
+                headerGutter(width: metrics.spacing.md)
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel(Text("Searching…"))
+            }
             if let accessory = headerAccessory {
                 accessory.view
                 // Given room last: at the default priority it would split it with the field.
