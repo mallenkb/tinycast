@@ -92,6 +92,10 @@ final class UpdateCheckStore {
         withheldRetries = 0
     }
 
+    func reofferPendingUpdate() {
+        announcedVersion = nil
+    }
+
     /// The manual path: ignores freshness, and reports whether GitHub actually answered.
     @discardableResult
     func check() async -> Bool {

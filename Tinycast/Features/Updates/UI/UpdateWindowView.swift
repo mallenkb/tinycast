@@ -73,6 +73,8 @@ struct UpdateWindowView: View {
         case .available(let release), .blocked(_, let release), .installing(let release, _):
             return String(
                 localized: "\(Bundle.main.appDisplayName) \(release.version.description) is available")
+        case .downloaded:
+            return String(localized: "Update downloaded")
         case .readyToRelaunch: return String(localized: "Update installed")
         case .failed: return String(localized: "Update failed")
         }
@@ -86,6 +88,8 @@ struct UpdateWindowView: View {
             return String(localized: "This is a local build — rebuild it to move it forward.")
         case .available, .blocked, .installing:
             return String(localized: "You have \(updates.runningVersion).")
+        case .downloaded:
+            return String(localized: "Restart Tinycast to install the update.")
         case .readyToRelaunch:
             return String(localized: "Relaunch to start using it.")
         }
@@ -98,7 +102,7 @@ struct UpdateWindowView: View {
         switch updates.stage {
         case .checking, .upToDate, .localBuild, .readyToRelaunch:
             EmptyView()
-        case .available(let release):
+        case .available(let release), .downloaded(let release):
             card { notes(release) }
         case .blocked(let blocker, _):
             Label(blocker.message, systemImage: "clock")
@@ -172,6 +176,11 @@ struct UpdateWindowView: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Update Now") { updates.install() }
                     .keyboardShortcut(.defaultAction)
+            case .downloaded:
+                Button("Later") { updates.dismissDownloaded() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Restart to Update") { updates.applyDownloadedAndRelaunch() }
+                    .keyboardShortcut(.defaultAction)
             case .blocked:
                 Button("Later") { updates.skip() }
                     .keyboardShortcut(.cancelAction)
@@ -187,6 +196,8 @@ struct UpdateWindowView: View {
                     .keyboardShortcut(.defaultAction)
             case .failed:
                 Button("Close") { updates.dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Try Again") { updates.retry() }
                     .keyboardShortcut(.defaultAction)
             }
         }

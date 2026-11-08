@@ -36,17 +36,44 @@ struct UpdateInstaller: Sendable {
     func install(
         _ release: AvailableRelease, onProgress: @escaping @Sendable (Phase) -> Void
     ) async throws {
+        try await download(release, onProgress: onProgress)
+        try await applyDownloaded(release, onProgress: onProgress)
+    }
+
+    func download(
+        _ release: AvailableRelease, onProgress: @escaping @Sendable (Phase) -> Void
+    ) async throws {
         try? FileManager.default.createDirectory(
             at: stagingDirectory, withIntermediateDirectories: true)
         let archive = stagingDirectory.appendingPathComponent("\(release.tag).zip")
-        let expanded = stagingDirectory.appendingPathComponent("expanded", isDirectory: true)
-        try? FileManager.default.removeItem(at: expanded)
-
         onProgress(.downloading(received: 0, expected: release.assetSize))
         for try await event in UpdateDownloader.download(release, to: archive) {
             guard case .progress(let received, let expected) = event else { continue }
             onProgress(.downloading(received: received, expected: expected))
         }
+        guard hasDownloaded(release) else {
+            try? FileManager.default.removeItem(at: archive)
+            throw UpdateFailure.downloadIncomplete
+        }
+    }
+
+    func hasDownloaded(_ release: AvailableRelease) -> Bool {
+        let archive = stagingDirectory.appendingPathComponent("\(release.tag).zip")
+        guard let values = try? archive.resourceValues(forKeys: [.fileSizeKey]),
+            let size = values.fileSize
+        else { return false }
+        return Int64(size) == release.assetSize
+    }
+
+    func applyDownloaded(
+        _ release: AvailableRelease, onProgress: @escaping @Sendable (Phase) -> Void
+    ) async throws {
+        let archive = stagingDirectory.appendingPathComponent("\(release.tag).zip")
+        guard hasDownloaded(release) else {
+            throw UpdateFailure.downloadIncomplete
+        }
+        let expanded = stagingDirectory.appendingPathComponent("expanded", isDirectory: true)
+        try? FileManager.default.removeItem(at: expanded)
 
         onProgress(.extracting)
         let staged = try await expand(archive, into: expanded)

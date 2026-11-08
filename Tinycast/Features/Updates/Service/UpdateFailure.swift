@@ -2,6 +2,7 @@ import Foundation
 
 enum UpdateFailure: LocalizedError, Equatable {
     case downloadFailed(String)
+    case downloadIncomplete
     case extractFailed(String)
     case noAppInArchive
     case quarantined
@@ -14,6 +15,8 @@ enum UpdateFailure: LocalizedError, Equatable {
         switch self {
         case .downloadFailed(let detail):
             return String(localized: "The download did not finish. \(detail)")
+        case .downloadIncomplete:
+            return String(localized: "The downloaded update is incomplete.")
         case .extractFailed(let detail):
             return String(localized: "The downloaded archive could not be expanded. \(detail)")
         case .noAppInArchive:

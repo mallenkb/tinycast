@@ -12,6 +12,7 @@ final class UpdateCoordinator {
         /// A local build has no release stream to compare against, and says so rather than lying.
         case localBuild
         case available(AvailableRelease)
+        case downloaded(AvailableRelease)
         case blocked(UpdateReadiness.Blocker, AvailableRelease)
         case installing(AvailableRelease, UpdateInstaller.Phase)
         case readyToRelaunch
@@ -27,6 +28,9 @@ final class UpdateCoordinator {
         title: String(localized: "Software Update"), contentSize: UpdateWindowView.initialSize,
         activation: core.activationPolicy)
     @ObservationIgnored private var installTask: Task<Void, Never>?
+    @ObservationIgnored private var automaticDownloadTask: Task<Void, Never>?
+    @ObservationIgnored private var deferredPresentationTask: Task<Void, Never>?
+    @ObservationIgnored private var automaticDownloadIdentity = UUID()
 
     init(store: UpdateCheckStore, core: AppCore) {
         self.store = store
@@ -46,6 +50,10 @@ final class UpdateCoordinator {
             store.start()
         } else {
             store.stop()
+            cancelAutomaticDownload()
+            store.reofferPendingUpdate()
+            deferredPresentationTask?.cancel()
+            deferredPresentationTask = nil
         }
     }
 
@@ -78,7 +86,7 @@ final class UpdateCoordinator {
             let answered = await store.check()
             guard case .checking = stage else { return }
             if let release = store.update {
-                stage = .available(release)
+                stage = installer.hasDownloaded(release) ? .downloaded(release) : .available(release)
             } else if answered {
                 stage = .upToDate
             } else {
@@ -91,14 +99,112 @@ final class UpdateCoordinator {
     func presentIfAvailable(_ release: AvailableRelease) -> Bool {
         guard core.settings.automaticallyCheckForUpdates else { return false }
         switch stage {
-        // Already in hand: re-offering would throw away a download or the relaunch it earned.
         case .installing, .readyToRelaunch:
             return true
-        case .checking, .upToDate, .localBuild, .available, .blocked, .failed:
-            guard UpdateReadiness.evaluate(core.currentActivity) == nil else { return false }
-            stage = .available(release)
+        case .available(let current), .blocked(_, let current):
+            guard current.version == release.version else { break }
             present()
             return true
+        case .downloaded(let current):
+            guard current.version == release.version else { break }
+            guard UpdateReadiness.evaluate(core.currentActivity) == nil else { return false }
+            present()
+            return true
+        case .checking, .upToDate, .localBuild, .failed:
+            break
+        }
+        guard UpdateReadiness.evaluate(core.currentActivity) == nil else { return false }
+        if installer.hasDownloaded(release) {
+            stage = .downloaded(release)
+            present()
+        } else {
+            downloadAutomatically(release)
+        }
+        return true
+    }
+
+    private func downloadAutomatically(_ release: AvailableRelease) {
+        let identity = UUID()
+        automaticDownloadIdentity = identity
+        stage = .installing(release, .downloading(received: 0, expected: release.assetSize))
+        let installer = self.installer
+        let onProgress: @Sendable (UpdateInstaller.Phase) -> Void = { [weak self] phase in
+            Task { @MainActor in self?.report(phase, for: release) }
+        }
+        automaticDownloadTask = Task { [weak self] in
+            do {
+                try await installer.download(release, onProgress: onProgress)
+                guard let self, !Task.isCancelled,
+                    self.automaticDownloadIdentity == identity
+                else { return }
+                self.automaticDownloadTask = nil
+                self.stage = .downloaded(release)
+                self.presentDownloadedWhenReady()
+            } catch is CancellationError {
+                return
+            } catch let failure as UpdateFailure {
+                guard let self, !Task.isCancelled,
+                    self.automaticDownloadIdentity == identity
+                else { return }
+                self.automaticDownloadTask = nil
+                self.stage = .failed(failure)
+                self.presentFailureWhenReady()
+            } catch {
+                guard let self, !Task.isCancelled,
+                    self.automaticDownloadIdentity == identity
+                else { return }
+                self.automaticDownloadTask = nil
+                self.stage = .failed(.downloadFailed(error.localizedDescription))
+                self.presentFailureWhenReady()
+            }
+        }
+    }
+
+    private func cancelAutomaticDownload() {
+        guard automaticDownloadTask != nil else { return }
+        automaticDownloadIdentity = UUID()
+        automaticDownloadTask?.cancel()
+        automaticDownloadTask = nil
+        if case .installing(let release, .downloading) = stage {
+            stage = .available(release)
+        }
+        store.reofferPendingUpdate()
+    }
+
+    private func presentDownloadedWhenReady() {
+        guard case .downloaded = stage else { return }
+        guard UpdateReadiness.evaluate(core.currentActivity) == nil else {
+            deferPresentation { [weak self] in self?.presentDownloadedWhenReady() }
+            return
+        }
+        deferredPresentationTask?.cancel()
+        deferredPresentationTask = nil
+        present()
+    }
+
+    private func presentFailureWhenReady() {
+        guard case .failed = stage else { return }
+        guard UpdateReadiness.evaluate(core.currentActivity) == nil else {
+            deferPresentation { [weak self] in self?.presentFailureWhenReady() }
+            return
+        }
+        deferredPresentationTask?.cancel()
+        deferredPresentationTask = nil
+        present()
+    }
+
+    private func deferPresentation(_ presentWhenReady: @escaping @MainActor () -> Void) {
+        guard deferredPresentationTask == nil else { return }
+        deferredPresentationTask = Task { @MainActor [weak self] in
+            for _ in 0..<15 {
+                try? await Task.sleep(for: .seconds(120))
+                guard let self, !Task.isCancelled else { return }
+                guard UpdateReadiness.evaluate(self.core.currentActivity) == nil else { continue }
+                self.deferredPresentationTask = nil
+                presentWhenReady()
+                return
+            }
+            self?.deferredPresentationTask = nil
         }
     }
 
@@ -132,6 +238,41 @@ final class UpdateCoordinator {
         }
     }
 
+    func applyDownloadedAndRelaunch() {
+        guard case .downloaded(let release) = stage else { return }
+        if let blocker = UpdateReadiness.evaluate(core.currentActivity) {
+            stage = .blocked(blocker, release)
+            return
+        }
+        deferredPresentationTask?.cancel()
+        deferredPresentationTask = nil
+        stage = .installing(release, .extracting)
+        let installer = self.installer
+        let onProgress: @Sendable (UpdateInstaller.Phase) -> Void = { [weak self] phase in
+            Task { @MainActor in self?.report(phase, for: release) }
+        }
+        installTask = Task { [weak self] in
+            do {
+                try await installer.applyDownloaded(release, onProgress: onProgress)
+                guard let self else { return }
+                self.store.recordInstall(of: release.version)
+                self.core.relaunch()
+            } catch is CancellationError {
+                self?.stage = .downloaded(release)
+            } catch let failure as UpdateFailure {
+                self?.stage = .failed(failure)
+            } catch {
+                self?.stage = .failed(.downloadFailed(error.localizedDescription))
+            }
+        }
+    }
+
+    func dismissDownloaded() {
+        deferredPresentationTask?.cancel()
+        deferredPresentationTask = nil
+        window.close()
+    }
+
     /// Dismissing a version is what stops it asking again; a later one still will.
     func skip() {
         if let release = pendingRelease { store.skip(release) }
@@ -141,10 +282,18 @@ final class UpdateCoordinator {
     func cancelInstall() {
         installTask?.cancel()
         installTask = nil
+        cancelAutomaticDownload()
     }
 
     func retry() {
-        guard let release = pendingRelease else { return }
+        guard let release = pendingRelease else {
+            checkForUpdates()
+            return
+        }
+        if installer.hasDownloaded(release), case .blocked = stage {
+            stage = .downloaded(release)
+            return
+        }
         stage = .available(release)
     }
 
@@ -165,7 +314,8 @@ final class UpdateCoordinator {
 
     private var pendingRelease: AvailableRelease? {
         switch stage {
-        case .available(let release), .blocked(_, let release), .installing(let release, _):
+        case .available(let release), .downloaded(let release), .blocked(_, let release),
+            .installing(let release, _):
             return release
         case .checking, .upToDate, .localBuild, .readyToRelaunch, .failed:
             return store.update

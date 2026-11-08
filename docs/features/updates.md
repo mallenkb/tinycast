@@ -1,8 +1,8 @@
 # Updates
 
-By default, Tinycast checks GitHub Releases once a day and offers the newest release for its own
-channel in a native window with its release notes, installs it and relaunches. There is no Sparkle and
-no appcast: the app reads `mallenkb/tinycast` releases directly.
+By default, Tinycast checks GitHub Releases once a day, downloads the newest release for its own
+channel in the background, then asks before installing it and restarting. There is no Sparkle and no
+appcast: the app reads `mallenkb/tinycast` releases directly.
 
 ## Invariants
 
@@ -40,19 +40,17 @@ no appcast: the app reads `mallenkb/tinycast` releases directly.
   callback, so AppKit's nested termination loop can run the main-actor cleanup. The delegate returns
   `terminateLater` and replies when cleanup finishes, preserving system logout and shutdown requests.
   A reopen is scheduled once, only when termination is committed, and waits for the old process to exit.
-- **An automatic prompt defers to whatever the user is doing, and is never spent unshown.**
-  `UpdateReadiness` withholds it while a snippet is expanding, an extension command is running, an
-  uninstall is trashing, a shortcut is being recorded, a prompt or dialog is up, or the palette is
-  open. A withheld prompt is still owed: `presentIfAvailable` answers `false`, the version is left
-  unannounced, and the pump re-offers it every two minutes for half an hour before falling back to
-  the daily rhythm. That is what a hand-launched copy depends on — its one announcement falls 30 s
-  in, straight into the palette the user opened the app to use, where a launch-at-login copy would
-  have found the desktop idle. The window itself still appears at most once per version per launch:
-  `announcedVersion` is set the moment an offer lands, so re-offering can never turn into nagging.
-  Readiness is asked again at the click.
+- **Automatic downloads and prompts defer to whatever the user is doing.** `UpdateReadiness` withholds
+  a download while a snippet is expanding, an extension command is running, an uninstall is trashing,
+  a shortcut is being recorded, a prompt or dialog is up, or the palette is open. A withheld update is
+  still owed: `presentIfAvailable` answers `false`, the version is left unannounced, and the pump
+  re-offers it every two minutes for half an hour before falling back to the daily rhythm. Once a
+  download starts, the completed-update window waits until the app is idle. The window appears at
+  most once per version per launch. Readiness is checked again before install.
 - **Automatic checking is optional; manual checking stays available.** Settings → General →
   Automatically check for updates defaults on. Turning it off stops the background task and any
-  in-flight automatic request, so neither a response nor a cached release can raise a new prompt.
+  in-flight automatic request or download, so neither a response nor a cached release can raise a
+  new prompt.
   The preference travels through settings backups and `general.automaticallyCheckForUpdates` in
   settings.json; release metadata and skipped versions stay in the feature's own cache file.
   About has a separate Updates section above Links, with a primary Check for Updates button.
@@ -113,24 +111,28 @@ Disabling automatic checks takes effect immediately and survives relaunch. Turni
 resumes the same schedule, with the startup delay and cached check time respected. Check for Updates
 always works independently of this preference, including while automatic checking is disabled.
 
-**Later means skip.** It records the version, so that release stops asking; a newer one still asks.
-Check for Updates ignores the record and always offers whatever is newer than what is running.
+**Later on an available release means skip.** It records the version, so that release stops asking; a
+newer one still asks. Later on a downloaded update defers the restart prompt until the next launch.
+Check for Updates ignores the skipped-version record and offers whatever is newer than what is running.
 
 ## Installing
 
-One route, whatever the install came from:
+The manual route downloads and installs after Update Now. The automatic route downloads in the
+background and waits for Restart to Update before installing:
 
 1. Stream the zip into `~/Library/Caches/<bundle-id>/Updates/`, with real byte progress and a Cancel
-   that actually aborts the transfer.
-2. `ditto -x -k` it into a staging folder, and take whatever `.app` lands there — the bundle is named
-   for its channel, so it is `Tinycast Beta.app` on beta.
-3. Check quarantine natively; clear it if somehow present, and refuse the update if it survives.
-4. Verify the bundle id, the version, and that the code signature is valid and proves the bundle is
+   that actually aborts the transfer. Automatic downloads start only when the app is idle.
+2. For automatic updates, show the release notes with Later and Restart to Update actions. Later keeps
+   the archive staged without installing it; the next launch can offer it again.
+3. After the user confirms, `ditto -x -k` the archive into a staging folder, and take whatever `.app`
+   lands there — the bundle is named for its channel, so it is `Tinycast Beta.app` on beta.
+4. Check quarantine natively; clear it if somehow present, and refuse the update if it survives.
+5. Verify the bundle id, the version, and that the code signature is valid and proves the bundle is
    ours — by the pinned Developer ID requirement, or by the running app's own leaf certificate.
-5. `FileManager.replaceItemAt`. The staging folder is on the same volume as `/Applications`, which is
+6. `FileManager.replaceItemAt`. The staging folder is on the same volume as `/Applications`, which is
    what lets this be atomic. A non-writable `/Applications` is reported, not worked around; there is
    no privileged helper.
-6. Offer Relaunch, which spawns a detached waiter that reopens the app once this process exits —
+7. Relaunch, which spawns a detached waiter that reopens the app once this process exits —
    `open` on a bundle id that is still running would only re-activate the instance on its way out.
 
 A successful install records its version as `installedVersion`. The first launch running that
