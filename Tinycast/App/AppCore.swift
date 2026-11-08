@@ -95,6 +95,27 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var fileSearch = FileSearchSession(index: fileIndexer.index)
     let dictionary = DictionarySession()
     @ObservationIgnored private(set) lazy var dictionaryPronunciation = DictionaryPronunciationSession(
+        loadPreferences: { [settings] in
+            let voice = settings.dictionaryPronunciationVoice
+            let accent = settings.dictionaryPronunciationAccent
+            return DictionaryPronunciationSession.Preferences(
+                source: DictionaryPronunciationSession.Source(rawValue: settings.dictionaryPronunciationSource)
+                    ?? .nativeSpeech,
+                slow: settings.dictionaryPronunciationSlow,
+                voiceID: voice.isEmpty ? nil : voice,
+                recordingAccent: accent.isEmpty ? nil : accent)
+        },
+        savePreferences: { [settings] preferences in
+            let source = preferences.source.rawValue
+            let voice = preferences.voiceID ?? ""
+            let accent = preferences.recordingAccent ?? ""
+            if settings.dictionaryPronunciationSource != source { settings.dictionaryPronunciationSource = source }
+            if settings.dictionaryPronunciationSlow != preferences.slow {
+                settings.dictionaryPronunciationSlow = preferences.slow
+            }
+            if settings.dictionaryPronunciationVoice != voice { settings.dictionaryPronunciationVoice = voice }
+            if settings.dictionaryPronunciationAccent != accent { settings.dictionaryPronunciationAccent = accent }
+        },
         onResourcesReleased: { [weak self] in self?.memoryReclaimer.schedule() })
     let menuSearch = MenuSearchSession()
     let windowSwitch = WindowSwitchSession()

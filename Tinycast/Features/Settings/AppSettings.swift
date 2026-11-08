@@ -273,6 +273,22 @@ final class AppSettings {
         didSet { defaults.set(dictionaryPreferredSource, forKey: Key.dictionaryPreferredSource.rawValue) }
     }
 
+    var dictionaryPronunciationSource: String {
+        didSet { defaults.set(dictionaryPronunciationSource, forKey: Key.dictionaryPronunciationSource.rawValue) }
+    }
+
+    var dictionaryPronunciationSlow: Bool {
+        didSet { defaults.set(dictionaryPronunciationSlow, forKey: Key.dictionaryPronunciationSlow.rawValue) }
+    }
+
+    var dictionaryPronunciationVoice: String {
+        didSet { defaults.set(dictionaryPronunciationVoice, forKey: Key.dictionaryPronunciationVoice.rawValue) }
+    }
+
+    var dictionaryPronunciationAccent: String {
+        didSet { defaults.set(dictionaryPronunciationAccent, forKey: Key.dictionaryPronunciationAccent.rawValue) }
+    }
+
     var autoSwitchInputSourceID: String? {
         didSet {
             guard let autoSwitchInputSourceID else {
@@ -787,6 +803,11 @@ final class AppSettings {
         dictionaryRecentSources =
             Array((defaults.stringArray(forKey: Key.dictionaryRecentSources.rawValue) ?? []).prefix(12))
         dictionaryPreferredSource = defaults.string(forKey: Key.dictionaryPreferredSource.rawValue) ?? ""
+        dictionaryPronunciationSource =
+            defaults.string(forKey: Key.dictionaryPronunciationSource.rawValue) ?? "nativeSpeech"
+        dictionaryPronunciationSlow = defaults.bool(forKey: Key.dictionaryPronunciationSlow.rawValue)
+        dictionaryPronunciationVoice = defaults.string(forKey: Key.dictionaryPronunciationVoice.rawValue) ?? ""
+        dictionaryPronunciationAccent = defaults.string(forKey: Key.dictionaryPronunciationAccent.rawValue) ?? ""
         autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
         paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
         animationsEnabled =

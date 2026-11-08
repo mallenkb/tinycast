@@ -4,23 +4,38 @@ import Observation
 @MainActor
 @Observable
 final class DictionaryPronunciationSession {
-    enum Source: CaseIterable, Hashable, Sendable {
+    enum Source: String, CaseIterable, Hashable, Sendable {
         case nativeSpeech
         case recordedAudio
     }
 
+    struct Preferences: Equatable {
+        var source = Source.nativeSpeech
+        var slow = false
+        var voiceID: String?
+        var recordingAccent: String?
+    }
+
     let speech: DictionarySpeechSession
     let recording: DictionaryRecordingSession
-    var source = Source.nativeSpeech {
-        didSet {
-            guard source != oldValue else { return }
-            stopPlayback()
+    private var preferences = Preferences()
+    private let loadPreferences: (() -> Preferences)?
+    private let savePreferences: (Preferences) -> Void
+
+    var source: Source {
+        get { preferences.source }
+        set {
+            var updated = preferences
+            updated.source = newValue
+            applyPreferences(updated, saving: true)
         }
     }
-    var slow = false {
-        didSet {
-            speech.slow = slow
-            recording.slow = slow
+    var slow: Bool {
+        get { preferences.slow }
+        set {
+            var updated = preferences
+            updated.slow = newValue
+            applyPreferences(updated, saving: true)
         }
     }
     private(set) var term = ""
@@ -88,20 +103,31 @@ final class DictionaryPronunciationSession {
         }
     }
 
-    convenience init(onResourcesReleased: @escaping @MainActor () -> Void = {}) {
+    convenience init(
+        loadPreferences: (() -> Preferences)? = nil, savePreferences: @escaping (Preferences) -> Void = { _ in },
+        onResourcesReleased: @escaping @MainActor () -> Void = {}
+    ) {
         self.init(
             speech: DictionarySpeechSession(onResourcesReleased: onResourcesReleased),
-            recording: DictionaryRecordingSession(onResourcesReleased: onResourcesReleased))
+            recording: DictionaryRecordingSession(onResourcesReleased: onResourcesReleased),
+            loadPreferences: loadPreferences, savePreferences: savePreferences)
     }
 
-    init(speech: DictionarySpeechSession, recording: DictionaryRecordingSession) {
+    init(
+        speech: DictionarySpeechSession, recording: DictionaryRecordingSession,
+        loadPreferences: (() -> Preferences)? = nil, savePreferences: @escaping (Preferences) -> Void = { _ in }
+    ) {
         self.speech = speech
         self.recording = recording
+        self.loadPreferences = loadPreferences
+        self.savePreferences = savePreferences
         speech.slow = slow
         recording.slow = slow
+        if let loadPreferences { applyPreferences(loadPreferences()) }
     }
 
     func prepare(term query: String, writtenPronunciation: String? = nil) {
+        if let loadPreferences { applyPreferences(loadPreferences()) }
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if query != term || writtenPronunciation != nil {
             self.writtenPronunciation = query.isEmpty ? nil : writtenPronunciation
@@ -121,10 +147,30 @@ final class DictionaryPronunciationSession {
 
     func selectAccent(id: String) {
         stopInactivePlayback()
+        var updated = preferences
         switch source {
-        case .nativeSpeech: speech.selectVoice(id: id)
-        case .recordedAudio: recording.selectRecording(id: id)
+        case .nativeSpeech:
+            guard speech.voices.contains(where: { $0.id == id }) else { return }
+            updated.voiceID = id
+        case .recordedAudio:
+            guard let choice = recording.recordings.first(where: { $0.id == id }) else { return }
+            updated.recordingAccent = DictionaryPronunciationDisplay.accentKey(choice.title)
         }
+        applyPreferences(updated, saving: true)
+    }
+
+    private func applyPreferences(_ updated: Preferences, saving: Bool = false) {
+        let previous = preferences
+        guard updated != previous else { return }
+        if updated.source != previous.source { stopPlayback() }
+        preferences = updated
+        if updated.voiceID != previous.voiceID { speech.preferVoice(id: updated.voiceID) }
+        if updated.recordingAccent != previous.recordingAccent { recording.preferAccent(updated.recordingAccent) }
+        if updated.slow != previous.slow {
+            speech.slow = updated.slow
+            recording.slow = updated.slow
+        }
+        if saving { savePreferences(updated) }
     }
 
     func retry() {

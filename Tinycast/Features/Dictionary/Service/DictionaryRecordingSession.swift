@@ -34,6 +34,7 @@ final class DictionaryRecordingSession {
     private(set) var isPlaying = false
     private(set) var error: String?
     private var selectedID: String?
+    private var preferredAccent: String?
     var slow = false {
         didSet { player?.rate = slow ? 0.75 : 1 }
     }
@@ -99,7 +100,7 @@ final class DictionaryRecordingSession {
                     self.term == query
                 else { return }
                 self.recordings = result.recordings
-                self.selectedID = result.recordings.first?.id
+                self.selectedID = self.preferredRecordingID
                 self.loading = false
                 self.lookupTask = nil
             } catch {
@@ -117,6 +118,16 @@ final class DictionaryRecordingSession {
         stopPlayback()
         selectedID = id
         error = nil
+    }
+
+    func preferAccent(_ accent: String?) {
+        preferredAccent = accent
+        if let id = preferredRecordingID { selectRecording(id: id) }
+    }
+
+    private var preferredRecordingID: String? {
+        recordings.first { DictionaryPronunciationDisplay.accentKey($0.title) == preferredAccent }?.id
+            ?? recordings.first?.id
     }
 
     func togglePlayback() {

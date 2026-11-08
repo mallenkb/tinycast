@@ -39,6 +39,10 @@ struct SettingsBackup: Codable {
         var language: String?
         var dictionaryRecentSources: [String]?
         var dictionaryPreferredSource: String?
+        var dictionaryPronunciationSource: String?
+        var dictionaryPronunciationSlow: Bool?
+        var dictionaryPronunciationVoice: String?
+        var dictionaryPronunciationAccent: String?
         var calcNumberStyle: String?
         var typography: String?
         var interfaceSize: String?
@@ -160,6 +164,10 @@ extension SettingsBackup {
             language: s.language.rawValue,
             dictionaryRecentSources: s.dictionaryRecentSources,
             dictionaryPreferredSource: s.dictionaryPreferredSource,
+            dictionaryPronunciationSource: s.dictionaryPronunciationSource,
+            dictionaryPronunciationSlow: s.dictionaryPronunciationSlow,
+            dictionaryPronunciationVoice: s.dictionaryPronunciationVoice,
+            dictionaryPronunciationAccent: s.dictionaryPronunciationAccent,
             calcNumberStyle: s.calcNumberStyle.rawValue,
             typography: s.typography.rawValue,
             interfaceSize: s.interfaceSize.rawValue,
@@ -403,6 +411,22 @@ extension SettingsBackup {
         }
         if let source = s.dictionaryPreferredSource {
             settings.dictionaryPreferredSource = source
+            count += 1
+        }
+        if let source = s.dictionaryPronunciationSource, ["nativeSpeech", "recordedAudio"].contains(source) {
+            settings.dictionaryPronunciationSource = source
+            count += 1
+        }
+        if let slow = s.dictionaryPronunciationSlow {
+            settings.dictionaryPronunciationSlow = slow
+            count += 1
+        }
+        if let voice = s.dictionaryPronunciationVoice {
+            settings.dictionaryPronunciationVoice = voice
+            count += 1
+        }
+        if let accent = s.dictionaryPronunciationAccent {
+            settings.dictionaryPronunciationAccent = accent
             count += 1
         }
         if let raw = s.calcNumberStyle, let style = CalcNumberStyle(rawValue: raw) {

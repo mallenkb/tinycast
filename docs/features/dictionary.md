@@ -106,8 +106,10 @@ There is no persistent audio cache.
 Changing the source stops the previous audio path and cancels pending recorded playback. Changing
 words or closing the screen stops both paths. Native engines, utterances and recorded players are
 released after completion/cancellation; cleanup schedules the app's existing idle memory reclamation.
-Slow changes recorded playback speed directly and restarts native speech at the new rate. Source,
-speed and native voice choices survive word changes for the current app session.
+Slow changes recorded playback speed directly and restarts native speech at the new rate. Tinycast
+restores the last audio source, Slow setting, native voice and recorded accent across word changes
+and launches. If the preferred accent is unavailable, the card uses the first available choice and
+keeps the preference for later words.
 
 The final combined-source Release probe on 5 November 2026 completed recorded playback and native
 US/UK playback, with all player, synthesizer, utterance and Settings-host weak references released.

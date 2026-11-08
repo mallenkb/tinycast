@@ -38,6 +38,7 @@ final class DictionarySpeechSession {
     private(set) var isPlaying = false
     private(set) var error: String?
     private var selectedVoiceID: String?
+    private var preferredVoiceID: String?
     var slow = false {
         didSet {
             guard slow != oldValue, isPlaying else { return }
@@ -114,10 +115,22 @@ final class DictionarySpeechSession {
     }
 
     func selectVoice(id: String) {
-        guard selectedVoiceID != id, voices.contains(where: { $0.id == id }) else { return }
-        stopSpeech()
-        selectedVoiceID = id
-        error = nil
+        guard voices.contains(where: { $0.id == id }) else { return }
+        preferVoice(id: id)
+    }
+
+    func preferVoice(id: String?) {
+        guard preferredVoiceID != id else { return }
+        preferredVoiceID = id
+        if let id, voices.contains(where: { $0.id == id }) {
+            guard selectedVoiceID != id else { return }
+            stopSpeech()
+            selectedVoiceID = id
+            error = nil
+        } else {
+            discovered = false
+            if !term.isEmpty { refreshVoices() }
+        }
     }
 
     func togglePlayback() {
@@ -148,20 +161,20 @@ final class DictionarySpeechSession {
             let available = await discover()
             guard !Task.isCancelled, let self, self.discoveryIdentity == identity else { return }
             var preferred = DictionarySpeechVoice.preferred(from: available)
-            if let selected = available.first(where: { $0.id == self.selectedVoiceID && $0.quality == 1 }),
+            let retainedID = self.preferredVoiceID ?? self.selectedVoiceID
+            if let selected = available.first(where: { $0.id == retainedID && $0.quality == 1 }),
                 let index = preferred.firstIndex(where: {
                     $0.language.caseInsensitiveCompare(selected.language) == .orderedSame
                 })
             {
                 preferred[index] = selected
             }
-            if self.isPlaying, !preferred.contains(where: { $0.id == self.selectedVoiceID }) {
+            let selectedID = preferred.first { $0.id == retainedID }?.id ?? preferred.first?.id
+            if self.isPlaying, self.selectedVoiceID != selectedID {
                 self.stopSpeech()
             }
             self.voices = preferred
-            if !self.voices.contains(where: { $0.id == self.selectedVoiceID }) {
-                self.selectedVoiceID = self.voices.first?.id
-            }
+            self.selectedVoiceID = selectedID
             self.discovered = true
             self.loading = false
             self.discoveryTask = nil

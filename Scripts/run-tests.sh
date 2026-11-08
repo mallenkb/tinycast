@@ -393,6 +393,8 @@ run dictionary-pronunciation-display-test Tinycast/Features/Dictionary/Model/Dic
 run dictionary-pronunciation-provider-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
                            Tinycast/Features/Dictionary/Service/DictionaryPronunciationProvider.swift
 run dictionary-recording-session-test Tinycast/Features/Dictionary/Model/DictionaryPronunciation.swift \
+                           Tinycast/Features/Dictionary/Model/PronunciationRespelling.swift \
+                           Tinycast/Features/Dictionary/Model/DictionaryPronunciationDisplay.swift \
                            Tinycast/Features/Dictionary/Service/DictionaryPronunciationProvider.swift \
                            Tinycast/Features/Dictionary/Service/DictionaryRecordingSession.swift \
                            Tinycast/Platform/LocalizedResource.swift

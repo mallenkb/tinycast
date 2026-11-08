@@ -57,6 +57,13 @@ enum SettingsFileSchema {
         case .dictionaryRecentSources:
             return bind(settings, \.dictionaryRecentSources) { $0.count <= 12 ? $0 : nil }
         case .dictionaryPreferredSource: return bind(settings, \.dictionaryPreferredSource)
+        case .dictionaryPronunciationSource:
+            return bind(settings, \.dictionaryPronunciationSource) {
+                ["nativeSpeech", "recordedAudio"].contains($0) ? $0 : nil
+            }
+        case .dictionaryPronunciationSlow: return bind(settings, \.dictionaryPronunciationSlow)
+        case .dictionaryPronunciationVoice: return bind(settings, \.dictionaryPronunciationVoice)
+        case .dictionaryPronunciationAccent: return bind(settings, \.dictionaryPronunciationAccent)
         case .calcNumberStyle: return bind(settings, \.calcNumberStyle)
         case .launcherShowsSuggestions: return bind(settings, \.launcherShowsSuggestions)
         case .rootSearchSensitivity: return bind(settings, \.rootSearchSensitivity)
