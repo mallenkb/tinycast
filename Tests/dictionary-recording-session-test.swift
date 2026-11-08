@@ -328,11 +328,18 @@ struct DictionaryRecordingSessionTests {
         let players = Players()
         var lookups = 0
         var audioRequests = 0
+        var lastLookup: ContinuousClock.Instant?
+        var retryAfterIssued: ContinuousClock.Instant?
         let session = DictionaryRecordingSession(
-            lookup: { _ in lookups += 1; return result("US") },
+            lookup: { _ in
+                lookups += 1
+                lastLookup = ContinuousClock().now
+                return result("US")
+            },
             audioData: { _ in
                 audioRequests += 1
                 if audioRequests == 1 {
+                    retryAfterIssued = ContinuousClock().now
                     throw DictionaryPronunciationProvider.RetryAfterError(delay: 0.25)
                 }
                 return wave
@@ -346,10 +353,10 @@ struct DictionaryRecordingSessionTests {
         expect(audioRequests == 1 && session.loadingAudio, "audio retry honors the provider cooldown")
         session.reset()
         session.prepare(term: "second")
-        try? await Task.sleep(for: .milliseconds(20))
-        expect(lookups == 1 && session.loading,
-               "reset preserves the audio cooldown and shares it with metadata lookup")
         await waitUntil { !session.loading }
+        let lookupDelay = retryAfterIssued.flatMap { start in lastLookup.map { start.duration(to: $0) } }
+        expect(lookupDelay.map { $0 >= .milliseconds(250) } == true,
+               "reset preserves the audio cooldown and shares it with metadata lookup")
         expect(lookups == 2, "metadata resumes after the shared cooldown expires")
         session.togglePlayback()
         await waitUntil { session.isPlaying }
