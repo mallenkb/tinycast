@@ -152,15 +152,30 @@ struct OnboardingView: View {
                 OnboardingDivider()
                 OnboardingRow(
                     title: String(localized: "Launch at login"),
-                    subtitle: String(localized: "Start Tinycast automatically when you log in."),
+                    subtitle: launchAtLoginSubtitle,
                     systemImage: "power", tint: .green
                 ) {
-                    Toggle("", isOn: $settings.launchAtLogin)
-                        .labelsHidden().toggleStyle(.switch).controlSize(.small)
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.xs) {
+                        Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                            .labelsHidden().toggleStyle(.switch).controlSize(.small)
+                        if let issue = settings.launchAtLoginIssue {
+                            Button(action: settings.resolveLaunchAtLoginIssue) {
+                                Text(issue.actionTitle)
+                            }
+                                .controlSize(.small)
+                        }
+                    }
                 }
             }
             caption(String(localized: "You can change these anytime in Settings."))
         }
+    }
+
+    private var launchAtLoginSubtitle: String {
+        guard let issue = settings.launchAtLoginIssue else {
+            return String(localized: "Start Tinycast automatically when you log in.")
+        }
+        return String(localized: issue.message)
     }
 
     private var accessibilityStep: some View {

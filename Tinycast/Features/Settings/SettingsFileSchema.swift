@@ -31,6 +31,7 @@ enum SettingsFileSchema {
         case .launcherShortcut:
             return shortcuts.binding(
                 for: key, action: .togglePalette, name: String(localized: "App Launcher"))
+        case .launchAtLogin: return bind(settings, \.launchAtLogin)
         case .showInMenuBar: return bind(settings, \.showInMenuBar)
         case .automaticallyCheckForUpdates: return bind(settings, \.automaticallyCheckForUpdates)
         case .popToRootTimeout: return bind(settings, \.popToRootTimeout)

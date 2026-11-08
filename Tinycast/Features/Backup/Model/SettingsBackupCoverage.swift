@@ -11,6 +11,7 @@ enum SettingsBackupCoverage {
         "hyperKeyIncludesShift": .hyperKeyIncludesShift,
         "hyperKeyQuickPress": .hyperKeyQuickPress,
         "hyperKeySecureInputCompatibility": .hyperKeySecureInputCompatibility,
+        "launchAtLogin": .launchAtLogin,
         "showInMenuBar": .showInMenuBar,
         "automaticallyCheckForUpdates": .automaticallyCheckForUpdates,
         "emojiSkinTone": .emojiSkinTone,
@@ -81,9 +82,7 @@ enum SettingsBackupCoverage {
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.
-    static let externallySourced: [String: String] = [
-        "launchAtLogin": "Read from LaunchAtLogin, which owns the login item, not UserDefaults."
-    ]
+    static let externallySourced: [String: String] = [:]
 
     /// Keys kept out of a backup on purpose, each with the reason it has to stay out.
     static let deliberatelyExcluded: [String: String] = [

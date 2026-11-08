@@ -158,7 +158,56 @@ final class AppSettings {
     }
 
     var launchAtLogin: Bool {
-        didSet { LaunchAtLogin.set(launchAtLogin) }
+        didSet {
+            defaults.set(launchAtLogin, forKey: Key.launchAtLogin.rawValue)
+            applyLaunchAtLogin()
+        }
+    }
+
+    private var launchAtLoginStatus = LaunchAtLogin.status
+
+    enum LaunchAtLoginIssue {
+        case approvalRequired
+        case changeFailed
+
+        var message: LocalizedStringResource {
+            switch self {
+            case .approvalRequired: "Allow Tinycast in Login Items to start it when you log in."
+            case .changeFailed: "macOS couldn't change Launch at login."
+            }
+        }
+
+        var actionTitle: LocalizedStringResource {
+            switch self {
+            case .approvalRequired: "Open System Settings"
+            case .changeFailed: "Try Again"
+            }
+        }
+    }
+
+    var launchAtLoginIssue: LaunchAtLoginIssue? {
+        switch (launchAtLogin, launchAtLoginStatus) {
+        case (true, .requiresApproval): .approvalRequired
+        case (true, .enabled), (false, .notRegistered), (false, .notFound): nil
+        default: .changeFailed
+        }
+    }
+
+    func applyLaunchAtLogin() {
+        launchAtLoginStatus = LaunchAtLogin.set(launchAtLogin)
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        let status = LaunchAtLogin.status
+        if status != launchAtLoginStatus { launchAtLoginStatus = status }
+    }
+
+    func resolveLaunchAtLoginIssue() {
+        switch launchAtLoginIssue {
+        case .approvalRequired: LaunchAtLogin.openSystemSettings()
+        case .changeFailed: applyLaunchAtLogin()
+        case nil: break
+        }
     }
 
     /// The launcher icon's visibility; dragging the icon out of the menu bar turns it off.
@@ -742,7 +791,7 @@ final class AppSettings {
         clipboardDefaultAction =
             defaults.string(forKey: Key.clipboardDefaultAction.rawValue)
             .flatMap(ClipboardDefaultAction.init) ?? .paste
-        launchAtLogin = LaunchAtLogin.isEnabled
+        launchAtLogin = defaults.object(forKey: Key.launchAtLogin.rawValue) as? Bool ?? true
         showInMenuBar =
             defaults.object(forKey: Key.showInMenuBar.rawValue) == nil
             || defaults.bool(forKey: Key.showInMenuBar.rawValue)

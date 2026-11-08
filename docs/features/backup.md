@@ -104,7 +104,6 @@ anything a day old on the next run, since a run killed mid-flight leaves its tre
 
 - `mirrored` — each `SettingsData` field paired with the `AppSettings` key it carries.
 - `externallySourced` — fields no `AppSettings` key stands behind, each saying what it reads instead.
-  `launchAtLogin` comes from `LaunchAtLogin`, which owns the login item.
 - `deliberatelyExcluded` — keys kept out on purpose, each with its reason as a string.
 
 `settings-backup-test` asserts that every `AppSettingsKey` appears in exactly one table, that no field

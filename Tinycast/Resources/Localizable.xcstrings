@@ -21359,6 +21359,58 @@
         }
       }
     },
+    "Allow Tinycast in Login Items to start it when you log in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erlaube Tinycast in den Anmeldeobjekten, damit es bei der Anmeldung startet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite Tinycast en Ítems de inicio para que se abra al iniciar sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisez Tinycast dans les éléments d’ouverture pour le lancer à la connexion."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ログイン時に起動するには、「ログイン項目」でTinycastを許可してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인할 때 Tinycast를 실행하려면 로그인 항목에서 허용하세요."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permita o Tinycast em Itens de Início de Sessão para abri-lo ao iniciar sessão."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешите Tinycast в разделе «Объекты входа», чтобы приложение запускалось при входе в систему."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“登录项”中允许 Tinycast，以便它在登录时启动。"
+          }
+        }
+      }
+    },
     "Allow Tinycast to control Finder in System Settings › Privacy & Security › Automation, then try again." : {
       "localizations" : {
         "de" : {
@@ -138962,6 +139014,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "布局“%@”"
+          }
+        }
+      }
+    },
+    "macOS couldn't change Launch at login." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS konnte „Bei der Anmeldung starten“ nicht ändern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no pudo cambiar la opción de inicio de sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS n’a pas pu modifier le réglage de lancement à la connexion."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOSでログイン時の起動設定を変更できませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS에서 로그인 시 실행 설정을 변경하지 못했습니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS não conseguiu alterar a opção de iniciar ao iniciar sessão."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не удалось изменить настройку запуска при входе в систему."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS 无法更改登录时启动的设置。"
           }
         }
       }

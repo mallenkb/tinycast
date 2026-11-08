@@ -74,6 +74,11 @@ a folder is chosen),
 login item, and the Accessibility / Input Monitoring (TCC) grants — so a local build can neither read
 nor clobber an installed app's state, and both run side by side.
 
+Launch at login defaults to on. Each channel saves the switch independently and reconciles it with
+macOS on startup. If macOS requires approval, Settings offers a button to open Login Items.
+Turning off the switch removes the login item, including one waiting for approval. Older versions
+did not save in-app opt-outs, so an unset preference uses the new default.
+
 **What earns a place in Caches is refetchable, and nothing else.** Anything the user would notice the
 loss of goes in Application Support: `~/Library/Caches` is excluded from Time Machine and the system
 reclaims it under disk pressure without saying so.

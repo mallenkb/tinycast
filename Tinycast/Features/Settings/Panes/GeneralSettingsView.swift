@@ -28,6 +28,10 @@ struct GeneralSettingsView: View {
                 }
                 Toggle(isOn: $settings.launchAtLogin) {
                     SettingsRowTitle(.generalGeneral, "Launch at login")
+                    if let issue = settings.launchAtLoginIssue { Text(issue.message) }
+                }
+                if let issue = settings.launchAtLoginIssue {
+                    Button(action: settings.resolveLaunchAtLoginIssue) { Text(issue.actionTitle) }
                 }
                 Toggle(isOn: $settings.showInMenuBar) {
                     SettingsRowTitle(.generalGeneral, "Show in menu bar")

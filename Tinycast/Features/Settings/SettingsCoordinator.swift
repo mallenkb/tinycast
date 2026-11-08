@@ -26,6 +26,7 @@ final class SettingsCoordinator {
     /// A nil `tab` only reveals the window, so re-opening a minimised one keeps the pane it was on.
     func showSettings(tab: SettingsTab? = nil, revealing target: SettingsTarget? = nil) {
         core.memoryReclaimer.schedule()
+        core.settings.refreshLaunchAtLoginStatus()
         if window.focus() {
             if let tab { navigation?.select(tab, revealing: target) }
             return

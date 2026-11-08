@@ -15,6 +15,7 @@ Version 0.1.9 adds on-device search by description, visual content search for im
 video frames, and centered SVG previews. Visual descriptions require macOS 27 and Apple Intelligence.
 Version 0.1.10 adds a searchable Saved Words screen and one-click dictionary bookmarks.
 Version 0.1.11 remembers the dictionary's audio source, accent and Slow setting across launches.
+Version 0.1.12 defaults Launch at login to on, saves your choice, and reports when macOS needs approval.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

@@ -12,6 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppCore.shared.start(launchedByUser: isUserLaunch)
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        AppCore.shared.settings.refreshLaunchAtLoginStatus()
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             AppCore.shared.handleOpenURL(url)
