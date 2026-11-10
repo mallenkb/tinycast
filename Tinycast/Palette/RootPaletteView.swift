@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootPaletteView: View {
+    let restoringSelectionOnMount: Bool
     @Environment(AppCore.self) private var core
     @Environment(PaletteState.self) private var vm
     @Environment(AppIndex.self) private var appIndex
@@ -172,6 +173,13 @@ struct RootPaletteView: View {
     }
 
     private var menuOpen: Bool { openMenu != nil }
+
+    private var showsSearchProgress: Bool {
+        guard vm.isVisible else { return false }
+        if searchIntent.isResolving { return true }
+        return fileSearch.isFetching
+            && (vm.mode == .fileSearch || (vm.mode == .launcher && core.fileSearchCoordinator.showsFilesInLauncher))
+    }
 
     // MARK: - Popover menu content
 
@@ -397,7 +405,7 @@ struct RootPaletteView: View {
         content
             .onChange(of: vm.emojiCategoryFilter) { land() }
             .onChange(of: core.pinnedEmoji.revision) { emojiGridChanged() }
-            .onChange(of: (screen as? EmojiScreen)?.frequentlyUsed) { old, new in
+            .onChange(of: emojiIndex.isLoaded ? (screen as? EmojiScreen)?.frequentlyUsed : nil) { old, new in
                 guard let old, let new else { return }
                 (screen as? EmojiScreen)?.frequentlyUsedChanged(from: old, to: new)
                 emojiGridChanged()
@@ -524,7 +532,11 @@ struct RootPaletteView: View {
             // The first show builds this view after `prepare`, so no handler saw that reset.
             .onAppear {
                 searchFocused = !screen.hidesSearchField
-                land()
+                if restoringSelectionOnMount {
+                    scroll = ScrollIntent(kind: .follow)
+                } else {
+                    land()
+                }
                 focusPendingArgument()
             }
             .modifier(SearchFieldHiding(hidden: hidesSearchField, apply: applySearchFieldHiding))
@@ -814,7 +826,7 @@ struct RootPaletteView: View {
             // One structural position: a field inside a branch loses first responder when it flips.
             headerField
                 .simultaneousGesture(TapGesture().onEnded { resetCompactSelection() })
-            if searchIntent.isResolving {
+            if showsSearchProgress {
                 headerGutter(width: metrics.spacing.md)
                 ProgressView()
                     .controlSize(.small)

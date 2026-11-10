@@ -23,7 +23,9 @@ struct DescriptionSearchTests {
 
     static func main() async throws {
         parser()
+        weekdayDescriptions()
         try await files()
+        try weekdayFiles()
         try await clipboard()
         try await interpretedClipboard()
         try imageContent()
@@ -67,6 +69,92 @@ struct DescriptionSearchTests {
         expect(day.dates?.end == pacific.startOfDay(for: dst), "local day uses the injected timezone")
     }
 
+    static func weekdayDescriptions() {
+        let friday = parse("HTML files from last week Friday")
+        let start = calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!
+        let end = calendar.date(from: DateComponents(year: 2027, month: 1, day: 2))!
+        expect(friday?.fileExtension == "html" && friday?.text == "", "HTML needs no filename term")
+        expect(friday?.dates == DateInterval(start: start, end: end), "weekday crosses the year boundary")
+        for phrase in ["Friday last week", "Friday of last week", "last week on Friday", "last Fri"] {
+            expect(parse("HTML files from \(phrase)") == friday, "equivalent weekday phrase: \(phrase)")
+        }
+        expect(parse("show all my .HTML files modified on last Friday") == friday, "format case and dot")
+        expect(friday?.includes(timestamp: start.timeIntervalSince1970) == true, "weekday start included")
+        expect(friday?.includes(timestamp: end.timeIntervalSince1970) == false, "weekday end excluded")
+        for (format, ext) in [("CSV", "csv"), ("Markdown", "md"), ("JSON", "json"), ("PNG", "png")] {
+            expect(parse("\(format) files from last week Friday")?.fileExtension == ext, "format \(format)")
+        }
+        let literal = parse("HTML files named last week Friday")
+        expect(literal?.dates == nil && literal?.text == "last week Friday", "filename dates stay literal")
+        expect(literal?.matchesFilenameOnly == true, "named bypasses Context Search")
+        expect(parse("HTML files containing last week Friday")?.dates == nil, "content dates stay literal")
+        for phrase in ["Friday", "next Friday", "last week Friday morning", "last week Friday yesterday",
+            "last week Friday or Thursday", "before last Friday", "last week Fri tomorrow"] {
+            expect(parse("HTML files from \(phrase)") == nil, "unsupported date stays literal: \(phrase)")
+        }
+        expect(parse("HTML files created last Friday") == nil, "creation is not modification")
+        let filtered = parse("HTML files in Downloads from last week Friday containing invoice")
+        expect(filtered?.dates == friday?.dates && filtered?.folder == "Downloads", "combined constraints")
+        expect(filtered?.text == "invoice", "content term survives weekday constraints")
+        let today = calendar.startOfDay(for: now)
+        expect(parse("files from this Friday")?.dates?.start == today, "this Friday includes today")
+        var sundayFirst = calendar
+        sundayFirst.firstWeekday = 1
+        let sunday = calendar.date(from: DateComponents(year: 2027, month: 1, day: 10, hour: 12))!
+        let mondayWeek = SearchDescription("files from this Friday", now: sunday, calendar: calendar)
+        let sundayWeek = SearchDescription("files from this Friday", now: sunday, calendar: sundayFirst)
+        expect(mondayWeek?.dates?.start == today, "Monday week includes the preceding Friday")
+        expect(
+            sundayWeek?.dates?.start == calendar.date(byAdding: .day, value: 7, to: today),
+            "Sunday week includes the following Friday")
+        var pacific = calendar
+        pacific.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        for (month, day, hours) in [(3, 9, 23), (11, 2, 25)] {
+            let date = pacific.date(from: DateComponents(year: 2026, month: month, day: day, hour: 12))!
+            let result = SearchDescription("files from last week Sunday", now: date, calendar: pacific)
+            expect(result?.dates?.duration == Double(hours * 3600), "DST day has \(hours) hours")
+        }
+    }
+
+    static func weekdayFiles() throws {
+        let scratch = FileManager.default.temporaryDirectory.appending(path: "weekday-files-\(UUID())")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let root = scratch.resolvingSymlinksInPath().appending(path: "home")
+        let description = parse("HTML files in Downloads from last week Friday")!
+        let dates = description.dates!
+        for (name, date) in [
+            ("Downloads/start.html", dates.start), ("Downloads/upper.HTML", dates.end.addingTimeInterval(-1)),
+            ("Downloads/before.html", dates.start.addingTimeInterval(-1)), ("Downloads/end.html", dates.end),
+            ("Downloads/wrong.htm", dates.start), ("Documents/outside.html", dates.start)
+        ] {
+            let path = root.appending(path: name)
+            try FileManager.default.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("<p>invoice</p>".utf8).write(to: path)
+            try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: path.path)
+        }
+        let policy = FileSearchPolicy(scopes: [root.path], ignorePatterns: [], homeDirectory: root)
+        let roots = FileIndexCrawler.roots(of: policy)
+        let listings = FileIndexCrawler.Crawl(roots: roots, policy: policy).run(workers: 1)
+        let file = scratch.appending(path: "index.bin")
+        try FileIndexSnapshot.write(listings, roots: roots, eventID: 0, fingerprint: policy.fingerprint, to: file)
+        let index = FileIndex()
+        index.replace(with: FileIndexSnapshot(contentsOf: file), policy: policy)
+        expect(
+            Set(index.search(description: description, filter: .all).map(\.name)) == ["start.html", "upper.HTML"],
+            "HTML, folder and weekday boundaries intersect in the index")
+        expect(index.search(description: description, filter: .images).isEmpty, "dropdown still narrows HTML")
+        let live = root.appending(path: "Downloads/live.html")
+        try Data().write(to: live)
+        try FileManager.default.setAttributes([.modificationDate: dates.start], ofItemAtPath: live.path)
+        let downloads = index.snapshot!.roots[0] + "/Downloads"
+        index.apply(folder: downloads)
+        expect(index.search(description: description, filter: .all).count == 3, "live files use weekday filters")
+        try FileManager.default.setAttributes([.modificationDate: dates.end], ofItemAtPath: live.path)
+        index.apply(folder: downloads)
+        expect(index.search(description: description, filter: .all).count == 2, "live date changes leave the range")
+    }
+
     static func files() async throws {
         let scratch = FileManager.default.temporaryDirectory.appending(path: "description-files-\(UUID())")
         try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
@@ -97,6 +185,11 @@ struct DescriptionSearchTests {
             listings, roots: roots, eventID: 0, fingerprint: policy.fingerprint, to: file)
         let index = FileIndex()
         index.replace(with: FileIndexSnapshot(contentsOf: file), policy: policy)
+        let alias = root.appending(path: "Downloads/invoice.pdf").path
+        let indexed = index.snapshot!.roots[0] + "/Downloads/invoice.pdf"
+        let contentMatches = await index.documentContentMatches(
+            paths: [alias, indexed], description: nil, filter: .all, fingerprint: policy.fingerprint)
+        expect(contentMatches.map(\.name) == ["invoice.pdf"], "content aliases resolve to one indexed file")
         let query = parse("PDFs in Downloads from yesterday named invoice")!
         let matches = index.search(description: query, filter: .all)
         expect(
@@ -124,6 +217,8 @@ struct DescriptionSearchTests {
             index.search(description: query, filter: .all).count == 2,
             "deleted snapshot entries stay excluded")
         try await fileSession(index, yesterday: query.dates!)
+        try await contextSearchProgress(index, path: root.appending(path: "Downloads/new.pdf").path,
+                                        fingerprint: policy.fingerprint)
         let nested = root.appending(path: "Downloads/Invoices/nested.pdf")
         try FileManager.default.createDirectory(
             at: nested.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -174,6 +269,20 @@ struct DescriptionSearchTests {
         session.search(query)
         try await waitForFiles(session)
         expect(session.results.isEmpty, "returning to old text searches literally")
+
+        guard case .filters(let filters) = SearchFileQuery.parse(
+            "PDFs in Downloads", now: now, calendar: calendar)
+        else { fatalError("Expected structured file filters") }
+        session.applyDescription(SearchDescription(fileConstraints: filters), for: query, filter: .all)
+        try await waitForFiles(session)
+        expect(session.filters == filters && !session.results.isEmpty, "interpreted filters reach the file index")
+        session.clearDescription(resumingSearch: true)
+        try await waitForFiles(session)
+        expect(session.filters == nil && session.results.isEmpty, "clearing removes interpreted filter chips")
+        session.search("PDFs in Downloads")
+        session.applyDescription(description, for: "PDFs in Downloads", filter: .all)
+        try await waitForFiles(session)
+        expect(session.filters == filters, "model results cannot replace an explicit structured query")
     }
 
     static func waitForFiles(_ session: FileSearchSession) async throws {
@@ -182,6 +291,25 @@ struct DescriptionSearchTests {
             try await Task.sleep(for: .milliseconds(5))
         }
         expect(session.state == .ready, "file search completes")
+    }
+
+    static func contextSearchProgress(_ index: FileIndex, path: String, fingerprint: UInt64) async throws {
+        let (gate, continuation) = AsyncStream<Void>.makeStream()
+        let session = FileSearchSession(index: index, documentPaths: { _, _ in
+            for await _ in gate {}
+            return [path]
+        })
+        session.setDocumentContentScope(fingerprint)
+        session.search("invoice")
+        try await waitForFiles(session)
+        expect(!session.results.isEmpty && session.isFetching, "filename matches show while Context Search is running")
+        continuation.finish()
+        let deadline = ContinuousClock.now + .seconds(2)
+        while session.isFetching, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        expect(!session.isFetching, "progress ends after Context Search finishes")
+        expect(session.results.contains { $0.name == "new.pdf" }, "Context Search appends its result")
     }
 
     static func clipboard() async throws {
@@ -572,13 +700,28 @@ struct DescriptionSearchTests {
         func interpret(
             _ query: String, _ destination: SearchIntent.Destination, kind: String,
             website: String? = nil, time: String? = nil,
-            websites: [String] = ["flaticon.com", "github.com"]
+            websites: [String] = ["flaticon.com", "github.com"], fileDateEvent: SearchIntent.FileDateEvent? = nil
         ) -> SearchDescription? {
             SearchIntentPolicy.intent(
                 destination: destination, query: query, kind: kind, website: website,
-                time: time, websites: websites, now: now, calendar: calendar)?.description
+                time: time, websites: websites, now: now, calendar: calendar, fileDateEvent: fileDateEvent)?.description
         }
 
+        for phrase in ["last week Friday", "Friday last week", "Friday of last week", "last Friday"] {
+            let query = "HTML files from \(phrase)"
+            let result = interpret(query, .files, kind: "files", time: "last week")
+            expect(
+                result?.dates == parse(query)?.dates && result?.fileExtension == "html",
+                "model and direct parser agree: \(phrase)")
+        }
+        for phrase in ["last week Fri tomorrow", "last week Friday morning", "before the last Friday"] {
+            expect(
+                interpret("HTML files from \(phrase)", .files, kind: "documents") == nil,
+                "model cannot discard unsupported time: \(phrase)")
+        }
+        expect(
+            interpret("Markdown files from yesterday", .files, kind: "documents")?.fileExtension == "md",
+            "model and direct parser share formats")
         let allPDFs = interpret("all pdf from last week", .files, kind: "documents", time: "last week")
         expect(allPDFs?.fileExtension == "pdf" && allPDFs?.text == "", "model validation drops all qualifier")
         expect(allPDFs?.dates == parse("pdf from last week")?.dates, "model validation keeps week dates")
@@ -586,6 +729,17 @@ struct DescriptionSearchTests {
         let site = interpret("links from flaticons", .clipboard, kind: "links", time: "today")
         expect(site?.kind == .links && site?.website == "flaticon.com", "known host resolves a one-edit site name")
         expect(site?.text == "" && site?.dates == nil, "consumed terms and invented dates are dropped")
+        for query in ["links from flaticons", "show me the URLs I copied from flaticons"] {
+            expect(SearchIntentPolicy.isDirectClipboardLinkQuery(query), "explicit clipboard link query: \(query)")
+            expect(
+                interpret(query, .clipboard, kind: "links")?.website == "flaticon.com",
+                "local clipboard search resolves the known host")
+        }
+        for query in [
+            "open links from github", "links not from github", "PDF invoices from github", "look up links I copied",
+        ] {
+            expect(!SearchIntentPolicy.isDirectClipboardLinkQuery(query), "other queries keep their routing: \(query)")
+        }
 
         let explicitSite = interpret(
             "links from https://www.flaticon.com/icons", .clipboard, kind: "links", website: "github.com")
@@ -628,6 +782,10 @@ struct DescriptionSearchTests {
                 == "invoices Acme 2025",
             "topic extraction retains the company and filename year")
         expect(
+            interpret("PDF invoices Acme 2025", .files, kind: "documents", time: "2025")?.text
+                == "invoices Acme 2025",
+            "a model-proposed filename year remains literal")
+        expect(
             interpret("PDF invoices from 2025", .files, kind: "documents") == nil,
             "a year introduced as a date cannot become a filename keyword")
         for event in ["downloaded", "created", "opened", "received"] {
@@ -635,6 +793,28 @@ struct DescriptionSearchTests {
                 interpret("PDF invoices I \(event) last week", .files, kind: "documents") == nil,
                 "unsupported file event \(event) cannot use modification dates")
         }
+        let downloads = interpret(
+            "html files I downloaded last week", .files, kind: "files", time: "last week", fileDateEvent: .downloaded)
+        expect(
+            downloads?.fileConstraints?.downloaded?.end == startOfWeek && downloads?.fileExtension == "html"
+                && downloads?.dates == nil && downloads?.folder == nil && downloads?.text == "",
+            "download intent retains the format and uses a distinct date without inventing a folder")
+        let inverted = interpret(
+            "Last week, which HTML files did I download?", .files, kind: "files", time: "last week",
+            fileDateEvent: .downloaded)
+        expect(inverted == downloads, "a grounded date can precede its event")
+        let fronted = interpret(
+            "Downloaded HTML files last week", .files, kind: "files", time: "last week", fileDateEvent: .downloaded)
+        expect(fronted == downloads, "an event before the file type still resolves through the model policy")
+        let mixed = interpret(
+            "HTML reports I downloaded last week containing \"balance\"", .files, kind: "files",
+            time: "last week", fileDateEvent: .downloaded)
+        expect(
+            mixed?.fileConstraints?.name == "reports" && mixed?.fileConstraints?.content == ["balance"],
+            "download searches keep name and content distinct")
+        expect(
+            interpret("HTML files I opened last week", .files, kind: "files", fileDateEvent: .downloaded) == nil,
+            "the proposed event must match the request")
         for exclusion in ["not in Downloads", "except Downloads", "without Acme"] {
             expect(
                 interpret("PDF invoices \(exclusion)", .files, kind: "documents") == nil,

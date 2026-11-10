@@ -1,13 +1,14 @@
 import Foundation
 
-struct SearchIntent: Sendable {
-    enum Destination: String, Sendable { case literal, files, clipboard, command }
-    enum Context: String, Sendable { case launcher, files, clipboard }
+struct SearchIntent: Sendable, Codable {
+    enum Destination: String, Sendable, Codable { case literal, files, clipboard, command }
+    enum Context: String, Sendable, Codable { case launcher, files, clipboard }
+    enum FileDateEvent: String, Sendable { case created, downloaded }
     enum DateRange: String, Sendable {
         case any, today, yesterday, thisWeek, lastWeek, lastSevenDays, lastMonth, specific
     }
 
-    struct Command: Sendable {
+    struct Command: Sendable, Codable {
         let id: String
         let title: String
     }

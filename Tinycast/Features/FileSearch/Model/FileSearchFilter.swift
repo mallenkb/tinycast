@@ -9,6 +9,7 @@ enum FileSearchFilter: CaseIterable, Sendable {
     case audio
     case video
     case archives
+    case spreadsheets, presentations, code, applications, fonts
 
     var title: String {
         switch self {
@@ -19,6 +20,11 @@ enum FileSearchFilter: CaseIterable, Sendable {
         case .audio: return String(localized: "Audio")
         case .video: return String(localized: "Videos")
         case .archives: return String(localized: "Archives")
+        case .spreadsheets: return String(localized: "Spreadsheets")
+        case .presentations: return String(localized: "Presentations")
+        case .code: return String(localized: "Code and Data")
+        case .applications: return String(localized: "Applications")
+        case .fonts: return String(localized: "Fonts")
         }
     }
 
@@ -32,6 +38,11 @@ enum FileSearchFilter: CaseIterable, Sendable {
         case .audio: return "waveform"
         case .video: return "film"
         case .archives: return "archivebox"
+        case .spreadsheets: return "tablecells"
+        case .presentations: return "rectangle.on.rectangle"
+        case .code: return "chevron.left.forwardslash.chevron.right"
+        case .applications: return "app"
+        case .fonts: return "textformat"
         }
     }
 
@@ -45,6 +56,7 @@ enum FileSearchFilter: CaseIterable, Sendable {
         case .audio: return String(localized: "No audio found")
         case .video: return String(localized: "No videos found")
         case .archives: return String(localized: "No archives found")
+        case .spreadsheets, .presentations, .code, .applications, .fonts: return String(localized: "No files found")
         }
     }
 
@@ -58,6 +70,11 @@ enum FileSearchFilter: CaseIterable, Sendable {
         case .audio: return [.audio]
         case .video: return [.movie]
         case .archives: return [.archive]
+        case .spreadsheets: return [.spreadsheet, .commaSeparatedText, .tabSeparatedText]
+        case .presentations: return [.presentation]
+        case .code: return [.sourceCode, .script, .json, .xml, .yaml]
+        case .applications: return [.application]
+        case .fonts: return [.font]
         }
     }
 

@@ -2,7 +2,9 @@ import Foundation
 
 nonisolated enum SearchIntentPolicy {
     private typealias Kind = SearchDescription.Kind
-    private typealias DateRange = SearchIntent.DateRange
+    private struct DateConstraint {
+        let dates: DateInterval?
+    }
 
     private static let kinds: [String: Kind] = [
         "file": .files, "files": .files, "folder": .folders, "folders": .folders,
@@ -12,12 +14,6 @@ nonisolated enum SearchIntentPolicy {
         "audio": .audio, "music": .audio, "video": .video, "videos": .video,
         "archive": .archives, "archives": .archives, "text": .text, "clip": .text, "clips": .text,
         "link": .links, "links": .links, "url": .links, "urls": .links,
-    ]
-    private static let formats: [String: Kind] = [
-        "pdf": .documents, "csv": .documents, "docx": .documents, "xlsx": .documents,
-        "pptx": .documents, "txt": .documents, "png": .images, "jpg": .images, "jpeg": .images,
-        "gif": .images, "heic": .images, "svg": .images, "webp": .images, "mp3": .audio,
-        "wav": .audio, "mp4": .video, "mov": .video, "zip": .archives,
     ]
     private static let homeFolders = ["Downloads", "Documents", "Desktop", "Pictures", "Movies", "Music"]
     private static let topicMarkers: Set<String> = ["about", "called", "containing", "named", "showing", "with"]
@@ -29,19 +25,36 @@ nonisolated enum SearchIntentPolicy {
         "not", "except", "excluding", "exclude", "without", "neither", "nor", "never", "or",
         "don't", "don’t", "dont", "isn't", "isn’t", "aren't", "aren’t",
     ]
-    private static let unsupportedFileEvents: Set<String> = [
-        "download", "downloaded", "downloading", "created", "opened", "accessed", "received", "added",
+    private static let fileEventWords: Set<String> = [
+        "download", "downloaded", "downloading", "create", "created", "opened", "accessed", "received", "added",
     ]
-    private static let datePhrases: [(String, DateRange)] = [
-        ("today", .today), ("yesterday", .yesterday), ("this week", .thisWeek), ("last week", .lastWeek),
-        ("last seven days", .lastSevenDays), ("last 7 days", .lastSevenDays),
-        ("past seven days", .lastSevenDays), ("past 7 days", .lastSevenDays), ("last month", .lastMonth),
-    ]
+    private static let dateIntroducers: Set<String> = ["on", "in", "from", "the"]
+
+    static func isDirectClipboardLinkQuery(_ query: String) -> Bool {
+        guard query.utf8.count <= 2048, query.count <= 512, allowsInterpretation(query) else { return false }
+        let words = tokens(query.lowercased())
+        let end = words.firstIndex(where: topicMarkers.contains) ?? words.endIndex
+        let prefix = words[..<end]
+        let linkWords: Set<String> = ["link", "links", "url", "urls"]
+        let trimmed = prefix.drop(while: { ["find", "show", "search", "for", "me", "my", "the", "all"].contains($0) })
+        guard let first = trimmed.first, linkWords.contains(first) else { return false }
+        if trimmed.contains("copied") { return true }
+        return trimmed.count == 3 && trimmed[trimmed.index(after: trimmed.startIndex)] == "from"
+    }
 
     static func intent(
         destination: SearchIntent.Destination, query: String, kind: String, website: String?,
-        time: String?, websites: [String], now: Date, calendar: Calendar
+        time: String?, websites: [String], now: Date, calendar: Calendar,
+        fileDateEvent: SearchIntent.FileDateEvent? = nil
     ) -> SearchIntent? {
+        if destination == .files {
+            switch SearchFileQuery.parse(query, now: now, calendar: calendar) {
+            case .filters(let filters):
+                return SearchIntent(destination: .files, description: SearchDescription(fileConstraints: filters), commandID: nil)
+            case .issue: return nil
+            case .literal: break
+            }
+        }
         guard destination == .files || destination == .clipboard, query.count <= 512,
             allowsInterpretation(query)
         else { return nil }
@@ -49,24 +62,44 @@ nonisolated enum SearchIntentPolicy {
         let keys = words.map { $0.lowercased() }
         let contentStart = keys.firstIndex(where: topicMarkers.contains) ?? keys.endIndex
         let constraints = Array(keys[..<contentStart])
-        guard destination != .files || !constraints.contains(where: unsupportedFileEvents.contains) else {
-            return nil
-        }
         var consumed = IndexSet()
-        guard let date = dateRange(in: constraints, proposed: time, consumed: &consumed) else { return nil }
+        var fileDateClause: String?
+        if destination == .files {
+            let events = constraints.indices.filter { fileEventWords.contains(constraints[$0]) }
+            if !events.isEmpty {
+                guard let verb = events.only, let fileDateEvent,
+                    let match = fileEventDate(fileDateEvent, verb: verb, time: time, words: constraints,
+                                             now: now, calendar: calendar)
+                else { return nil }
+                fileDateClause = "\(fileDateEvent.rawValue) " + constraints[match].joined(separator: " ")
+                consumed.insert(verb)
+                consumed.insert(integersIn: match)
+                for index in constraints.indices where ["which", "what", "did"].contains(constraints[index]) {
+                    consumed.insert(index)
+                }
+                if match.lowerBound > verb {
+                    let between = (verb + 1)..<match.lowerBound
+                    if constraints[between].allSatisfy(dateIntroducers.contains) {
+                        consumed.insert(integersIn: between)
+                    }
+                }
+            }
+        }
+        guard let date = dateRange(
+            in: constraints, proposed: time, now: now, calendar: calendar, consumed: &consumed
+        ) else { return nil }
         for phrase in ["i'm looking for", "i’m looking for", "i am looking for", "looking for",
             "can you", "could you", "i need", "from somewhere"]
         {
             for match in occurrences(of: tokens(phrase), in: constraints) { consumed.insert(integersIn: match) }
         }
-        let dates = SearchIntent.dates(date, start: "", end: "", now: now, calendar: calendar)
-        guard date == .any || dates != nil else { return nil }
+        let dates = date.dates
 
         let folder = folder(in: keys, before: contentStart, consumed: &consumed)
         let formatWords = keys.indices.filter {
-            $0 < contentStart && !consumed.contains($0) && formats[fileExtension(keys[$0])] != nil
+            $0 < contentStart && !consumed.contains($0) && SearchDescription.fileFormat(keys[$0]) != nil
         }
-        let extensions = Set(formatWords.map { fileExtension(keys[$0]) })
+        let extensions = Set(formatWords.compactMap { SearchDescription.fileFormat(keys[$0])?.extension })
         guard extensions.count <= 1 else { return nil }
         let ext = extensions.first
         consumed.formUnion(IndexSet(formatWords))
@@ -76,7 +109,7 @@ nonisolated enum SearchIntentPolicy {
         }
         let explicitKinds = kindWords.compactMap { kinds[keys[$0]] }
         let proposedKind = Kind(rawValue: kind.lowercased())
-        let selectedKind = ext.flatMap { formats[$0] }
+        let selectedKind = ext.flatMap { SearchDescription.fileFormat($0)?.kind }
             ?? proposedKind.flatMap { explicitKinds.contains($0) ? $0 : nil }
             ?? explicitKinds.first(where: { $0 != .files }) ?? explicitKinds.first ?? .any
         consumed.formUnion(IndexSet(kindWords.filter {
@@ -102,12 +135,70 @@ nonisolated enum SearchIntentPolicy {
             host = nil
         }
         let text = topicText(words, keys: keys, contentStart: contentStart, excluding: consumed)
+        if let fileDateClause {
+            guard dates == nil else { return nil }
+            let hasContent = contentStart < keys.endIndex && keys[contentStart] == "containing"
+            let name = hasContent
+                ? topicText(Array(words[..<contentStart]), keys: constraints, contentStart: contentStart, excluding: consumed)
+                : text
+            let content = hasContent ? words.dropFirst(contentStart + 1).joined(separator: " ") : nil
+            return fileEventIntent(
+                kind: selectedKind, extension: ext, folder: folder, name: name, content: content,
+                dateClause: fileDateClause, now: now, calendar: calendar)
+        }
         guard selectedKind != .any || !text.isEmpty || dates != nil || folder != nil else { return nil }
         let description = SearchDescription(
             kind: selectedKind, text: text,
             alternativeTexts: alternatives(for: text, destination: destination),
-            fileExtension: ext, folder: folder, dates: dates, website: host)
+            fileExtension: ext, folder: folder, dates: dates, website: host,
+            matchesFilenameOnly: contentStart < keys.endIndex && ["named", "called"].contains(keys[contentStart]))
         return SearchIntent(destination: destination, description: description, commandID: nil)
+    }
+
+    private static func fileEventDate(
+        _ event: SearchIntent.FileDateEvent, verb: Int, time: String?, words: [String], now: Date, calendar: Calendar
+    ) -> Range<Int>? {
+        let verbs = event == .downloaded ? ["download", "downloaded"] : ["create", "created"]
+        guard verbs.contains(words[verb]) else { return nil }
+        let adjacent = words.indices.dropFirst(verb + 1).drop(while: { dateIntroducers.contains(words[$0]) }).first
+        if let adjacent,
+            let date = try? SearchCalendarDate.match(Array(words[adjacent...]), now: now, calendar: calendar)
+        {
+            return adjacent..<(adjacent + date.count)
+        }
+        guard let time, let phrase = occurrences(of: tokens(time.lowercased()), in: words).only,
+            !phrase.contains(verb),
+            phrase.lowerBound == 0 || !["before", "after", "since", "until"].contains(words[phrase.lowerBound - 1]),
+            let date = try? SearchCalendarDate.match(Array(words[phrase.lowerBound...]), now: now, calendar: calendar)
+        else { return nil }
+        let span = phrase.lowerBound..<(phrase.lowerBound + date.count)
+        return span.contains(verb) ? nil : span
+    }
+
+    private static func fileEventIntent(
+        kind: Kind, extension ext: String?, folder: String?, name: String, content: String?,
+        dateClause: String, now: Date, calendar: Calendar
+    ) -> SearchIntent? {
+        let category = switch kind {
+        case .any, .files: "files"
+        case .text: "documents"
+        default: kind.rawValue
+        }
+        var clauses = [ext.map { ".\($0) files" } ?? category, dateClause]
+        if let folder { clauses.append("in \(quoted(folder))") }
+        if !name.isEmpty { clauses.append("named \(quoted(name))") }
+        if let content {
+            guard !content.isEmpty else { return nil }
+            clauses.append("containing \(quoted(content))")
+        }
+        guard case .filters(let filters) = SearchFileQuery.parse(
+            clauses.joined(separator: " "), now: now, calendar: calendar)
+        else { return nil }
+        return SearchIntent(destination: .files, description: SearchDescription(fileConstraints: filters), commandID: nil)
+    }
+
+    private static func quoted(_ text: String) -> String {
+        "\"" + text.replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }
 
     static func allowsInterpretation(_ query: String) -> Bool {
@@ -143,21 +234,21 @@ nonisolated enum SearchIntentPolicy {
     }
 
     private static func dateRange(
-        in words: [String], proposed: String?, consumed: inout IndexSet
-    ) -> DateRange? {
-        var date = DateRange.any
-        for (phrase, range) in datePhrases {
-            for match in occurrences(of: tokens(phrase), in: words) {
-                let start = match.lowerBound
-                let previous = start > 0 ? words[start - 1] : ""
-                guard !topicMarkers.contains(previous) else { continue }
-                guard date == .any, !["after", "before", "since", "until", "through", "not"].contains(previous),
-                    !(start > 1 && ["not", "except"].contains(words[start - 2]))
-                else { return nil }
-                date = range
-                consumed.insert(integersIn: match)
-                if previous == "the" { consumed.insert(start - 1) }
+        in words: [String], proposed: String?, now: Date, calendar: Calendar, consumed: inout IndexSet
+    ) -> DateConstraint? {
+        var dates: DateInterval?
+        for start in words.indices where !consumed.contains(start) {
+            guard let match = SearchDatePhrase.match(in: words, at: start, now: now, calendar: calendar) else {
+                continue
             }
+            let previous = start > 0 ? words[start - 1] : ""
+            let qualifier = previous == "the" && start > 1 ? words[start - 2] : previous
+            guard dates == nil,
+                !["after", "before", "since", "until", "through", "not", "except"].contains(qualifier)
+            else { return nil }
+            dates = match.dates
+            consumed.insert(integersIn: start..<(start + match.count))
+            if previous == "the" { consumed.insert(start - 1) }
         }
         guard words.indices.allSatisfy({ index in
             guard !consumed.contains(index), isTemporalWord(words[index]) else { return true }
@@ -165,7 +256,8 @@ nonisolated enum SearchIntentPolicy {
                 && (index == 0 || !["from", "in", "on", "after", "before", "since"].contains(words[index - 1]))
         }) else { return nil }
         let proposedWords = tokens(proposed?.lowercased() ?? "")
-        if proposedWords.contains(where: isTemporalWord) {
+        let proposedYear = proposedWords.count == 1 && proposedWords[0].allSatisfy(\.isNumber)
+        if !proposedYear, proposedWords.contains(where: isTemporalWord) {
             for match in occurrences(of: proposedWords, in: words) {
                 let start = match.lowerBound
                 guard start == 0 || !topicMarkers.contains(words[start - 1]) else { continue }
@@ -174,7 +266,7 @@ nonisolated enum SearchIntentPolicy {
                 }
             }
         }
-        return date
+        return DateConstraint(dates: dates)
     }
 
     private static func isTemporalWord(_ word: String) -> Bool {
@@ -183,7 +275,8 @@ nonisolated enum SearchIntentPolicy {
             "morning", "afternoon", "evening", "day", "days", "week", "weeks", "month", "months",
             "year", "years", "hour", "hours", "minute", "minutes", "second", "seconds",
             "spring", "summer", "autumn", "fall", "winter", "monday", "tuesday", "wednesday",
-            "thursday", "friday", "saturday", "sunday", "january", "february", "march", "april",
+            "thursday", "friday", "saturday", "sunday", "mon", "tue", "tues", "wed",
+            "thu", "thur", "thurs", "fri", "sat", "sun", "january", "february", "march", "april",
             "may", "june", "july", "august", "september", "october", "november", "december":
             return true
         default:
@@ -206,11 +299,6 @@ nonisolated enum SearchIntentPolicy {
             return folder
         }
         return nil
-    }
-
-    private static func fileExtension(_ word: String) -> String {
-        if word == "pdfs" { return "pdf" }
-        return word.hasPrefix(".") ? String(word.dropFirst()) : word
     }
 
     private static func websiteWord(

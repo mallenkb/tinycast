@@ -368,6 +368,9 @@ enum SettingsSearchCatalog {
             .fileSearchFileSearch, "Enable File Search",
             keywords: ["index", "disk", "show in launcher", "root search"]),
         .init(
+            .fileSearchFileSearch, "Context Search",
+            keywords: ["content", "spotlight", "document", "pdf", "full text", "inside files"]),
+        .init(
             .fileSearchFileSearch, "Search image and video content",
             keywords: ["image", "photo", "appearance", "description", "OCR", "local", "idle"]),
         .init(
@@ -375,7 +378,7 @@ enum SettingsSearchCatalog {
             keywords: ["permission", "privacy", "grant", "fda"]),
         .init(
             group: .fileSearchIndex, "File index",
-            keywords: ["rebuild", "refresh", "reindex", "indexed files"]),
+            keywords: ["rebuild", "refresh", "reindex", "indexed files", "spotlight", "context search"]),
         .init(
             group: .fileSearchCommands, "File search commands",
             keywords: ["shortcut", "launcher"]),

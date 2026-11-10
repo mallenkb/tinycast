@@ -18,6 +18,10 @@ struct FileSearchSettingsView: View {
 
             FileSearchAccessSection()
             Section {
+                Toggle(isOn: $settings.fileSearchDocumentContentEnabled) {
+                    SettingsRowTitle(.fileSearchFileSearch, "Context Search")
+                    Text("Searches text inside files indexed by Spotlight.")
+                }
                 Toggle(isOn: $settings.fileSearchImageContentEnabled) {
                     SettingsRowTitle(.fileSearchFileSearch, "Search image and video content")
                     Text("Analyze images and sampled video frames on this Mac while idle.")
@@ -96,6 +100,7 @@ private struct FileSearchAccessSection: View {
 
 private struct FileSearchIndexSection: View {
     @Environment(AppCore.self) private var core
+    @State private var requestingSpotlightRebuild = false
 
     private var indexer: FileIndexer { core.fileIndexer }
 
@@ -107,22 +112,34 @@ private struct FileSearchIndexSection: View {
                     .help("Crawls every scope again from scratch.")
             } label: {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    SettingsRowTitle(.fileSearchIndex, "Indexed Items")
+                    SettingsRowTitle(.fileSearchIndex, "Tinycast Index")
                     summary
+                        .foregroundStyle(.secondary)
+                }
+            }
+            LabeledContent {
+                Button(requestingSpotlightRebuild ? "Requesting…" : "Rebuild Spotlight Index…") {
+                    requestingSpotlightRebuild = true
+                }
+                .disabled(requestingSpotlightRebuild)
+            } label: {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                    Text("Spotlight Index")
+                    Text("Used by Context Search.")
                         .foregroundStyle(.secondary)
                 }
             }
         } header: {
             SettingsSectionHeader(.fileSearchIndex)
         } footer: {
-            Text(
-                """
-                Built once, then kept current as files change. Indexing uses extra memory only \
-                while it runs.
-                """
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text("Tinycast keeps its file index current as files change.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .task(id: requestingSpotlightRebuild) {
+            guard requestingSpotlightRebuild else { return }
+            await core.fileSearchCoordinator.rebuildSpotlightIndex()
+            requestingSpotlightRebuild = false
         }
     }
 

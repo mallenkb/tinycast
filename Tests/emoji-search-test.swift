@@ -19,6 +19,22 @@ struct EmojiSearchTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let frequent = FrequentEmojiStore(fileURL: directory.appendingPathComponent("frequency.json"))
+        let onDemand = EmojiIndex()
+        onDemand.prepare()
+        await Task.yield()
+        onDemand.unload()
+        try? await Task.sleep(for: .milliseconds(100))
+        expect(!onDemand.isLoaded, "a dismissed picker cannot publish a stale catalog")
+        onDemand.prepare()
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while !onDemand.isLoaded, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        expect(onDemand.isLoaded, "opening the picker loads its catalog")
+        expect(onDemand.entry(for: "😀") != nil, "the on-demand catalog is usable")
+        onDemand.unload()
+        expect(onDemand.entries.isEmpty && onDemand.categorySections.isEmpty, "leaving releases catalog entries")
+        expect(onDemand.entry(for: "😀") == nil, "leaving releases the glyph lookup")
         let index = EmojiIndex()
         await index.load()
 

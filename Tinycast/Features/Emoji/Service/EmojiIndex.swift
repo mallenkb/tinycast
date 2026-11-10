@@ -39,17 +39,59 @@ final class EmojiIndex {
     /// Parallel to `entries`.
     private var foldedEntries: [FoldedEntry] = []
     @ObservationIgnored private var searchMemo = Memo<SearchKey, [EmojiEntry]>()
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
+    @ObservationIgnored private var loadGeneration = 0
     /// Bumped on each load, so the key above names the catalog it scored.
     private var revision = 0
 
     var isLoaded: Bool { !entries.isEmpty }
 
+    func prepare(languages: [String] = [], bundle: Bundle = .main) {
+        guard !isLoaded, loadTask == nil else { return }
+        loadGeneration &+= 1
+        let generation = loadGeneration
+        loadTask = Task { [weak self] in
+            guard let self else { return }
+            await self.load(EmojiData.raw, languages: languages, bundle: bundle, generation: generation)
+            if self.loadGeneration == generation { self.loadTask = nil }
+        }
+    }
+
+    @discardableResult
+    func unload() -> Bool {
+        let hadContent = isLoaded || loadTask != nil
+        loadGeneration &+= 1
+        guard hadContent else { return false }
+        loadTask?.cancel()
+        loadTask = nil
+        entries = []
+        categorySections = []
+        byGlyph = [:]
+        foldedEntries = []
+        searchMemo = Memo()
+        revision &+= 1
+        return hadContent
+    }
+
     /// `languages` pick which of the bundle's keyword packs join the catalog's English keywords.
     func load(_ raw: String = EmojiData.raw, languages: [String] = [], bundle: Bundle = .main) async {
-        let (parsed, folded) = await Task.detached(priority: .utility) {
+        loadGeneration &+= 1
+        await load(raw, languages: languages, bundle: bundle, generation: loadGeneration)
+    }
+
+    private func load(_ raw: String, languages: [String], bundle: Bundle, generation: Int) async {
+        let worker = Task.detached(priority: .utility) { () -> ([EmojiEntry], [FoldedEntry])? in
+            guard !Task.isCancelled else { return nil }
             let parsed = EmojiCatalog.parse(raw, localized: Self.keywordPacks(for: languages, in: bundle))
+            guard !Task.isCancelled else { return nil }
             return (parsed, parsed.map(FoldedEntry.init))
-        }.value
+        }
+        let result = await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
+        guard !Task.isCancelled, loadGeneration == generation, let (parsed, folded) = result else { return }
         entries = parsed
         foldedEntries = folded
         var grouped: [EmojiCategory: [EmojiEntry]] = [:]

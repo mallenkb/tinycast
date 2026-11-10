@@ -2,8 +2,8 @@
 
 ## Invariants
 
-- Interpret queries locally with Apple's installed Foundation Models model. Never request credentials,
-  download a model or send queries to an external inference service.
+- Interpret broader queries locally with Apple's installed Foundation Models model and structured
+  queries with local rules. Never request credentials, download a model or send queries externally.
 - Ordinary search remains usable while interpretation runs and when the model is unavailable.
 - A model response is only a proposed destination and search constraints. Results come from actual
   local stores. Commands run only through the existing explicit selection and confirmation path.
@@ -11,8 +11,8 @@
 - New queries, mode changes and closing the palette invalidate pending interpretation.
 - Interpretation has a four-second deadline including debounce and queue time. Expired responses
   cannot publish. Ordinary search remains available if model cancellation takes longer to finish.
-- Unsupported exclusions and file events fall back to ordinary search. Download, creation and access
-  dates must never be substituted with modification dates, and downloading does not imply Downloads.
+- Unsupported exclusions and file events fall back to ordinary search. Creation and download dates
+  use their own metadata. Only an explicit folder clause restricts the search to Downloads.
 - Every unconsumed topic word remains a search term. Literal content after a topic marker retains
   words such as "not" and "last week" instead of turning them into filters.
 - Clipboard visual content search remains opt-in. Enabled visual search matches recognized text and
@@ -21,11 +21,15 @@
 ## Ownership and flow
 
 `AppCore` owns `SearchIntentCoordinator`. It debounces multiword input, snapshots the current command
-catalog and known clipboard website hosts, then invokes `SearchIntentResolver` off the main actor.
+catalog and known clipboard website hosts, then starts `SearchIntentHelper` for local interpretation.
+The helper exits after returning its result, so the model's working memory leaves with the process.
 The resolver first chooses an allowed destination, then extracts optional constraints. Command routes
 use distinct keys mapped to command IDs; commands with duplicate titles are omitted from interpretation.
 The pure
 `SearchIntentPolicy` grounds those constraints in the user's request before they reach the stores.
+
+Searches such as `links I copied` and `links from <site>` route to Clipboard History locally. They use
+known hosts to resolve a one-character spelling error without invoking the model.
 
 File searches use the existing mapped index, paths, types and modification dates. Optional image
 content search adds a disk-backed description index. Clipboard searches use copied text, URL hosts,
@@ -34,22 +38,23 @@ The type dropdown narrows interpreted results. Root search suggests Clipboard Hi
 Files with the original description carried into that screen; enabled inline file results also use
 the constraints.
 
-File date filters support today, yesterday, this week, last week, the last seven days and last month.
-Explicit modification, edit and save wording uses those dates. Downloaded, created, opened, received
-and added wording is unsupported. Other date ranges, exclusions and alternatives expressed with
-"or" remain ordinary queries. Unsupported date detection does not depend on the model returning a
-time field. A standalone filename year remains a term; a year introduced with "from" is unsupported.
+Structured file queries are parsed by `SearchFileQuery` before model validation. They support exact
+and relative modification, creation and download dates, date ranges, arbitrary formats and folders, filename
+and content clauses, sizes, tags, exclusions and sorting. Invalid or ambiguous structured dates are
+not reinterpreted by the model. Search Files skips model generation when its structured parser already
+handled the query. See [file-search.md](file-search.md) for the grammar and filter chips.
+The on-device model can interpret questions such as "Which HTML files did I download last week?"
+The policy verifies the event and date against the query, then passes editable filters to Search Files.
+Access dates remain unsupported. Clipboard descriptions retain their existing date grammar.
 Folder filters require an explicit location such as "in Downloads". Quoted phrases before a topic
-marker remain ordinary queries. After "named", "containing", "about" or another topic marker, the
-remaining text is literal content. OCR matching retains every content term without dropping words.
+marker remain ordinary queries. In broader model-assisted descriptions, text after "named", "containing", "about" or another topic
+marker remains literal. Structured file queries allow more clauses after a quoted phrase. OCR matching retains every content term without dropping words.
 
 Only the current interpretation is retained. A progress indicator appears in the existing header
 while it runs. A failed or unsupported interpretation leaves ordinary search available. The model
 is probabilistic and can misunderstand a request, so the typed query stays visible and editable.
-There is at most one model operation in flight and one pending query. Expiry cancels the operation
-and discards the pending interpretation without starting overlapping model sessions. If the framework
-does not promptly honor cancellation, subsequent interpretations may also expire while ordinary
-search continues. The deadline bounds the visible wait, not the framework's resource release time.
+There is at most one model operation in flight and one pending query. Cancellation and expiry
+terminate and reap the helper before another starts. Ordinary search continues while it runs.
 
 ## Verification
 
@@ -62,8 +67,15 @@ Run the opt-in model check on a Mac with Apple Intelligence available:
 
 ```sh
 swiftc -swift-version 6 Tinycast/Features/SearchDescription.swift \
+  Tinycast/Features/SearchDatePhrase.swift Tinycast/Features/SearchFileConstraints.swift \
+  Tinycast/Features/SearchCalendarDate.swift Tinycast/Features/SearchFileQuery.swift \
   Tinycast/Features/IntelligentSearch/Model/*.swift \
-  Tinycast/Features/IntelligentSearch/Service/SearchIntentResolver.swift \
+  Tinycast/Features/IntelligentSearch/Helper/SearchIntentResolver.swift \
+  Tinycast/Features/IntelligentSearch/Service/SearchIntentWorker.swift \
+  Tinycast/Platform/ProcessExit.swift \
   Tests/search-intent-live-test.swift -o /tmp/tinycast-search-intent-live-test
 /tmp/tinycast-search-intent-live-test
 ```
+
+Pass the built app's `Contents/Helpers/SearchIntentHelper` path to the harness to exercise the
+production subprocess and its transport as well as the resolver.

@@ -322,11 +322,22 @@ final class PalettePanel: NSPanel, AnimatedPanel {
         followMotion()
         isReleasedWhenClosed = false
 
+        mount(rootView)
+    }
+
+    func mount<Content: View>(_ rootView: Content) {
         let hosting = NSHostingView(rootView: rootView)
         hosting.wantsLayer = true
         // The controller owns the frame; without this the top edge drifts on the swap.
         hosting.sizingOptions = []
         contentView = hosting
+    }
+
+    func releaseContent() {
+        _ = makeFirstResponder(nil)
+        compositionObserver = nil
+        smoothCaret = nil
+        contentView = nil
     }
 
     /// Losing the keyboard is the last modifier news the panel gets; a re-show may skip `prepare`.

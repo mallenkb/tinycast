@@ -38,13 +38,15 @@ are pure.
 - **A full name ranks first, then a complete leading name word, then an exact keyword**, then a partial
   leading word: `birthday` keeps 🎂 first, and `pray` favours the annotation over "prayer beads".
 - **Colon-wrapped queries are unwrapped**, so `:+1:` reuses CLDR's `+1` annotation with no alias table.
-- **Other languages add keywords; English always stays.** `AppCore` loads one pack per language in
+- **Other languages add keywords; English always stays.** The picker loads one pack per language in
   `SystemLanguages.preferred`, matched by `Bundle.preferredLocalizations` (`zh-CN` reads `zh-Hans`), so
   a Simplified Chinese Mac finds 🐱 by `猫` and by `cat`. Pack terms join after the English keywords,
   so an English name match still ranks first. An English-only Mac reads no pack. The generator drops terms
   English already has, folds `’` to `'`, and gives katakana a hiragana twin, since an IME shows hiragana
   until conversion. Packs ship for German, Spanish, French, Japanese, Korean, Portuguese, Russian and
   Simplified Chinese.
+- **The catalog loads on demand.** Tinycast releases it when the picker is hidden or another screen opens.
+  Reopening a preserved picker reloads the catalog for its existing query and category.
 - **Search text is folded once, at load.** `EmojiIndex` keeps a `FuzzyMatch.Candidate` for each name
   and keyword, so a keystroke folds only the query. Folding non-ASCII keywords per keystroke made one
   pack cost 5–7× the English-only search.

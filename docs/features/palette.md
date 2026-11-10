@@ -61,6 +61,8 @@ launch shows nothing, and the very first launch shows onboarding instead.
 `PaletteState` (mode / query / selection / `focusToken`) is the bridge between the panel and the app.
 Preparing a screen resets state and bumps `focusToken` (a UUID). `PaletteWindowController.show()`
 also bumps it before presenting the panel, so a preserved screen re-focuses its search field too.
+Once idle, the hidden launcher, File Search, Clipboard History or emoji picker releases its hosted view. A quick re-open
+keeps the current view, and a later re-open rebuilds it with the preserved query and selection.
 Window activation does not request another search refocus after a shortcut's argument handoff.
 Closing a palette menu explicitly restores search focus after its panel returns key status.
 `prepare` is one of four motions over the screen — see [Navigation](#navigation).

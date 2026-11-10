@@ -94,10 +94,10 @@ final class DialogController: NSObject, NSWindowDelegate {
         return state.values
     }
 
-    func editClipboardText(_ text: String) async -> String? {
+    func editClipboardText(_ text: String, title: String = String(localized: "Edit Entry")) async -> String? {
         let state = ClipboardEditState(text: text)
         let request = DialogRequest(
-            title: String(localized: "Edit Entry"), message: String(localized: "⌘↵ saves."), symbol: nil,
+            title: title, message: String(localized: "⌘↵ saves."), symbol: nil,
             actions: [
                 DialogAction(title: String(localized: "Save")),
                 DialogAction(title: String(localized: "Cancel"), role: .cancel)

@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 final class FileIndex: Sendable {
     /// Past this many changes since the snapshot, a rebuild is cheaper than carrying them.
     static let rebuildThreshold = 100_000
+    static let addedRebuildThreshold = 8_192
 
     private struct Added: Sendable {
         let name: String
@@ -56,18 +57,23 @@ final class FileIndex: Sendable {
 
         mutating func remove(_ path: String, isDirectory: Bool) {
             if let entry = added.removeValue(forKey: path) {
-                addedChildren[parentPath(of: path)]?.remove(entry.name)
+                let parent = parentPath(of: path)
+                addedChildren[parent]?.remove(entry.name)
+                if addedChildren[parent]?.isEmpty == true { addedChildren.removeValue(forKey: parent) }
                 if entry.isRecent { recentRevision &+= 1 }
             }
-            guard isDirectory else { return }
-            let prefix = path == "/" ? "/" : path + "/"
-            for key in added.keys.filter({ $0.hasPrefix(prefix) }) {
-                let entry = added.removeValue(forKey: key)
-                if entry?.isRecent == true { recentRevision &+= 1 }
+            if isDirectory {
+                let prefix = path == "/" ? "/" : path + "/"
+                for key in added.keys.filter({ $0.hasPrefix(prefix) }) {
+                    let entry = added.removeValue(forKey: key)
+                    if entry?.isRecent == true { recentRevision &+= 1 }
+                }
+                for key in addedChildren.keys.filter({ $0 == path || $0.hasPrefix(prefix) }) {
+                    addedChildren.removeValue(forKey: key)
+                }
             }
-            for key in addedChildren.keys.filter({ $0 == path || $0.hasPrefix(prefix) }) {
-                addedChildren.removeValue(forKey: key)
-            }
+            if added.isEmpty { added = [:] }
+            if addedChildren.isEmpty { addedChildren = [:] }
         }
     }
 
@@ -119,17 +125,15 @@ final class FileIndex: Sendable {
         query: String, description: SearchDescription?, filter: FileSearchFilter,
         isCancelled: @Sendable () -> Bool
     ) -> [FileSearchResult] {
-        guard [.all, .images, .video].contains(filter),
+        guard description?.fileConstraints == nil,
+            [.all, .images, .video].contains(filter),
             description.map({ [.any, .files, .images, .video].contains($0.kind) }) ?? true,
             let url = imageContentURL.withLock({ $0 })
         else { return [] }
         let state = state.withLock { $0 }
         guard let policy = state.policy else { return [] }
-        let folder = description?.folder.map { name in
-            let path = (policy.homeDirectory.path as NSString).appendingPathComponent(name)
-            guard let resolved = realpath(path, nil) else { return path }
-            defer { free(resolved) }
-            return String(cString: resolved)
+        let folder = FileIndexCrawler.withoutMaterializing {
+            description?.folder.map { FileSearchMetadata.folder($0, home: policy.homeDirectory) }
         }
         let paths = ImageContentStore(url: url).search(
             text: description?.text ?? query, scope: String(policy.fingerprint), dates: description?.dates,
@@ -149,16 +153,273 @@ final class FileIndex: Sendable {
                 else { return false }
                 return true
             }, isCancelled: isCancelled)
-        return paths.map { FileSearchResult(url: URL(fileURLWithPath: $0), isDirectory: false, homeDirectory: policy.homeDirectory) }
+        return paths.map {
+            FileSearchResult(url: URL(fileURLWithPath: $0), isDirectory: false, homeDirectory: policy.homeDirectory)
+        }
     }
 
     var snapshot: FileIndexSnapshot? { state.withLock { $0.snapshot } }
+
+    func documentContentScopes(fingerprint: UInt64, folder: String? = nil) -> [String] {
+        state.withLock { state in
+            guard let snapshot = state.snapshot, snapshot.fingerprint == fingerprint else { return [] }
+            if let folder, let policy = state.policy {
+                let path = FileSearchMetadata.folder(folder, home: policy.homeDirectory)
+                return snapshot.roots.compactMap { root in
+                    if FileSearchScope.contains(root, path) { return path }
+                    return FileSearchScope.contains(path, root) ? root : nil
+                }
+            }
+            return snapshot.roots
+        }
+    }
+
+    @concurrent
+    func documentContentMatches(
+        paths: [String], description: SearchDescription?, filter: FileSearchFilter, fingerprint: UInt64
+    ) async -> [FileSearchResult] {
+        let state = state.withLock { $0 }
+        guard let snapshot = state.snapshot, snapshot.fingerprint == fingerprint, let policy = state.policy else {
+            return []
+        }
+        if let constraints = description?.fileConstraints {
+            return filteredSearch(constraints, filter: filter, contentPaths: paths, isCancelled: { Task.isCancelled })
+        }
+        let folder = description?.folder.map { name in
+            let path = (policy.homeDirectory.path as NSString).appendingPathComponent(name)
+            guard let resolved = realpath(path, nil) else { return path }
+            defer { free(resolved) }
+            return String(cString: resolved)
+        }
+        let kind = description?.kind ?? .any
+        let describedFilter: FileSearchFilter = [.documents, .text].contains(kind) ? .documents : .all
+        var ranked: [Ranked] = []
+        let indexedPaths = FileIndexCrawler.withoutMaterializing {
+            Set(paths.lazy.map { Self.indexedPath($0, state: state, snapshot: snapshot) })
+        }
+        for path in indexedPaths {
+            guard !Task.isCancelled else { return [] }
+            guard folder.map({ $0 != path && FileSearchScope.contains($0, path) }) ?? true else { continue }
+            let timestamp: UInt32
+            if let added = state.added[path] {
+                guard !added.isDirectory else { continue }
+                timestamp = added.mtime
+            } else {
+                guard let row = snapshot.lookup(path), !state.isDead(row), !snapshot.isDirectory(row) else { continue }
+                timestamp = snapshot.mtime[row]
+            }
+            let ext = (path as NSString).pathExtension.lowercased()
+            guard description?.includes(timestamp: Double(timestamp)) ?? true,
+                description?.fileExtension.map({ $0 == ext }) ?? true
+            else { continue }
+            let type = FileSearchFilter.contentType(extension: ext, isDirectory: false)
+            guard type?.conforms(to: .image) != true, type?.conforms(to: .movie) != true,
+                filter.accepts(contentType: type, isDirectory: false),
+                describedFilter.accepts(contentType: type, isDirectory: false)
+            else { continue }
+            ranked.append(Ranked(score: Int(timestamp), path: path, isDirectory: false))
+        }
+        return Self.results(ranked, limit: FileSearchQuery.resultLimit, policy: policy, matchesDocumentContent: true)
+    }
+
+    func filteredSearch(
+        _ filters: SearchFileConstraints, filter: FileSearchFilter, contentPaths: [String]? = nil,
+        isCancelled: @Sendable () -> Bool = { false }
+    ) -> [FileSearchResult] {
+        let state = state.withLock { $0 }
+        guard let snapshot = state.snapshot, let policy = state.policy,
+            filters.content.isEmpty || contentPaths != nil else { return [] }
+        return FileIndexCrawler.withoutMaterializing {
+            let contentPaths = contentPaths.map { paths in
+                Set(paths.lazy.map { Self.indexedPath($0, state: state, snapshot: snapshot) })
+            }
+            let folder = filters.folder.map { FileSearchMetadata.folder($0, home: policy.homeDirectory) }
+            let category = FileSearchFilter(category: filters.category)
+            struct Hit {
+                let path: String
+                let directory: Bool
+                let modified: UInt32
+                let added: Date?
+                let size: Int64
+                let name: String
+                let relevance: Int
+            }
+            func precedes(_ left: Hit, _ right: Hit) -> Bool {
+                switch filters.order {
+                case .name:
+                    let order = left.name.localizedStandardCompare(right.name)
+                    if order != .orderedSame { return order == .orderedAscending }
+                case .largest: if left.size != right.size { return left.size > right.size }
+                case .smallest: if left.size != right.size { return left.size < right.size }
+                case .oldest: if left.modified != right.modified { return left.modified < right.modified }
+                case .newestAdded, .oldestAdded:
+                    if let leftDate = left.added, let rightDate = right.added, leftDate != rightDate {
+                        return filters.order == .newestAdded ? leftDate > rightDate : leftDate < rightDate
+                    }
+                case .relevance:
+                    if left.relevance != right.relevance { return left.relevance > right.relevance }
+                    if left.modified != right.modified { return left.modified > right.modified }
+                case .newest: if left.modified != right.modified { return left.modified > right.modified }
+                }
+                return left.path < right.path
+            }
+            var hits: [Hit] = []
+            var cutoff: Hit?
+            var typeCache: [String: UTType] = [:]
+            let limit = FileSearchQuery.resultLimit
+            let term = filters.name.lowercased()
+            let included = filters.extensions.map { Array(("." + $0).utf8) }
+            let excluded = filters.excludedExtensions.map { Array(("." + $0).utf8) }
+            let suffixes = included + excluded
+            let longestSuffix = suffixes.map(\.count).max() ?? 0
+            let asciiExtensions = suffixes.allSatisfy { $0.allSatisfy { $0 < 128 } }
+            func matchesExtension(_ name: UnsafeBufferPointer<UInt8>, fallback: () -> String) -> Bool {
+                guard !included.isEmpty || !excluded.isEmpty else { return true }
+                guard asciiExtensions, !name.suffix(longestSuffix).contains(where: { $0 >= 128 }) else {
+                    return filters.matchesExtension(fallback())
+                }
+                func hasSuffix(_ suffix: [UInt8]) -> Bool {
+                    guard suffix.count <= name.count else { return false }
+                    return FileSearchQuery.find(
+                        suffix, in: UnsafeBufferPointer(rebasing: name.suffix(suffix.count))) == 0
+                }
+                return (included.isEmpty || included.contains(where: hasSuffix))
+                    && !excluded.contains(where: hasSuffix)
+            }
+            func canBeatCutoff(
+                modified: UInt32, relevance: Int?, name: String? = nil, size: Int64? = nil, added: Date? = nil
+            ) -> Bool {
+                guard let cutoff else { return true }
+                switch filters.order {
+                case .newest: return modified >= cutoff.modified
+                case .oldest: return modified <= cutoff.modified
+                case .newestAdded, .oldestAdded:
+                    guard let added, let cutoffDate = cutoff.added else { return true }
+                    return filters.order == .newestAdded ? added >= cutoffDate : added <= cutoffDate
+                case .relevance:
+                    guard let relevance else { return true }
+                    if relevance != cutoff.relevance { return relevance > cutoff.relevance }
+                    return modified >= cutoff.modified
+                case .name:
+                    guard let name else { return true }
+                    return name.localizedStandardCompare(cutoff.name) != .orderedDescending
+                case .largest: return size.map { $0 >= cutoff.size } ?? true
+                case .smallest: return size.map { $0 <= cutoff.size } ?? true
+                }
+            }
+            func consider(
+                _ name: String, directory: Bool, modified: UInt32, formatMatched: Bool = false, path: () -> String
+            ) {
+                guard filters.matchesName(name), formatMatched || filters.matchesExtension(name),
+                    filters.modified?.contains(Date(timeIntervalSince1970: Double(modified))) ?? true
+                else { return }
+                let relevance: Int
+                if term.isEmpty {
+                    relevance = 0
+                } else {
+                    let key = name.lowercased()
+                    relevance = key == term ? 2 : key.hasPrefix(term) ? 1 : 0
+                }
+                guard canBeatCutoff(modified: modified, relevance: relevance, name: name) else { return }
+                if directory, filters.category == .files || contentPaths != nil {
+                    guard FileSearchFilter.contentType(extension: (name as NSString).pathExtension, isDirectory: true)?
+                            .conforms(to: .package) == true else { return }
+                }
+                if filter != .all || category != .all {
+                    let ext = (name as NSString).pathExtension.lowercased()
+                    let type = directory ? FileSearchFilter.contentType(extension: ext, isDirectory: true)
+                        : typeCache[ext] ?? FileSearchFilter.contentType(extension: ext, isDirectory: false)
+                    if !directory, typeCache.count < 512 { typeCache[ext] = type }
+                    guard filter.accepts(contentType: type, isDirectory: directory),
+                        category.accepts(contentType: type, isDirectory: directory) else { return }
+                }
+                let path = path()
+                if !filters.recursive, folder == nil,
+                    !snapshot.roots.contains((path as NSString).deletingLastPathComponent) { return }
+                guard contentPaths?.contains(path) ?? true,
+                    FileSearchMetadata.acceptsPath(path, filters: filters, folder: folder, home: policy.homeDirectory)
+                else { return }
+                let metadata = FileSearchMetadata.read(path, attributes: filters.needsMetadata, tags: filters.needsTags)
+                if let downloaded = filters.downloaded {
+                    guard !directory, let date = FileSearchMetadata.downloadedDate(path), downloaded.contains(date)
+                    else { return }
+                }
+                if let created = filters.created {
+                    guard let date = metadata.created, created.contains(date) else { return }
+                }
+                if filters.needsMetadata {
+                    guard let size = metadata.size,
+                        filters.minimumSize.map({ size >= $0 }) ?? true,
+                        filters.maximumSize.map({ size <= $0 }) ?? true else { return }
+                    if directory, filters.minimumSize != nil || filters.maximumSize != nil
+                        || filters.order == .largest || filters.order == .smallest { return }
+                }
+                if filters.needsTags {
+                    guard let tags = metadata.tags, filters.matchesTags(tags) else { return }
+                }
+                let added = filters.needsAddedDate
+                    ? FileSearchMetadata.addedDate(path) ?? Date(timeIntervalSince1970: Double(modified))
+                    : nil
+                if let bounds = filters.added {
+                    guard let added, bounds.contains(added) else { return }
+                }
+                guard canBeatCutoff(
+                    modified: modified, relevance: relevance, name: name, size: metadata.size, added: added
+                ) else {
+                    return
+                }
+                hits.append(Hit(path: path, directory: directory, modified: modified, added: added,
+                                size: metadata.size ?? 0, name: name, relevance: relevance))
+                if hits.count >= limit * 4 {
+                    hits.sort(by: precedes)
+                    hits.removeSubrange(limit...)
+                    cutoff = hits.last
+                }
+            }
+            if let contentPaths {
+                for path in contentPaths {
+                    if isCancelled() { return [] }
+                    if let entry = state.added[path] {
+                        consider(entry.name, directory: entry.isDirectory, modified: entry.mtime, path: { path })
+                    } else if let row = snapshot.lookup(path), !state.isDead(row) {
+                        consider(snapshot.nameString(row), directory: snapshot.isDirectory(row),
+                                 modified: snapshot.mtime[row], path: { path })
+                    }
+                }
+            } else {
+                for row in snapshot.rootCount..<snapshot.entryCount {
+                    if isCancelled() { return [] }
+                    guard !state.isDead(row),
+                        filters.modified?.contains(Date(timeIntervalSince1970: Double(snapshot.mtime[row]))) ?? true,
+                        canBeatCutoff(modified: snapshot.mtime[row], relevance: term.isEmpty ? 0 : nil),
+                        matchesExtension(snapshot.name(row), fallback: { snapshot.nameString(row) })
+                    else { continue }
+                    consider(snapshot.nameString(row), directory: snapshot.isDirectory(row), modified: snapshot.mtime[row],
+                             formatMatched: true, path: { snapshot.path(of: row) })
+                }
+                for (path, entry) in state.added {
+                    if isCancelled() { return [] }
+                    consider(entry.name, directory: entry.isDirectory, modified: entry.mtime, path: { path })
+                }
+            }
+            guard !isCancelled() else { return [] }
+            return hits.sorted(by: precedes).prefix(limit).map {
+                FileSearchResult(url: URL(filePath: $0.path), isDirectory: $0.directory,
+                                 homeDirectory: policy.homeDirectory, matchesDocumentContent: contentPaths != nil)
+            }
+        }
+    }
 
     var itemCount: Int {
         state.withLock { state in
             guard let snapshot = state.snapshot else { return 0 }
             return snapshot.entryCount - snapshot.rootCount - state.deadCount + state.added.count
         }
+    }
+
+    private static func indexedPath(_ path: String, state: State, snapshot: FileIndexSnapshot) -> String {
+        guard state.added[path] == nil, snapshot.lookup(path) == nil else { return path }
+        return FileSearchMetadata.filePath(path)
     }
 
     /// Moves only when a file Recent can list comes, goes or is saved.
@@ -178,18 +439,39 @@ final class FileIndex: Sendable {
         guard !isCancelled() else { return [] }
         let state = state.withLock { $0 }
         guard let snapshot = state.snapshot, let policy = state.policy else { return [] }
+        guard let literal = searchNames(query, filter: filter, state: state, snapshot: snapshot, policy: policy,
+                                        typo: false, isCancelled: isCancelled) else { return [] }
+        guard literal.isEmpty, query.allowsTypo, !isCancelled() else { return literal }
+        return searchNames(query, filter: filter, state: state, snapshot: snapshot, policy: policy,
+                           typo: true, isCancelled: isCancelled) ?? []
+    }
+
+    private func searchNames(
+        _ query: FileSearchQuery.Prepared, filter: FileSearchFilter, state: State, snapshot: FileIndexSnapshot,
+        policy: FileSearchPolicy, typo: Bool, isCancelled: @Sendable () -> Bool
+    ) -> [FileSearchResult]? {
+        @Sendable func canMatch(_ mask: UInt64) -> Bool {
+            if typo {
+                return mask & FileSearchQuery.nonASCIIBit == 0 && (query.mask & ~mask).nonzeroBitCount <= 1
+            }
+            return mask & query.mask == query.mask
+        }
+        @Sendable func scoreName(_ name: UnsafeBufferPointer<UInt8>, _ mask: UInt64, _ prior: Int8) -> Int? {
+            if typo { return FileSearchQuery.typoScore(query, name: name, prior: prior) }
+            return FileSearchQuery.score(query, name: name, mask: mask, prior: prior)
+        }
         let limit = FileSearchQuery.resultLimit
         let names = NameScores(count: snapshot.nameCount)
         Self.chunked(0..<snapshot.nameCount, alignment: 64) { range in
             for id in range {
                 if id == range.lowerBound || id & 255 == 0, isCancelled() { return }
-                guard snapshot.nameMask[id] & query.mask == query.mask else { continue }
-                let score = FileSearchQuery.score(
-                    query, name: snapshot.name(id: id), mask: snapshot.nameMask[id], prior: 0)
+                let mask = snapshot.nameMask[id]
+                guard canMatch(mask) else { continue }
+                let score = scoreName(snapshot.name(id: id), mask, 0)
                 if let score { names.set(id, score) }
             }
         }
-        guard !isCancelled() else { return [] }
+        guard !isCancelled() else { return nil }
         let base =
             names.isEmpty
             ? []
@@ -204,20 +486,19 @@ final class FileIndex: Sendable {
                     top.insert(score + FileSearchQuery.priorWeight * Int(snapshot.prior[index]), index)
                 }
             }
-        guard !isCancelled() else { return [] }
+        guard !isCancelled() else { return nil }
         var ranked = base.map { hit in
             Ranked(
                 score: hit.score, path: snapshot.path(of: hit.index),
                 isDirectory: snapshot.isDirectory(hit.index))
         }
         var types = TypeFilter(filter: filter)
-        for (path, entry) in state.added where entry.mask & query.mask == query.mask {
-            guard !isCancelled() else { return [] }
+        for (path, entry) in state.added where canMatch(entry.mask) {
+            guard !isCancelled() else { return nil }
             var name = entry.name
             let score = name.withUTF8 { name -> Int? in
                 guard
-                    let score = FileSearchQuery.score(
-                        query, name: name, mask: entry.mask, prior: entry.prior),
+                    let score = scoreName(name, entry.mask, entry.prior),
                     types.accepts(name: name, isDirectory: entry.isDirectory)
                 else { return nil }
                 return score
@@ -225,7 +506,7 @@ final class FileIndex: Sendable {
             guard let score else { continue }
             ranked.append(Ranked(score: score, path: path, isDirectory: entry.isDirectory))
         }
-        guard !isCancelled() else { return [] }
+        guard !isCancelled() else { return nil }
         return Self.results(ranked, limit: limit, policy: policy)
     }
 
@@ -233,6 +514,9 @@ final class FileIndex: Sendable {
         description: SearchDescription, filter: FileSearchFilter,
         isCancelled: @Sendable () -> Bool = { false }
     ) -> [FileSearchResult] {
+        if let constraints = description.fileConstraints {
+            return filteredSearch(constraints, filter: filter, isCancelled: isCancelled)
+        }
         let state = state.withLock { $0 }
         guard let snapshot = state.snapshot, let policy = state.policy else { return [] }
         let describedFilter: FileSearchFilter
@@ -372,7 +656,7 @@ final class FileIndex: Sendable {
     }
 
     private static func results(
-        _ ranked: [Ranked], limit: Int, policy: FileSearchPolicy
+        _ ranked: [Ranked], limit: Int, policy: FileSearchPolicy, matchesDocumentContent: Bool = false
     ) -> [FileSearchResult] {
         ranked.sorted { left, right in
             if left.score != right.score { return left.score > right.score }
@@ -383,7 +667,8 @@ final class FileIndex: Sendable {
         .map { hit in
             FileSearchResult(
                 url: URL(filePath: hit.path, directoryHint: hit.isDirectory ? .isDirectory : .notDirectory),
-                isDirectory: hit.isDirectory, homeDirectory: policy.homeDirectory)
+                isDirectory: hit.isDirectory, homeDirectory: policy.homeDirectory,
+                matchesDocumentContent: matchesDocumentContent)
         }
     }
 
@@ -427,7 +712,7 @@ final class FileIndex: Sendable {
             for index in changes.kills { state.kill(index, in: snapshot) }
             for removal in changes.removals { state.remove(removal.path, isDirectory: removal.isDirectory) }
             for (childPath, child) in changes.additions { state.add(childPath, child) }
-            return state.changeCount > Self.rebuildThreshold
+            return state.changeCount > Self.rebuildThreshold || state.added.count > Self.addedRebuildThreshold
         }
     }
 
@@ -542,10 +827,9 @@ final class FileIndex: Sendable {
             return true
         }
 
-        /// Only Recent reads a date, and it lists home files alone, so other churn is ignored.
         private func hasChanged(_ row: Int, to entry: FileIndexCrawler.Entry) -> Bool {
             if snapshot.isDirectory(row) != entry.isDirectory { return true }
-            return !entry.isDirectory && snapshot.prior[row] == 2 && snapshot.mtime[row] != entry.mtime
+            return snapshot.mtime[row] != entry.mtime
         }
 
         private mutating func update(_ name: String, to entry: FileIndexCrawler.Entry) {
@@ -557,7 +841,7 @@ final class FileIndex: Sendable {
             if added.isDirectory != entry.isDirectory {
                 changes.removals.append((path, added.isDirectory))
                 add(entry, named: name)
-            } else if !entry.isDirectory, added.prior == 2, added.mtime != entry.mtime {
+            } else if added.mtime != entry.mtime {
                 add(entry, named: name)
             }
         }
@@ -575,7 +859,12 @@ final class FileIndex: Sendable {
 
         private mutating func removeAdded(_ name: String) {
             let path = FileIndexCrawler.path(folder, name)
-            changes.removals.append((path, state.added[path]?.isDirectory ?? false))
+            if let index = state.added.index(forKey: path) {
+                let existing = state.added[index]
+                changes.removals.append((existing.key, existing.value.isDirectory))
+            } else {
+                changes.removals.append((path, false))
+            }
         }
 
         private mutating func add(_ entry: FileIndexCrawler.Entry, named name: String) {

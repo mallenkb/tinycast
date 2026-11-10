@@ -8,6 +8,7 @@ struct FileSearchResult: Identifiable, Equatable, Sendable {
     /// The enclosing folder's own name, which is what tells two same-named folders apart.
     let parentName: String
     let isDirectory: Bool
+    let matchesDocumentContent: Bool
 
     var favoriteKey: String {
         URL(filePath: id, directoryHint: isDirectory ? .isDirectory : .notDirectory).absoluteString
@@ -21,7 +22,7 @@ struct FileSearchResult: Identifiable, Equatable, Sendable {
     }
 
     /// `url` is taken as given: index paths are already real, and standardizing one costs a stat.
-    init(url: URL, isDirectory: Bool, homeDirectory: URL) {
+    init(url: URL, isDirectory: Bool, homeDirectory: URL, matchesDocumentContent: Bool = false) {
         let parent = url.deletingLastPathComponent()
         self.id = url.path
         self.url = url
@@ -30,6 +31,7 @@ struct FileSearchResult: Identifiable, Equatable, Sendable {
             parent.path, homePath: homeDirectory.path)
         self.parentName = parent.lastPathComponent
         self.isDirectory = isDirectory
+        self.matchesDocumentContent = matchesDocumentContent
     }
 
     private static func abbreviate(_ path: String, homePath: String) -> String {

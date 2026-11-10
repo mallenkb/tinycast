@@ -133,9 +133,13 @@ store starts the helper on demand and reaps it after the selected idle delay or 
 `AppCore` owns the audio ducker and starts volume recovery on every launch, even when Dictation is off.
 
 `AppCore` also owns `MemoryReclaimer`. Its local event monitor and palette observation reschedule a
-single idle timer. After two seconds it releases disposable image caches, then requests allocator
-relief off-main. Settings schedules the same cleanup when opening, navigating through its coordinator,
-and closing. Teardown cancels the timer and worker and removes the event monitor.
+single idle timer. After two seconds it detaches hidden search views and releases image caches, then
+requests allocator relief off-main. Settings schedules the same cleanup when opening, navigating
+through its coordinator, and closing. Teardown cancels the timer and worker and removes the event monitor.
+
+Spotlight content queries also run in a disposable helper. The file-search session owns cancellation;
+the helper is reaped before its bounded paths are matched against the current index. Once the search
+worker has drained, its coordinator schedules the same idle cache and allocator cleanup.
 
 ## Entry points and windows
 

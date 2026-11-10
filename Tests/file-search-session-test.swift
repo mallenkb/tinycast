@@ -76,7 +76,9 @@ struct FileSearchSessionTests {
         await coalescesRecentRefreshes()
         await coalescesQueuedQueries()
         await serializesRunningQueries()
+        await cleanupFollowsSettledWork()
         await cancellationPreventsPendingWork()
+        await suspensionPreservesAndResumesSearch()
         await idleCancellationKeepsTheSessionUsable()
         await refreshRerunsThePublishedQuery()
         await blankScreenOpensOnKeptRecents()
@@ -97,8 +99,10 @@ struct FileSearchSessionTests {
         guard await probe.waitUntilPaused() else { return expect(false, "old query starts") }
         session.search("latest")
         expect(session.results.first?.name == "visible", "typing keeps visible results")
+        expect(session.isFetching, "replacement search reports progress while older results stay visible")
         await probe.resumePausedSearch()
         await waitUntil { session.state == .ready && session.results.first?.name == "latest" }
+        expect(!session.isFetching, "progress ends after the replacement results arrive")
         let cancelled = await probe.cancelledQueries
         expect(cancelled == ["old"], "superseded operation receives cancellation")
         let snapshot = await probe.snapshot()
@@ -152,6 +156,31 @@ struct FileSearchSessionTests {
         expect(snapshot.calls == ["a", "annual"], "keystrokes queued behind a search collapse")
     }
 
+    static func cleanupFollowsSettledWork() async {
+        let probe = FileSearchProbe(pausing: "first")
+        let session = makeSession(probe: probe)
+        var settled = 0
+        session.onWorkSettled = { settled += 1 }
+        session.search("first")
+        guard await probe.waitUntilPaused() else { return expect(false, "the first query starts") }
+        session.search("latest")
+        expect(settled == 0, "cleanup waits for the active and queued queries")
+        await probe.resumePausedSearch()
+        await waitUntil { settled == 1 }
+        expect(session.results.first?.name == "latest", "cleanup follows the replacement query")
+        session.search("again")
+        await waitUntil { settled == 2 }
+        await probe.pauseNextSearch()
+        session.search("first")
+        guard await probe.waitUntilPaused() else { return expect(false, "the final query starts") }
+        session.cancel()
+        expect(settled == 2, "cleanup waits for cancelled work to finish")
+        expect(!session.isFetching, "cancellation clears progress before the worker finishes")
+        await probe.resumePausedSearch()
+        await waitUntil { settled == 3 }
+        expect(session.state == .idle, "cleanup leaves the cancelled session idle")
+    }
+
     static func serializesRunningQueries() async {
         let probe = FileSearchProbe(pausing: "first")
         let session = makeSession(probe: probe)
@@ -198,6 +227,28 @@ struct FileSearchSessionTests {
 
         let snapshot = await probe.snapshot()
         expect(snapshot.calls == ["report", "report"], "a cancelled query runs again when retyped")
+    }
+
+    static func suspensionPreservesAndResumesSearch() async {
+        let probe = FileSearchProbe(pausing: "later")
+        let session = makeSession(probe: probe)
+        session.search("visible")
+        await waitUntil { session.state == .ready }
+        session.search("later", filter: .images)
+        guard await probe.waitUntilPaused() else { return expect(false, "the search starts before hiding") }
+        session.suspend()
+        expect(session.results.first?.name == "visible", "hiding keeps the visible results")
+        session.refresh()
+        await probe.resumePausedSearch()
+        try? await Task.sleep(for: .milliseconds(150))
+        let hidden = await probe.snapshot()
+        expect(hidden.calls.filter { $0 == "later [Images]" }.count == 1, "hidden refresh does not restart the search")
+        let cancelled = await probe.cancelledQueries
+        expect(cancelled.contains("later"), "hiding cancels the in-flight search")
+        session.search("later", filter: .images)
+        await waitUntil { session.state == .ready && session.results.first?.name == "later" }
+        let shown = await probe.snapshot()
+        expect(shown.calls.filter { $0 == "later [Images]" }.count == 2, "reopening resumes the same filtered query")
     }
 
     static func refreshRerunsThePublishedQuery() async {

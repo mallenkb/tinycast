@@ -132,7 +132,7 @@ nonisolated enum FileIndexCrawler {
     }
 
     /// Per thread, and restored after: a crawl must never download what it lists.
-    private static func withoutMaterializing<T>(_ body: () -> T) -> T {
+    static func withoutMaterializing<T>(_ body: () -> T) -> T {
         let type = IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES
         let previous = getiopolicy_np(type, IOPOL_SCOPE_THREAD)
         setiopolicy_np(type, IOPOL_SCOPE_THREAD, IOPOL_MATERIALIZE_DATALESS_FILES_OFF)

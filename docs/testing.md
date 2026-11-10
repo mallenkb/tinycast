@@ -117,6 +117,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `file-search-test` | `FileSearch/Model/`: folding, masks, scoring, ignore rules, priors, scopes |
 | `file-index-test` | `FileIndexCrawler`, `FileIndexSnapshot`, `FileIndex`: a real fixture crawled, written, mapped, searched and live-updated |
 | `file-search-session-test` | serialized query execution, coalescing, cancellation and refresh |
+| `spotlight-content-test` | real Spotlight predicate shapes, bounded helper output, and child cleanup on completion, cancellation and timeout |
 | `menu-search-test` | `MenuSearch/Model/` decisions, `MenuSearch/Service/` session filtering, the shared `FuzzyMatch` scorer |
 | `action-menu-search-test` | Action-menu query normalization and shared fuzzy matching |
 | `app-installation-test` | Multiple app copies and app-wide preferences; file-favorite persistence, mixed ordering, hidden slots and restoration through the existing favorite key list |
@@ -307,6 +308,9 @@ swiftc -O -wmo -swift-version 6 Tinycast/Features/FileSearch/Model/*.swift \
     Tinycast/Features/ImageSearch/Model/ImageContent.swift \
     Tinycast/Features/ImageSearch/Service/ImageContentStore.swift \
     Tinycast/Features/SearchDescription.swift \
+    Tinycast/Features/SearchDatePhrase.swift Tinycast/Features/SearchFileConstraints.swift \
+    Tinycast/Features/SearchCalendarDate.swift Tinycast/Features/SearchFileQuery.swift \
+    Tinycast/Features/FileSearch/Service/FileSearchMetadata.swift \
     Tinycast/Features/FileSearch/Service/FileIndex.swift \
     Tinycast/Features/FileSearch/Service/FileIndexSnapshot.swift \
     Tinycast/Features/FileSearch/Service/FileIndexCrawler.swift \

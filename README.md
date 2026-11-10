@@ -21,7 +21,7 @@ and AGPL-3.0-or-later license are preserved.
 
 [Contact @mallenkb on X](https://x.com/mallenkb) ·
 [Report a bug](https://github.com/mallenkb/tinycast/issues) ·
-[Download v0.1.8](https://github.com/mallenkb/tinycast/releases/tag/v0.1.8) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
+[Download v0.1.14](https://github.com/mallenkb/tinycast/releases/tag/v0.1.14) · [Build from source](#build-from-source) · [Documentation](docs/README.md)
 
 ## App preview
 
@@ -84,7 +84,7 @@ update caches and download URLs from other repositories.
 | Area | What you can do |
 | --- | --- |
 | Launcher | Fuzzy app search, favorites, running-app indicators, global and per-app hotkeys |
-| Files | Search a local filename index across configured folders, with results in the launcher |
+| Files | Search filenames and optionally text inside files, with results in the launcher |
 | Clipboard | Search text and images, preview links, and paste into the previous app |
 | Calculator | Calculate expressions and convert units, currencies, and cryptocurrencies |
 | Writing | Use the Mac’s dictionaries, searchable emoji, snippets, and Markdown notes |
@@ -94,8 +94,8 @@ update caches and download URLs from other repositories.
 | AI and dictation | Use configurable AI providers, text Quick Actions, and dictation |
 | Backup | Export settings or import a setup from Raycast |
 
-File Search uses Tinycast’s own filename index, not Spotlight. It requires Full Disk Access and
-indexes the folders configured in Settings. AI features are off by default.
+File Search uses Tinycast’s own filename index and can optionally search text indexed by Spotlight.
+It requires Full Disk Access and searches the folders configured in Settings. AI features are off by default.
 
 ## Build from source
 

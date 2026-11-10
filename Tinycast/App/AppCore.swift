@@ -51,6 +51,7 @@ final class AppCore {
     let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
     @ObservationIgnored private(set) lazy var memoryReclaimer = MemoryReclaimer { [weak self] in
+        self?.windowController.releaseHiddenSearchContent()
         IconCache.purgeDecoded()
         ImageThumbnail.purgePreviews()
         FilePreviewThumbnail.purgePreviews()
@@ -92,7 +93,12 @@ final class AppCore {
             else { return }
             fileSearch.refresh()
         }, onAccessLost: { [weak self] in self?.fileIndexer.refreshAccess() })
-    @ObservationIgnored private(set) lazy var fileSearch = FileSearchSession(index: fileIndexer.index)
+    @ObservationIgnored private(set) lazy var fileSearch = FileSearchSession(
+        index: fileIndexer.index, documentPaths: { text, scopes in
+            await SpotlightContentSearch.paths(matching: text, scopes: scopes)
+        }, filteredDocumentPaths: { filters, scopes in
+            await SpotlightContentSearch.paths(filters: filters, scopes: scopes)
+        })
     let dictionary = DictionarySession()
     @ObservationIgnored private(set) lazy var dictionaryPronunciation = DictionaryPronunciationSession(
         loadPreferences: { [settings] in
@@ -362,6 +368,16 @@ final class AppCore {
         }, reproject: {
             $0.memoryReclaimer.schedule()
         })
+        track(palette, {
+            _ = $0.mode
+            _ = $0.isVisible
+        }, reproject: {
+            if $0.palette.isVisible, $0.palette.mode == .emoji {
+                $0.emojiIndex.prepare(languages: SystemLanguages.preferred)
+            } else if $0.emojiIndex.unload() {
+                $0.memoryReclaimer.schedule()
+            }
+        })
         Signposts.interval("AppCore.start") {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
@@ -420,6 +436,7 @@ final class AppCore {
             appleShortcutCoordinator.applyPresence()
             paletteCoordinator.onLauncherShown = { [weak self] in
                 self?.appleShortcutCoordinator.refresh()
+                self?.fileSearchCoordinator.applyLauncherFiles()
             }
             paletteCoordinator.onScreenOpening = { [weak self] mode in
                 switch mode {
@@ -432,7 +449,6 @@ final class AppCore {
             updateCoordinator.applyEnabled()
             calendarCoordinator.applyEnabled()
             Task { await appIndex.refresh() }
-            Task { await emojiIndex.load(languages: SystemLanguages.preferred) }
             currencyRates.start()
             updateChecker.onUpdateAvailable = { [weak self] release in
                 self?.updateCoordinator.presentIfAvailable(release) ?? true
@@ -674,6 +690,7 @@ final class AppCore {
 
     func prepareForTermination() {
         searchIntentCoordinator.cancel()
+        emojiIndex.unload()
         memoryReclaimer.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
@@ -791,6 +808,9 @@ final class AppCore {
             { _ = $0.clipboardTextSearchEnabled }, reproject: { $0.applyClipboardTextSearch() })
         track({ _ = $0.fileSearchEnabled }, reproject: { $0.fileSearchCoordinator.applyEnabled() })
         track({ _ = $0.fileSearchImageContentEnabled }, reproject: { $0.fileSearchCoordinator.applyImageContent() })
+        track(
+            { _ = $0.fileSearchDocumentContentEnabled },
+            reproject: { $0.fileSearchCoordinator.applyDocumentContent() })
         track(
             { _ = $0.fileSearchShowInLauncher },
             reproject: { $0.fileSearchCoordinator.applyLauncherFiles() })
@@ -1089,6 +1109,10 @@ final class AppCore {
         snippetName: String, arguments: [SnippetTemplateEngine.MissingArgument]
     ) async -> [String: String]? {
         await dialogs.fillSnippetArguments(snippetName: snippetName, arguments: arguments)
+    }
+
+    func editSearchFilter(_ text: String) async -> String? {
+        await dialogs.editClipboardText(text, title: String(localized: "Edit Filter"))
     }
 
     func editClipboardText(_ text: String) async -> String? {

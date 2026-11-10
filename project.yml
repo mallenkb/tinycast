@@ -9,8 +9,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.13"
-    CURRENT_PROJECT_VERSION: "14"
+    MARKETING_VERSION: "0.1.14"
+    CURRENT_PROJECT_VERSION: "15"
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Manual
@@ -56,6 +56,7 @@ targets:
           - Features/ImageSearch/Helper
           - Features/Dictation/Helper
           - Features/FileSearch/Helper
+          - Features/IntelligentSearch/Helper
           - Resources/EmojiKeywords
           - Resources/Fonts
       # A folder reference keeps the packs in their own directory, which `EmojiIndex` lists.
@@ -87,6 +88,20 @@ targets:
           subpath: Contents/Helpers
       # The crawl runs out of process, so its memory is returned when the helper exits.
       - target: FileIndexHelper
+        link: false
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
+      - target: SpotlightContentHelper
+        link: false
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
+      - target: SearchIntentHelper
         link: false
         embed: true
         codeSign: true
@@ -142,6 +157,40 @@ targets:
         # Pinned like ClipboardTextHelper's: release.yml's PRODUCT_NAME would otherwise rename it.
         EXECUTABLE_NAME: FileIndexHelper
         PRODUCT_MODULE_NAME: FileIndexHelper
+        SKIP_INSTALL: YES
+        SWIFT_OPTIMIZATION_LEVEL: -O
+
+  SpotlightContentHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - Tinycast/Features/FileSearch/Helper/SpotlightContentHelper.swift
+      - Tinycast/Features/FileSearch/Helper/SpotlightContentHandler.swift
+      - Tinycast/Features/FileSearch/Helper/SpotlightContentQuery.swift
+      - Tinycast/Features/FileSearch/Service/SpotlightContentRequest.swift
+      - Tinycast/Features/SearchFileConstraints.swift
+    settings:
+      base:
+        EXECUTABLE_NAME: SpotlightContentHelper
+        PRODUCT_MODULE_NAME: SpotlightContentHelper
+        SKIP_INSTALL: YES
+        SWIFT_OPTIMIZATION_LEVEL: -O
+
+  SearchIntentHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - Tinycast/Features/IntelligentSearch/Helper
+      - Tinycast/Features/IntelligentSearch/Model
+      - Tinycast/Features/SearchDescription.swift
+      - Tinycast/Features/SearchDatePhrase.swift
+      - Tinycast/Features/SearchFileConstraints.swift
+      - Tinycast/Features/SearchCalendarDate.swift
+      - Tinycast/Features/SearchFileQuery.swift
+    settings:
+      base:
+        EXECUTABLE_NAME: SearchIntentHelper
+        PRODUCT_MODULE_NAME: SearchIntentHelper
         SKIP_INSTALL: YES
         SWIFT_OPTIMIZATION_LEVEL: -O
 

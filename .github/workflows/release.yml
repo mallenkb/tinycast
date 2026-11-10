@@ -94,6 +94,8 @@ jobs:
           for binary in "$APP/Contents/MacOS/Tinycast" \
             "$APP/Contents/Helpers/ClipboardTextHelper" \
             "$APP/Contents/Helpers/FileIndexHelper" \
+            "$APP/Contents/Helpers/SpotlightContentHelper" \
+            "$APP/Contents/Helpers/SearchIntentHelper" \
             "$APP/Contents/Helpers/Tinycast Dictation.app/Contents/MacOS/Tinycast Dictation"; do
             RELEASE_ARCHS=" $(lipo -archs "$binary") "
             [[ "$RELEASE_ARCHS" == *" arm64 "* && "$RELEASE_ARCHS" == *" x86_64 "* ]]

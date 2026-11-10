@@ -119,6 +119,11 @@ struct FileSearchRow: View {
                     KeyCapChip(text: "⌘", style: .outline)
                     KeyCapChip(text: String(slot), style: .outline)
                 }
+            } else if result.matchesDocumentContent {
+                Text("Content Match")
+                    .font(metrics.typography.rowTrailing)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             } else if showsLocation {
                 Text(result.isDirectory ? "Folder" : "File")
                     .font(metrics.typography.rowTrailing)
@@ -135,6 +140,7 @@ struct FileSearchRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(result.name)
         .accessibilityValue(result.parentPath)
+        .accessibilityHint(result.matchesDocumentContent ? Text("Content Match") : Text(verbatim: ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .task(id: IconRequest(result.id)) {
             if let warm = IconCache.cachedFitted(forFile: result.id) {

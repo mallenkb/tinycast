@@ -11,8 +11,9 @@ final class FileSearchCoordinator {
     private let windowController: PaletteWindowController
     private var sharePicker: NSSharingServicePicker?
     private unowned let core: AppCore
-    private var imageScope: UInt64?
+    private var policyFingerprint: UInt64?
     private var imageSearchEnabled = false
+    private var requestingSpotlightRebuild = false
 
     init(
         settings: AppSettings, appIndex: AppIndex, session: FileSearchSession,
@@ -27,9 +28,11 @@ final class FileSearchCoordinator {
         self.paletteCoordinator = paletteCoordinator
         self.windowController = windowController
         self.core = core
+        session.onWorkSettled = { [weak self] in self?.core.memoryReclaimer.schedule() }
         indexer.onIndexChanged = { [weak self] in
             self?.applyImageContent()
             self?.core.fileImageContentIndexer.schedule()
+            self?.core.memoryReclaimer.schedule()
         }
         indexer.onRecentChanged = { [weak self] in
             self?.session.refreshRecent()
@@ -39,6 +42,7 @@ final class FileSearchCoordinator {
 
     func applyEnabled() {
         appIndex.setCommandsVisible([.searchFiles], settings.fileSearchEnabled)
+        applyDocumentContent()
         indexer.setEnabled(settings.fileSearchEnabled)
         applyImageContent()
         guard !settings.fileSearchEnabled else { return }
@@ -51,10 +55,11 @@ final class FileSearchCoordinator {
             scopes: settings.fileSearchScopes,
             ignorePatterns: settings.fileSearchEffectiveIgnorePatterns,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser)
-        if imageScope != policy.fingerprint {
-            core.fileImageContentIndexer.setEnabled(false, purging: imageScope != nil || policy.roots.isEmpty)
-            imageScope = policy.fingerprint
+        if policyFingerprint != policy.fingerprint {
+            core.fileImageContentIndexer.setEnabled(false, purging: policyFingerprint != nil || policy.roots.isEmpty)
+            policyFingerprint = policy.fingerprint
         }
+        applyDocumentContent()
         indexer.apply(policy)
         applyImageContent()
     }
@@ -62,11 +67,16 @@ final class FileSearchCoordinator {
     func applyImageContent() {
         let permitted = settings.fileSearchEnabled && settings.fileSearchImageContentEnabled
             && Permissions.hasFullDiskAccess()
-        let enabled = permitted && indexer.hasIndex && indexer.index.snapshot?.fingerprint == imageScope
+        let enabled = permitted && indexer.hasIndex && indexer.index.snapshot?.fingerprint == policyFingerprint
         core.fileImageContentIndexer.setEnabled(enabled, purging: !permitted)
         let clearingResults = imageSearchEnabled && !enabled
         imageSearchEnabled = enabled
-        session.refresh(clearingResults: clearingResults)
+        session.refresh(clearingResults: clearingResults || !indexer.hasIndex)
+    }
+
+    func applyDocumentContent() {
+        let enabled = settings.fileSearchEnabled && settings.fileSearchDocumentContentEnabled
+        session.setDocumentContentScope(enabled ? policyFingerprint : nil)
     }
 
     var showsFilesInLauncher: Bool {
@@ -97,12 +107,18 @@ final class FileSearchCoordinator {
         else {
             return []
         }
+        let inline = showsFilesInLauncher
         if core.searchIntentCoordinator.launcherFileDescription(for: query) != nil
+            || (inline && session.filters != nil)
             || SearchDescription(query, now: Date(), calendar: .current) != nil
         {
-            return showsFilesInLauncher ? session.describedResults(for: query) : []
+            return inline ? session.describedResults(for: query) : []
         }
-        let results = showsFilesInLauncher && FileSearchQuery.answersLauncher(query) ? session.results : []
+        switch SearchFileQuery.parse(query, now: Date(), calendar: .current) {
+        case .filters, .issue: return inline ? session.describedResults(for: query) : []
+        case .literal: break
+        }
+        let results = inline && FileSearchQuery.answersLauncher(query) ? session.results : []
         return FileSearchQuery.launcherResults(query, favorites: favoriteFiles, indexed: results)
     }
 
@@ -111,8 +127,58 @@ final class FileSearchCoordinator {
         searchFromLauncher(palette.query)
     }
 
+    func editFilter(_ expression: String) async -> String? {
+        await core.editSearchFilter(expression)
+    }
+
+    func enableContextSearch() {
+        settings.fileSearchDocumentContentEnabled = true
+        applyDocumentContent()
+    }
+
     func rebuildIndex() {
         indexer.rebuild()
+    }
+
+    func rebuildSpotlightIndex() async {
+        guard !requestingSpotlightRebuild, !Task.isCancelled else { return }
+        requestingSpotlightRebuild = true
+        defer { requestingSpotlightRebuild = false }
+        let confirmed = await core.confirm(
+            title: String(localized: "Rebuild Spotlight Index?"),
+            message: [
+                String(localized: "macOS will ask for administrator approval to rebuild the startup disk's Spotlight index."),
+                String(localized: "Search results may be incomplete until indexing finishes.")
+            ].joined(separator: "\n\n"),
+            symbol: "magnifyingglass", confirmTitle: String(localized: "Rebuild Spotlight Index"),
+            tone: .neutral, confirmRole: .standard)
+        guard confirmed, !Task.isCancelled else { return }
+        do {
+            let outcome = try await SpotlightIndexRunner.rebuildStartupDisk()
+            guard !Task.isCancelled else { return }
+            switch outcome {
+            case .requested:
+                core.showMessage(String(localized: "Spotlight rebuild requested"))
+            case .cancelled:
+                break
+            case .disabled:
+                await spotlightRebuildFailed(String(localized: "Spotlight indexing is disabled for the startup disk."))
+            case .failed(let detail):
+                await spotlightRebuildFailed(detail)
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else { return }
+            await spotlightRebuildFailed(error.localizedDescription)
+        }
+    }
+
+    private func spotlightRebuildFailed(_ detail: String) async {
+        await core.showNotice(
+            title: String(localized: "Couldn't Rebuild Spotlight Index"),
+            message: detail.isEmpty ? String(localized: "Spotlight did not accept the rebuild request.") : detail,
+            symbol: "magnifyingglass", tone: .danger)
     }
 
     func openFullDiskAccessSettings() {

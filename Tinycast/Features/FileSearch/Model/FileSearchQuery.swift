@@ -12,6 +12,14 @@ enum FileSearchQuery {
         let terms: [[UInt8]]
         let whole: [UInt8]
         let mask: UInt64
+
+        var allowsTypo: Bool {
+            terms.count == 1 && (5...32).contains(whole.count)
+                && whole.contains { (0x61...0x7A).contains($0) }
+                && whole.allSatisfy {
+                    (0x61...0x7A).contains($0) || (0x30...0x39).contains($0) || $0 == 0x2D || $0 == 0x5F
+                }
+        }
     }
 
     static func answersLauncher(_ query: String) -> Bool {
@@ -111,6 +119,31 @@ enum FileSearchQuery {
         let end = first + lead.count
         if end == name.count || !isAlphanumeric(name[end]) { score += 500 }
         return score
+    }
+
+    static func typoScore(_ query: Prepared, name: UnsafeBufferPointer<UInt8>, prior: Int8) -> Int? {
+        let stem = name.prefix(upTo: name.lastIndex(of: 0x2E).flatMap { $0 > 0 ? $0 : nil } ?? name.endIndex)
+        let term = query.whole
+        guard abs(stem.count - term.count) <= 1 else { return nil }
+        var mismatch = 0
+        while mismatch < min(stem.count, term.count), lower(stem[mismatch]) == term[mismatch] {
+            mismatch += 1
+        }
+        let matches: Bool
+        if stem.count == term.count {
+            guard mismatch < term.count else { return nil }
+            let next = mismatch + 1
+            let substitution = stem[next...].lazy.map(lower).elementsEqual(term[next...])
+            let swapped = next < term.count && lower(stem[mismatch]) == term[next]
+                && lower(stem[next]) == term[mismatch]
+                && stem[(next + 1)...].lazy.map(lower).elementsEqual(term[(next + 1)...])
+            matches = substitution || swapped
+        } else if stem.count > term.count {
+            matches = stem[(mismatch + 1)...].lazy.map(lower).elementsEqual(term[mismatch...])
+        } else {
+            matches = stem[mismatch...].lazy.map(lower).elementsEqual(term[(mismatch + 1)...])
+        }
+        return matches ? priorWeight * Int(prior) - 4 * name.count : nil
     }
 
     static func find(_ needle: [UInt8], in haystack: UnsafeBufferPointer<UInt8>) -> Int? {

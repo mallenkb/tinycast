@@ -52,7 +52,33 @@ final class SearchIntentCoordinator {
             isResolving = false
             return
         }
-        guard SearchIntentResolver.isAvailable else {
+        if next.context == .launcher, core.settings.clipboardEnabled,
+            SearchIntentPolicy.isDirectClipboardLinkQuery(next.query),
+            let direct = SearchIntentPolicy.intent(
+                destination: .clipboard, query: next.query, kind: "links", website: nil,
+                time: nil, websites: core.clipboardStore.knownWebsiteHosts, now: Date(), calendar: .current)
+        {
+            isResolving = false
+            apply(direct, to: next)
+            return
+        }
+        if next.context == .files || (next.context == .launcher && core.settings.fileSearchEnabled) {
+            switch SearchFileQuery.parse(next.query, now: Date(), calendar: .current) {
+            case .filters(let filters) where next.context == .launcher
+                && filters.clauses.contains(where: { $0.field != .category }):
+                isResolving = false
+                let direct = SearchIntent(
+                    destination: .files, description: SearchDescription(fileConstraints: filters), commandID: nil)
+                apply(direct, to: next)
+                return
+            case .filters where next.context == .files, .issue where next.context == .files:
+                isResolving = false
+                return
+            default:
+                break
+            }
+        }
+        guard SearchIntentPolicy.allowsInterpretation(next.query) else {
             isResolving = false
             return
         }
@@ -141,9 +167,9 @@ final class SearchIntentCoordinator {
                         ? core.appIndex.searchIntentCommands(visibility: core.visibility) : []
                     let websites = next.context != .files && core.settings.clipboardEnabled
                         ? core.clipboardStore.knownWebsiteHosts : []
-                    return try await SearchIntentResolver.resolve(
-                        next.query, context: next.context, commands: commands,
-                        websites: websites, now: Date(), calendar: .current)
+                    return try await SearchIntentWorker.resolve(SearchIntentRequest(
+                        query: next.query, context: next.context, commands: commands,
+                        websites: websites, now: Date(), calendar: .current))
                 } catch {
                     return nil
                 }

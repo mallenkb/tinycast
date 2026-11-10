@@ -41,7 +41,7 @@ if [ "${1:-}" = "--exec" ]; then
     done
     wait "$pid"
     status=$?
-    took=$(< "$BIN/$name.time")
+    took=$(tail -n 1 "$BIN/$name.time")
     if [ "$status" -gt 128 ]; then fail "crashed (signal $((status - 128))) after ${took}s"; fi
     if [ "$status" -ne 0 ]; then fail "assertion failed after ${took}s"; fi
     printf '\033[32mok\033[0m    %-25s %5ss  \033[2m(compile %ss)\033[0m\n' "$name" "$took" "$compiled"
@@ -120,17 +120,23 @@ run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift 
                            $L/LauncherMatch.swift $L/EntryNaming.swift $L/LauncherOrder.swift \
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift
 FS=Tinycast/Features/FileSearch
-SEARCH_DESCRIPTION=Tinycast/Features/SearchDescription.swift
+SEARCH_DESCRIPTION="Tinycast/Features/SearchDescription.swift Tinycast/Features/SearchDatePhrase.swift Tinycast/Features/SearchFileConstraints.swift Tinycast/Features/SearchCalendarDate.swift Tinycast/Features/SearchFileQuery.swift"
 SEARCH_INTENT=Tinycast/Features/IntelligentSearch/Model
 IMAGE_CONTENT=Tinycast/Features/ImageSearch/Model/ImageContent.swift
 IMAGE_STORE=Tinycast/Features/ImageSearch/Service/ImageContentStore.swift
-FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileSearchMetadata.swift $FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+run file-filters-test $FS/Model/*.swift $FILE_INDEX $SEARCH_DESCRIPTION
+run spotlight-content-test Tinycast/Platform/ProcessExit.swift $FS/Service/SpotlightContentSearch.swift \
+                           $FS/Service/SpotlightContentRequest.swift $FS/Helper/SpotlightContentQuery.swift \
+                           $FS/Helper/SpotlightContentHandler.swift Tinycast/Features/SearchFileConstraints.swift
 run description-search-test $FS/Model/*.swift $FILE_INDEX $FS/Service/FileSearchSession.swift \
                            $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift Tinycast/Features/Clipboard/Model/*.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
 run index search-intent-live-test $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift \
-                           Tinycast/Features/IntelligentSearch/Service/SearchIntentResolver.swift
+                           Tinycast/Features/IntelligentSearch/Helper/SearchIntentResolver.swift \
+                           Tinycast/Features/IntelligentSearch/Service/SearchIntentWorker.swift \
+                           Tinycast/Platform/ProcessExit.swift
 run file-search-test       $FS/Model/*.swift
 run file-index-test        $FS/Model/*.swift $SEARCH_DESCRIPTION $FILE_INDEX
 run file-search-session-test $FS/Model/*.swift $SEARCH_DESCRIPTION $FS/Service/FileSearchSession.swift $FILE_INDEX
@@ -305,7 +311,7 @@ run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/Features/Settings/AppTypography.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Palette/PalettePlacement.swift
-run palette-menu-click-test Tinycast/Platform/Appearance.swift \
+PALETTE_PANEL="Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/Platform/WindowLevel.swift \
                            Tinycast/Platform/NotificationToken.swift \
@@ -313,7 +319,9 @@ run palette-menu-click-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Interaction/Motion.swift \
                            Tinycast/DesignSystem/Interaction/AnimatedPanel.swift \
                            Tinycast/Palette/PalettePanel.swift \
-                           Tinycast/Palette/PaletteCaretView.swift
+                           Tinycast/Palette/PaletteCaretView.swift"
+run palette-menu-click-test $PALETTE_PANEL
+run palette-hosting-test $PALETTE_PANEL
 run form-input-test        Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \

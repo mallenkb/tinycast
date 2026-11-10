@@ -38,6 +38,7 @@ struct FileIndexTests {
         cancellation(index)
         try cancellationWithinScan(at: scratch.appending(path: "cancel-index.bin"), policy: policy)
         try live(index, root: root, policy: policy)
+        try overlayRebuild(at: scratch)
 
         print(failures == 0 ? "File index tests passed" : "\(failures) file index tests failed")
         exit(failures == 0 ? 0 : 1)
@@ -53,6 +54,25 @@ struct FileIndexTests {
             exit(1)
         }
         return snapshot
+    }
+
+    static func overlayRebuild(at scratch: URL) throws {
+        let folder = scratch.appending(path: "overlay", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let policy = FileSearchPolicy(scopes: [folder.path], ignorePatterns: [], homeDirectory: folder)
+        let location = scratch.appending(path: "overlay-index.bin")
+        let snapshot = try build(policy, at: location)
+        let index = FileIndex()
+        index.replace(with: snapshot, policy: policy)
+        for number in 0...FileIndex.addedRebuildThreshold {
+            try Data().write(to: folder.appending(path: "entry-\(number).txt"))
+        }
+        expect(index.apply(folder: snapshot.roots[0]), "a large live overlay requests a rebuild")
+        expect(index.itemCount == FileIndex.addedRebuildThreshold + 1, "overlay remains searchable while rebuilding")
+        let rebuilt = try build(policy, at: location)
+        index.replace(with: rebuilt, policy: policy)
+        expect(index.itemCount == FileIndex.addedRebuildThreshold + 1, "the rebuilt index keeps all additions")
+        expect(!index.apply(folder: rebuilt.roots[0]), "an unchanged rebuilt index does not request another rebuild")
     }
 
     static func layout(_ snapshot: FileIndexSnapshot, root: String) {

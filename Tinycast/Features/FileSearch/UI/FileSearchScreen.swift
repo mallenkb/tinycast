@@ -59,7 +59,10 @@ struct FileSearchScreen: PaletteScreen {
     }
 
     func body(selection: Int, scroll: ScrollIntent) -> AnyView {
-        AnyView(content(selection: selection, scroll: scroll))
+        AnyView(VStack(spacing: 0) {
+            FileSearchFilterBar(session: session, settings: core.settings, palette: vm, coordinator: core.fileSearchCoordinator)
+            content(selection: selection, scroll: scroll)
+        })
     }
 
     @ViewBuilder
@@ -91,10 +94,11 @@ struct FileSearchScreen: PaletteScreen {
         }
     }
 
-    /// Nothing is said while a query runs: the rows it replaces would only flash a message.
     @ViewBuilder
     private var emptyState: some View {
-        if needsAccess {
+        if session.queryIssue != nil {
+            Color.clear
+        } else if needsAccess {
             EmptyResults(
                 text: String(localized: "Full Disk Access required"),
                 detail: String(
@@ -114,7 +118,7 @@ struct FileSearchScreen: PaletteScreen {
                 text: String(localized: "Couldn’t build the file index"),
                 detail: String(localized: "Try Rebuild Index in Settings ▸ File Search."),
                 systemImage: "exclamationmark.triangle")
-        } else if session.state != .ready {
+        } else if session.state != .ready || core.searchIntentCoordinator.isResolving {
             Color.clear
         } else if isShowingRecents {
             EmptyResults(text: String(localized: "Type to search files and folders"))

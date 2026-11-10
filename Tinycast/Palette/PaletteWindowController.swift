@@ -58,7 +58,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         InjectionTarget.behindPalette(ownWindow: previousOwnWindow, app: previousApp)
     }
 
-    func show() {
+    func show(restoringSelection: Bool) {
         Signposts.interval("PaletteWindowController.show") {
             isPoppedToRoot = false
             core.palette.focusToken = UUID()
@@ -72,7 +72,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             if key !== panel { previousOwnWindow = key }
             // Once per summon, and from `previousApp`, so the label names the paste target.
             core.palette.pasteTarget = PasteTarget(app: previousApp)
-            let panel = ensurePanel()
+            let panel = ensurePanel(restoringSelection: restoringSelection)
             // Undo a sink a modal left behind, unless one is still up.
             if NSApp.modalWindow == nil { panel.level = .palette }
             // Open disarmed: a pointer already over a row must not highlight it.
@@ -158,6 +158,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         core.roomCoordinator.paletteDidHide()
         core.palette.noteVisible(false)
         core.clipboardStore.setTextSearchActive(false)
+        core.fileSearch.suspend()
         // Drop the anchor, so the next summon re-resolves for the screen in use then.
         anchor = nil
         // The guides must never outlive the panel they point at.
@@ -169,6 +170,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         FilePreviewThumbnail.purgePreviews()
         IconCache.purgeFitted()
         schedulePopToRoot()
+        core.memoryReclaimer.schedule()
         guard restoreFocus else { return }
         // Our own window first: it is still open, and activating another app would bury it.
         if let own = previousOwnWindow, own.isVisible {
@@ -201,6 +203,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         core.fileSearch.cancel()
         core.palette.prepare(mode: .launcher)
         isPoppedToRoot = true
+        if !isVisible { core.memoryReclaimer.schedule() }
     }
 
     /// Skip the Pop to Root Search delay, for a close that means to reset as well as hide.
@@ -369,9 +372,23 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Private
 
-    private func ensurePanel() -> PalettePanel {
-        if let panel { return panel }
-        let root = RootPaletteView().paletteEnvironment(core)
+    func releaseHiddenSearchContent() {
+        guard let panel, !panel.isVisible, panel.contentView != nil, !core.extensions.isSigningIn,
+            [.launcher, .fileSearch, .clipboard, .emoji].contains(core.palette.mode)
+        else { return }
+        core.palette.menuOpen = false
+        core.palette.menuQuery = ""
+        panel.releaseContent()
+    }
+
+    private func ensurePanel(restoringSelection: Bool) -> PalettePanel {
+        if let panel {
+            if panel.contentView == nil {
+                panel.mount(RootPaletteView(restoringSelectionOnMount: restoringSelection).paletteEnvironment(core))
+            }
+            return panel
+        }
+        let root = RootPaletteView(restoringSelectionOnMount: false).paletteEnvironment(core)
         let panel = PalettePanel(rootView: root)
         panel.delegate = self
         panel.paletteState = core.palette

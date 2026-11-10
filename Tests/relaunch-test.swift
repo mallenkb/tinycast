@@ -124,6 +124,8 @@ struct RelaunchTests {
 final class AppCore {
     static let shared = AppCore()
     let activationPolicy = ActivationPolicy()
+    let settings = RelaunchSettings()
+    let fileImageContentIndexer = RelaunchImageContentIndexer()
     private let root: URL
     private var stage = "first"
 
@@ -208,4 +210,14 @@ final class AppCore {
 final class ActivationPolicy {
     let hasOpenWindows = false
     func closeAll() {}
+}
+
+@MainActor
+final class RelaunchSettings {
+    func refreshLaunchAtLoginStatus() {}
+}
+
+@MainActor
+final class RelaunchImageContentIndexer {
+    func stop() async {}
 }

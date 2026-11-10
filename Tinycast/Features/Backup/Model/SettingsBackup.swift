@@ -60,6 +60,7 @@ struct SettingsBackup: Codable {
         var fileSearchIgnorePatterns: [String]?
         var fileSearchRemovedDefaultPatterns: [String]?
         var fileSearchShowInLauncher: Bool?
+        var fileSearchDocumentContentEnabled: Bool?
         var notesEnabled: Bool?
         var notesRendersMarkdown: Bool?
         var notesShowsFormattingBar: Bool?
@@ -184,6 +185,7 @@ extension SettingsBackup {
             fileSearchIgnorePatterns: s.fileSearchIgnorePatterns,
             fileSearchRemovedDefaultPatterns: s.fileSearchRemovedDefaultPatterns,
             fileSearchShowInLauncher: s.fileSearchShowInLauncher,
+            fileSearchDocumentContentEnabled: s.fileSearchDocumentContentEnabled,
             notesEnabled: s.notesEnabled,
             notesRendersMarkdown: s.notesRendersMarkdown,
             notesShowsFormattingBar: s.notesShowsFormattingBar,
@@ -486,6 +488,10 @@ extension SettingsBackup {
         }
         if let flag = s.fileSearchShowInLauncher {
             settings.fileSearchShowInLauncher = flag
+            count += 1
+        }
+        if let flag = s.fileSearchDocumentContentEnabled {
+            settings.fileSearchDocumentContentEnabled = flag
             count += 1
         }
         if let flag = s.notesEnabled {

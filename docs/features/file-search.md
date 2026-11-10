@@ -1,10 +1,10 @@
 # Search Files
 
 Search Files is a palette screen for opening any file or folder on the disk. It searches Tinycast's own
-filename index, built by crawling the search scopes and kept current from FSEvents. Spotlight is not
-involved. It is reached from the built-in Search Files launcher command, or its own global shortcut, after the
-feature is enabled in Settings; with **Show in launcher** on, root search lists the top hits too. The
-design follows [fsearch](https://github.com/noahdunnagan/fsearch).
+filename index, built by crawling the search scopes and kept current from FSEvents. An optional
+Spotlight query also finds text inside indexed files. Open Search Files from the launcher command or
+its shortcut after enabling File Search in Settings. With **Show in launcher** on, root search lists
+the top hits too. The design follows [fsearch](https://github.com/noahdunnagan/fsearch).
 
 ## Invariants
 
@@ -33,6 +33,10 @@ design follows [fsearch](https://github.com/noahdunnagan/fsearch).
   so changing `FileSearchIgnoreList.defaults` reaches installs that already ran. Every row can be
   removed, and **Restore Defaults** clears both lists. Scopes are one stored list that `defaultScopes`
   only seeds.
+- **Spotlight text search is opt-in.** A Spotlight hit must also belong to Tinycast's current index and
+  pass its current search policy and filters. Repeated paths appear once, with existing matches first.
+- **Spotlight gathering runs in a disposable helper.** Finishing, cancellation and timeout all reap the
+  child, returning Spotlight's allocations without keeping them in the menu-bar process.
 - **Indexed hits in the launcher are on by default when File Search is enabled.** With **Show in launcher** off, a keystroke
   never reaches the index or observes the session. Explicit file favorites still answer by filename
   from their saved paths, while disabling File Search hides them too.
@@ -80,6 +84,23 @@ into place.
 
 ## Searching
 
+The search field shows a spinner while results are loading, including while Context Search adds
+matches to a list already on screen.
+
+Turn on **Context Search** in Settings ▸ File Search to find text indexed by macOS Spotlight.
+The switch defaults off. Spotlight results fill the remaining result slots after filename and visual
+matches. Those rows show **Content Match**. Spotlight coverage depends on which folders and formats
+macOS has indexed. Results can be incomplete if the query reaches its deadline or candidate limit.
+Files outside Spotlight's index can still match by filename.
+
+The Index section separates Tinycast's **Rebuild Index** from **Rebuild Spotlight Index…**.
+The Spotlight action confirms the startup-disk scope, then asks macOS for administrator authorization
+through `osascript` before requesting `/usr/bin/mdutil -E /`. It does not rebuild external volumes,
+change indexing exclusions or enable disabled indexing. Cancelling authorization produces no error.
+The request is bounded to two minutes and cancelled when its settings view disappears; a request
+already accepted by macOS can continue rebuilding in the background. Success means the request was
+accepted, not that indexing is complete, and Tinycast does not display estimated Spotlight progress.
+
 The optional **Search image and video content** switch adds matches from saved OCR and on-device image
 descriptions after filename matches. It defaults off and covers images and sampled video frames
 in the configured file index. Processing and capability limits are in [image-search.md](image-search.md).
@@ -91,6 +112,8 @@ requires every term as a case-insensitive substring. ASCII names are compared as
 non-ASCII bytes is folded through Foundation first. The second walks the entries and keeps those whose
 name matched, adding the entry's prior and applying the type filter. Each chunk keeps its best 200, only
 the overall best 200 have their paths built, and the overlay of live additions is scored the same way.
+If that search finds nothing, a single ASCII filename term of 5–32 characters can match the filename
+stem with one inserted, omitted, substituted or swapped character. Explicit filters stay exact.
 
 Cancellation is checked between scan phases and every 256 names or entries. The worker waits for
 the cancelled scan to finish before starting its replacement, so scratch buffers do not overlap.
@@ -116,7 +139,8 @@ latest update or delaying typed queries.
 
 Search results follow **Pop to Root Search**: closing with **Immediately** clears the session at once.
 With a delay, results stay with the preserved query until the reset fires; reopening before it fires
-keeps them. Live updates never re-run a published query, so a file removed meanwhile still lists and
+keeps them. Hiding cancels unfinished searches and resumes them on reopening without discarding the
+preserved rows. Live updates never re-run a published query, so a file removed meanwhile still lists and
 reports the failure when opened. Icons and previews are still purged on close.
 
 The 2026-10-13 benchmark (`Tests/file-search-performance.swift`, `/System /Applications /Library /usr`,
@@ -144,8 +168,9 @@ matters on macOS 27, where malloc keeps freed small blocks dirty: replaying a la
 per-row Strings left about 30 MB behind, and the merge keeps a cold start level with Spotlight's.
 The diff reads a copy of the state that is released before its result is written, so writing never
 copies the overlay: holding that copy across the write cost 1.7 ms per change at 30,000 overlay entries.
-`MustScanSubDirs` rescans a folder recursively. History loss at or above a root, a moved root or more
-than 100,000 changes since the snapshot trigger a background rebuild.
+`MustScanSubDirs` rescans a folder recursively. History loss at or above a root, a moved root, more
+than 100,000 changes or more than 8,192 live additions trigger a background rebuild. The lower limit
+on additions bounds the memory used by their paths while the mapped index continues serving searches.
 
 ## Type filter
 
@@ -313,6 +338,9 @@ the **Show in launcher** switch beneath it, along with the Full Disk Access stat
 ignore patterns and the Search Files command row. The lists are ordinary settings carried by Tinycast
 settings backups; importing them grants no permission.
 
+**Context Search** is also carried in settings backups and mirrored as
+`fileSearch.documentContentEnabled` in `settings.json`.
+
 `AppCore` observes the switch and asks `FileSearchCoordinator` to project `CommandID.searchFiles` into
 the launcher and to start or stop `FileIndexer`; a second observation hands it the new policy when either
 list changes. The coordinator also
@@ -332,27 +360,69 @@ the shortcut working, as it does for every other feature.
 
 ## Search by description
 
-English descriptions combine the existing filename search with type, folder and modification-date
-filters. For example, `PDFs in Downloads from last week containing invoice` searches PDF filenames in
-Downloads modified during the previous calendar week. `files from yesterday` lists matching files
-without a filename term. The type dropdown still narrows these results.
+File Search parses structured English queries without Apple Intelligence. `SearchFileQuery` produces
+`SearchFileConstraints`, with chips that show the interpreted filters. Click a chip to edit its query
+clause, use its remove button to delete it, or choose **Edit Filters…** to edit the entire query.
+The type dropdown further narrows results.
 
-Descriptions start with files, folders, documents, PDFs, images, photos, screenshots, audio, music,
-videos or archives, optionally preceded by `find`, `show` or `search for` and qualifiers such as
-`all`, `my` or `the`. For example, `all pdf from last week` applies no filename constraint. Add `in Downloads`,
-`Documents`, `Desktop`, `Pictures`, `Movies` or `Music` for a folder under the home directory. Dates
-use `from today`, `from yesterday`, `from this week` or `from last week`, in the local calendar.
-Finish with `containing`, `with`, `named` or `called` followed by filename text. Text after that marker
-is literal. Unrecognized phrases retain ordinary filename matching.
+| Filter | Supported examples |
+| --- | --- |
+| Category | `files`, `folders`, `documents`, `spreadsheets`, `presentations`, `images`, `audio`, `videos`, `archives`, `code`, `applications`, `fonts` |
+| Extension | `HTML files`, `.html`, `PDF or DOCX files`, `extension .blend`, `.tar.gz files` |
+| Folder | `in Downloads`, `in "~/Work/Invoices"`, `in "/Volumes/Work"`, `without subfolders` |
+| Modified | `from yesterday`, `from last week Friday`, `modified on 26 May`, `on 26 of last month` |
+| Exact dates | `on 26 June 2021`, `on 2021-06-26`, `in June 2021`, `in 2021` |
+| Date bounds | `before 26 May`, `after 26 May`, `between 26 May and 2 June` |
+| Created | `created on 26 June 2021`, `created between 1 June and 15 June` |
+| Downloaded | `downloaded last week`, `downloaded after 2026-11-01` |
+| Added to folder | `added last week`, `added after 2026-11-01` |
+| Filename | `named "invoice"`, `named exactly "invoice.pdf"`, `named starting with "invoice"`, `named ending with "draft.pdf"` |
+| Content | `containing "payment overdue"`, `containing all words invoice overdue`, `containing any words invoice receipt` |
+| Size | `larger than 500 MB`, `smaller than 1 MiB`, `between 1 MB and 10 MB`, `empty files` |
+| Exclusions | `excluding PDFs`, `excluding folder "Archive"`, `excluding name "draft"`, `excluding tag "Private"` |
+| Tags | `tagged "Work"`, `tagged all "Work" "Tax"`, `tagged any "Work" "Tax"` |
+| Order | `newest first`, `oldest first`, `newest added first`, `oldest added first`, `largest first`, `smallest first`, `sort by name`, `sort by relevance` |
 
-The same descriptions work in root search when Show in launcher is enabled. Only indexed matches
-appear, so favorites cannot bypass a description's constraints. All filters run before the 200-result
-limit, including live index changes. Document contents are not inspected. Opt-in visual content matching
-uses saved image and sampled video-frame descriptions.
-These structured phrases also work without Apple Intelligence. For broader descriptions,
-`SearchIntentResolver` uses Apple's installed on-device model and validates its constraints before
-passing them to the same index. There is no API key, model download or additional file index.
-The shared pure `SearchDescription` value receives its clock and calendar from the service.
+For example, `CSV files named "sales" modified in June 2021` combines filename, extension and date.
+Quoted phrases stay literal; clauses may follow a quoted name or content phrase.
+An unquoted filename or content phrase consumes the rest of the query, preserving literal words. Extensions are exact
+and case-insensitive, including unknown and compound extensions. Folder scopes stay inside Tinycast's
+index and exclusions. Nested folders are included unless `without subfolders` is specified.
+Questions such as `What was the latest folder I added to My Movies?` look at direct children,
+sorted by Date Added. Multiword paths can use quotes for names that include filter words.
+
+Unqualified dates mean modification dates. Missing years use the current year, displayed explicitly
+in the chip. Absolute dates use the Gregorian calendar in the supplied timezone; relative weeks
+respect its week-start setting. Date ranges include both endpoint days; `before` excludes the named
+day and `after` begins on the following day. Invalid dates show a correction message and no broad
+fallback results. Ambiguous slash dates offer both valid ISO interpretations. A standalone filename
+year remains literal. Creation dates use filesystem birth time. Download dates use the macOS
+quarantine timestamp. Files with no recorded date are excluded, and the filter applies
+across the configured search scopes.
+Date Added comes from macOS's directory entry metadata. If a volume provides no added date,
+the search uses the item's last modification date.
+
+All metadata filters and ordering apply before the result limit, including live additions.
+Creation time, logical file size and Finder tags are read on demand after the cheap filters; they
+are not additional fields in the mapped index. Broad size or tag searches can take longer than
+filename searches. They run off-main, bound the retained matches and honor cancellation. Metadata
+reads disable dataless-file materialization. Missing or unreadable required metadata excludes the
+candidate. File sizes use decimal KB/MB/GB/TB or explicit binary KiB/MiB/GiB; folder sizes are not
+aggregated. Equal sort values use a stable path tie-breaker.
+
+Explicit content clauses require **Context Search**. The filter bar offers to enable it when off.
+Spotlight combines content words with AND or OR and applies supported metadata predicates, then
+Tinycast checks the resulting paths against its current index and all filters. Content searches
+still have Spotlight's coverage, deadline and candidate limits, stated in the filter bar. Gathering
+checks the candidate count every 50 ms and stops once it reaches 2,000 or its one-second deadline;
+Spotlight may deliver a larger batch before the check, but at most 2,000 paths cross into Tinycast.
+The helper sends paths over a bounded pipe and exits before the app publishes them. Cancellation
+terminates and reaps it. This does not add visual analysis.
+Existing optional image descriptions remain available to ordinary searches.
+
+The same constraints apply to inline launcher results when Show in launcher is enabled. A direct
+parse takes precedence over a later model interpretation. `SearchIntentResolver` remains available
+for broader descriptions; clipboard descriptions retain their existing grammar.
 
 SVG previews use a bounded native raster fitted to the center of the preview card. They bypass
 Quick Look’s document canvas, which can pin small SVG artwork to the upper-left corner.
