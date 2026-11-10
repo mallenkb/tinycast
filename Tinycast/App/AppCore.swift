@@ -41,7 +41,9 @@ final class AppCore {
         syntheticEventTag: Paster.tinycastEventTag)
     let textInjector: TextInjector
     let hotKeys = HotKeyManager()
-    let dictationAudioDucker = DictationAudioDucker()
+    @ObservationIgnored private(set) lazy var dictationHistory =
+        DictationHistoryStore(retention: settings.dictationHistoryRetention)
+    @ObservationIgnored private lazy var dictationCorrections = DictationCorrectionStore()
     @ObservationIgnored private(set) lazy var dictationModels =
         DictationModelStore(idleRelease: settings.dictationIdleRelease)
     @ObservationIgnored private(set) lazy var hyperKey = HyperKeyManager(
@@ -154,20 +156,22 @@ final class AppCore {
         palette: palette,
         showMessage: { [unowned self] in self.showMessage($0, tone: $1) }, core: self)
     @ObservationIgnored private(set) lazy var dictationCoordinator = DictationCoordinator(
-        settings: settings, hotKeys: hotKeys, models: dictationModels, injector: textInjector,
-        audioDucker: dictationAudioDucker,
+        settings: settings, hotKeys: hotKeys, models: dictationModels,
+        corrections: dictationCorrections, injector: textInjector,
         confirmEnable: { [unowned self] in
             await self.confirm(
                 title: String(localized: "Enable Dictation?"),
                 message: String(
                     localized: """
                         Tinycast needs microphone access for dictation and Accessibility to paste into \
-                        other apps. Audio is processed on this Mac.
+                        other apps. Audio is processed on this Mac. With Auto-learn words on, \
+                        Tinycast saves spelling corrections on this Mac.
                         """),
                 symbol: "waveform", confirmTitle: String(localized: "Continue"), tone: .neutral,
                 confirmRole: .standard)
         },
-        showMessage: { [unowned self] in self.showMessage($0, tone: $1) })
+        showMessage: { [unowned self] in self.showMessage($0, tone: $1) },
+        recordTranscript: { [unowned self] in self.dictationHistory.record($0, pastedInto: $1) })
     @ObservationIgnored private(set) lazy var quicklinkCoordinator = QuicklinkCoordinator(
         store: quicklinks, settings: settings,
         appIndex: appIndex, injector: textInjector, hotKeys: hotKeys, favorites: favorites,
@@ -348,6 +352,11 @@ final class AppCore {
     }
 
     func start(launchedByUser: Bool) {
+        Task { await DictationVolumeMigration.apply() }
+        DictationDestinationMigration.apply(defaults: .standard)
+        DictationShortcutsMigration.apply(
+            defaults: .standard, holdKey: HotKeyAction.dictationHold.defaultsKey,
+            toggleKey: HotKeyAction.dictationToggle.defaultsKey)
         memoryReclaimer.start()
         clipboardStore.setTextSearchActive(false)
         clipboardStore.onSearchResultsChanged = { [weak self] query, previous, current in
@@ -383,7 +392,6 @@ final class AppCore {
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
             NSApp.setActivationPolicy(.accessory)
             settings.applyLaunchAtLogin()
-            dictationAudioDucker.recover()
             applyAppearance()
             applyMotion()
             observeEffectiveAppearance()
@@ -440,6 +448,7 @@ final class AppCore {
             }
             paletteCoordinator.onScreenOpening = { [weak self] mode in
                 switch mode {
+                case .dictationHistory: self?.dictationHistory.pruneExpired()
                 case .menuSearch: self?.menuSearchCoordinator.load()
                 case .switchWindows: self?.windowSwitchCoordinator.load()
                 case .rooms, .roomWindows: self?.roomCoordinator.load()
@@ -464,9 +473,10 @@ final class AppCore {
 
             hotKeys.onTogglePalette = { [weak self] in self?.paletteCoordinator.togglePalette() }
             hotKeys.dictationEnabled = settings.dictationEnabled
-            hotKeys.dictationHoldToTalk = settings.dictationMode == .pushToTalk
-            hotKeys.onDictationPressed = { [weak self] in self?.dictationCoordinator.pressed() }
-            hotKeys.onDictationReleased = { [weak self] in self?.dictationCoordinator.released() }
+            hotKeys.onDictationHoldPressed = { [weak self] in self?.dictationCoordinator.pressed(.pushToTalk) }
+            hotKeys.onDictationTogglePressed = { [weak self] in self?.dictationCoordinator.pressed(.toggle) }
+            hotKeys.onDictationHoldReleased = { [weak self] in self?.dictationCoordinator.releasedHold() }
+            hotKeys.onDictationHoldCancelled = { [weak self] in self?.dictationCoordinator.cancelHold() }
             hotKeys.onDictationCancelled = { [weak self] in self?.dictationCoordinator.cancel() }
             hotKeys.onRunCommand = { [weak self] id in self?.launcherCoordinator.runCommand(id) }
             hotKeys.onRunCustomCommand = { [weak self] id in
@@ -605,7 +615,7 @@ final class AppCore {
 
     func allowsHotKeyAction(_ action: HotKeyAction) -> Bool {
         guard visibility.allowsHotKey(action) else { return false }
-        if action == .dictation { return settings.dictationEnabled }
+        if action.isDictation { return settings.dictationEnabled }
         // A disabled feature drops its commands from the launcher; their shortcuts go too.
         guard case .command(let id) = action else { return true }
         return appIndex.isCommandEnabled(id)
@@ -637,7 +647,7 @@ final class AppCore {
             return snippetsStore.record(id: id)?.snippet.name
         case .extensionCommand(let entryID):
             return appIndex.apps.first { $0.kind == .extensionCommand && $0.id == entryID }?.name
-        case .togglePalette, .dictation, .command, .systemAction, .windowCommand:
+        case .togglePalette, .dictationHold, .dictationToggle, .command, .systemAction, .windowCommand:
             return nil
         }
     }
@@ -648,8 +658,6 @@ final class AppCore {
 
     func stopDictationForTermination() async {
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
-        dictationAudioDucker.restoreImmediately()
-        await dictationAudioDucker.waitForTransition()
         await dictationModels.stop()
     }
 
@@ -831,12 +839,8 @@ final class AppCore {
                 $0.dictationModels.setIdleRelease($0.settings.dictationIdleRelease)
             })
         track(
-            {
-                _ = $0.dictationEnabled
-                _ = $0.dictationMode
-            },
+            { _ = $0.dictationEnabled },
             reproject: {
-                $0.hotKeys.dictationHoldToTalk = $0.settings.dictationMode == .pushToTalk
                 $0.hotKeys.dictationEnabled = $0.settings.dictationEnabled
             })
         track(
@@ -884,6 +888,9 @@ final class AppCore {
         track(
             { _ = $0.clipboardRetention },
             reproject: { $0.clipboardCoordinator.applyRetention($0.settings.clipboardRetention) })
+        track(
+            { _ = $0.dictationHistoryRetention },
+            reproject: { $0.dictationHistory.setRetention($0.settings.dictationHistoryRetention) })
         track(aiSettings, { _ = $0.retention }, reproject: { $0.aiChatCoordinator.applyRetention() })
         track(aiSettings, { _ = $0.launchRevisions }, reproject: { $0.applyInstalledLaunches() })
         track(

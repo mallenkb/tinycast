@@ -190,6 +190,8 @@ final class LauncherCoordinator {
             core.quickActionCoordinator.run(.summarize)
         case .calculatorHistory:
             paletteCoordinator.togglePalette(mode: .calculatorHistory)
+        case .dictationHistory:
+            paletteCoordinator.togglePalette(mode: .dictationHistory)
         case .clipboardHistory:
             guard core.settings.clipboardEnabled else { return }
             paletteCoordinator.togglePalette(mode: .clipboard)
@@ -274,6 +276,9 @@ final class LauncherCoordinator {
         case .settings:
             dismissPalette()
             settingsCoordinator.showSettings()
+        case .dictationSettings:
+            dismissPalette()
+            settingsCoordinator.showSettings(tab: .dictation)
         case .about:
             dismissPalette()
             settingsCoordinator.showAbout()

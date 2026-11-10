@@ -14,7 +14,7 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
 - **Off by default, and only the pane turns it on.** `settingsFileEnabled` has no key in the file and is
   excluded from backups: a file or an import must never switch on something that reads a file.
 - **A capability grant never has a key.** Snippets, Extensions, Calendar access, Auto Join, Camera
-  Preview, Quick Actions, MCP and clipboard text recognition are switched on only in the app, which
+  Preview, Quick Actions, MCP, dictation auto-learning and clipboard text recognition are switched on only in the app, which
   asks first. `settings-file-test` checks those paths stay absent.
 - **Removing a key ships a migration that strips it.** The import reports a key it no longer knows on
   every launch, until a change made in the app rewrites the file. See [migrations.md](../migrations.md).
@@ -123,6 +123,7 @@ Where a number has a special case, the case is a word:
 | --- | --- |
 | `general.language` | `"en"`, `"de"`, `"es"`, `"fr"`, `"ja"`, `"ko"`, `"pt"`, `"ru"`, `"zh-Hans"` |
 | `clipboard.retentionDays` | 1, 7, 30, 90, 180, 365, `"forever"` |
+| `dictation.retentionDays` | 1, 7, 30, 90, 180, 365, `"forever"` |
 | `ai.retentionDays` | 7, 30, 90, `"forever"` |
 | `ai.newChatAfterMinutes` | 2, 5, 10, 30, `"never"` |
 | `ai.toolRounds` | 10, 25, 50, 100, `"unlimited"` |
@@ -157,9 +158,14 @@ where it was. A chord another action still holds is reported, and the old bindin
 
 Each pane that lists items writes the ones with something set, as records keyed by ID:
 `applications.apps` and `systemSettings.panes` by bundle ID, `systemActions.actions` by action ID, and
-built-in commands under the pane that lists them — `clipboard.commands`, `emoji.commands`, and the rest
-in `commands.builtIn` — by their ID after `command:`. App Launcher and Dictation are
-`general.launcherShortcut` and `dictation.shortcut`.
+built-in commands under the pane that lists them, such as `clipboard.commands`, `dictation.commands`
+and `emoji.commands`. Commands without a feature pane use `commands.builtIn`. Each record uses the
+ID after `command:`. The recording shortcuts use `dictation.holdShortcut` and `dictation.toggleShortcut`.
+The palette shortcut uses `general.launcherShortcut`.
+`dictation.indicatorStyle` accepts `compact` for Dark compact, `lightCompact`, `lightCapsule`,
+`darkCapsule`, `outlinedCapsule`, `lightRounded`, `darkRounded`, or `outlinedRounded`.
+Setting `dictation.useApple` to `true` selects Apple Dictation. The `dictation.model` value remembers
+the Parakeet or Qwen model to use when Apple Dictation is off.
 
 ```json
 "clipboard-history": { "shortcut": "cmd+shift+v", "alias": "ch", "showInLauncher": true }

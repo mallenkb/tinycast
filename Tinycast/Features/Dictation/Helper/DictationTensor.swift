@@ -58,9 +58,12 @@ enum DictationTensor {
         return Int(vDSP.indexOfMaximum(values).0)
     }
 
-    static func load(_ name: String, at directory: URL, units: MLComputeUnits = .all) throws -> MLModel {
+    static func load(
+        _ name: String, at directory: URL, units: MLComputeUnits = .all, function: String? = nil
+    ) throws -> MLModel {
         let configuration = MLModelConfiguration()
         configuration.computeUnits = units
+        configuration.functionName = function
         return try MLModel(
             contentsOf: directory.appendingPathComponent(name + ".mlmodelc"),
             configuration: configuration)

@@ -14,6 +14,7 @@ struct ClipboardList: View {
     /// Nil when the entry has nothing left to hand over, which is reported rather than dragged.
     let onDragPayload: (ClipboardItem) -> ClipDragPayload?
     let onDropped: () -> Void
+    var rowSymbolName: String?
     @Environment(ClipboardStore.self) private var store
 
     private enum Row: Identifiable {
@@ -63,7 +64,8 @@ struct ClipboardList: View {
                             ClipboardRow(
                                 item: item, selected: item.id == selectedID,
                                 imageURL: store.imageURL(for: item),
-                                ownsImage: store.ownsImage(of: item), slot: slot
+                                ownsImage: store.ownsImage(of: item), slot: slot,
+                                symbolName: rowSymbolName
                             )
                             .selectionFrame(item.id == selectedID)
                             .contentShape(Rectangle())
@@ -133,6 +135,7 @@ private struct ClipboardRow: View {
     let ownsImage: Bool
     /// This row's ⌘-digit, or nil when it is not among the first ten visible pins.
     let slot: Character?
+    let symbolName: String?
     @Environment(LinkPreviewStore.self) private var previews
     @Environment(PaletteState.self) private var palette
     @State private var hovered = false
@@ -147,8 +150,17 @@ private struct ClipboardRow: View {
     var body: some View {
         IconCache.observeStyle()
         return HStack(spacing: metrics.spacing.lg) {
-            thumbnail(item.colorValue)
-                .frame(width: metrics.size.resultRowIcon, height: metrics.size.resultRowIcon)
+            Group {
+                if let symbolName {
+                    Image(systemName: symbolName)
+                        .font(.system(size: metrics.scaled(Theme.Typography.menuSymbolSize)))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .accessibilityHidden(true)
+                } else {
+                    thumbnail(item.colorValue)
+                }
+            }
+            .frame(width: metrics.size.resultRowIcon, height: metrics.size.resultRowIcon)
             Text(previewText)
                 .font(metrics.typography.menuRow)
                 .lineLimit(1)
@@ -371,11 +383,17 @@ struct ClipboardPreview: View {
 }
 
 /// The "Information" block; disk-touching details are gathered off the main actor.
-private struct ClipboardInfoSection: View {
+struct ClipboardInfoSection: View {
+    enum Context {
+        case clipboard
+        case dictation(pastedAppName: String?)
+    }
+
     @Environment(LinkPreviewStore.self) private var previews
     @Environment(\.metrics) private var metrics
     let item: ClipboardItem
     let imageURL: URL?
+    var context: Context = .clipboard
 
     @State private var details = Details()
 
@@ -395,7 +413,7 @@ private struct ClipboardInfoSection: View {
     }
 
     /// Relative day plus exact time; shared, `DateFormatter` being expensive to build.
-    @MainActor private static let copiedFormatter: DateFormatter = {
+    @MainActor private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .medium
@@ -433,6 +451,17 @@ private struct ClipboardInfoSection: View {
 
     private var rows: [InfoRow] {
         var rows: [InfoRow] = []
+        if case .dictation(let pastedAppName) = context {
+            let source = source
+            if let name = pastedAppName ?? source?.name ?? item.sourceBundleID {
+                rows.append(.init(label: String(localized: "Pasted into"), value: name, icon: source?.icon))
+            }
+            if let words = details.words {
+                rows.append(.init(label: String(localized: "Words"), value: words.formatted()))
+            }
+            rows.append(.init(label: String(localized: "Date"), value: Self.dateFormatter.string(from: item.createdAt)))
+            return rows
+        }
         if let source {
             rows.append(InfoRow(label: String(localized: "Source"), value: source.name, icon: source.icon))
         }
@@ -505,7 +534,7 @@ private struct ClipboardInfoSection: View {
         rows.append(
             InfoRow(
                 label: String(localized: "Copied"),
-                value: Self.copiedFormatter.string(from: item.createdAt)))
+                value: Self.dateFormatter.string(from: item.createdAt)))
         return rows
     }
 
@@ -522,11 +551,22 @@ private struct ClipboardInfoSection: View {
         let text = item.kind == .text ? item.text : nil
         let url = imageURL
         let filePath = item.filePath
-        details = await Task.detached(priority: .userInitiated) {
+        let isDictation = if case .dictation = context { true } else { false }
+        let updated = await Task.detached(priority: .userInitiated) {
             var details = Details()
             if let text {
-                details.characters = text.count
-                details.words = Self.wordCount(text)
+                if isDictation {
+                    var words = 0
+                    text.enumerateSubstrings(
+                        in: text.startIndex..<text.endIndex, options: [.byWords, .substringNotRequired]
+                    ) { _, _, _, _ in
+                        words += 1
+                    }
+                    details.words = words
+                } else {
+                    details.characters = text.count
+                    details.words = Self.wordCount(text)
+                }
             }
             if let url {
                 details.pixelSize = ImageThumbnail.pixelSize(of: url)
@@ -540,6 +580,8 @@ private struct ClipboardInfoSection: View {
             }
             return details
         }.value
+        guard !Task.isCancelled else { return }
+        details = updated
     }
 
     /// Single pass: `split(whereSeparator:)` allocates per word, which a multi-MB copy feels.

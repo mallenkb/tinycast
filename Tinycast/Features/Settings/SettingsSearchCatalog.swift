@@ -347,17 +347,19 @@ enum SettingsSearchCatalog {
     private static let dictation: [SettingsSearchEntry] = [
         .init(pane: .dictation, keywords: ["speech", "voice", "transcription", "microphone"]),
         .init(.dictationDictation, "Enable Dictation"),
-        .init(.dictationCommands, "Shortcut behavior"),
-        .init(.dictationCommands, "Shortcut"),
+        .init(.dictationCommands, "Hold to talk", keywords: ["shortcut", "push to talk"]),
+        .init(.dictationCommands, "Hands-free", keywords: ["shortcut", "toggle", "double tap", "start or stop"]),
         .init(.dictationCommands, "Play sounds", keywords: ["sound", "chime", "beep", "audio", "feedback"]),
         .init(.dictationModel, "Model"),
-        .init(.dictationModel, "Engine", keywords: ["parakeet", "redux", "ultra", "qwen"]),
+        .init(.dictationModel, "Engine", keywords: ["apple dictation", "parakeet", "redux", "ultra", "qwen"]),
         .init(.dictationModel, "Language"),
+        .init(.dictationModel, "Remove filler words", keywords: ["cleanup", "format", "hesitation"]),
         .init(.dictationMemory, "Release model from memory"),
         .init(.dictationOutput, "Microphone"),
-        .init(.dictationOutput, "When finished"),
+        .init(.dictationOutput, "Indicator style", keywords: ["appearance", "waveform", "capsule", "overlay"]),
         .init(.dictationOutput, "Adapt capitalization", keywords: ["uppercase", "lowercase", "sentence"]),
-        .init(.dictationOutput, "Insert while recording", keywords: ["live", "streaming", "chunk", "pause"])
+        .init(.dictationDictionary, "Auto-learn words", keywords: ["correction", "spelling", "dictionary"]),
+        .init(.dictationHistory, "Keep history for", keywords: ["dictation", "history", "retention"])
     ]
 
     private static let fileSearch: [SettingsSearchEntry] = [

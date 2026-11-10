@@ -14,7 +14,8 @@ final class SettingsCoordinator {
     init(core: AppCore) {
         self.core = core
         window = AppWindowController(
-            title: String(localized: "Settings"), contentSize: Theme.Size.settingsWindow, resizable: true,
+            title: String(localized: "Settings"), contentSize: Theme.Size.settingsWindow,
+            minimumSize: Theme.Size.settingsWindowMinimum, resizable: true,
             autosaveName: "SettingsWindow", activation: core.activationPolicy,
             onClose: { [weak core] in
                 IconCache.purgeDecoded()

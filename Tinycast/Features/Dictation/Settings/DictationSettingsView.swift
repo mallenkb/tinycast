@@ -8,14 +8,20 @@ struct DictationSettingsView: View {
     @State private var microphones: [AVCaptureDevice] = []
     @State private var modelSize: Int64?
     @State private var microphoneAccess = Permissions.microphoneAccess()
+    @State private var dictionaryWord = ""
+    @State private var dictionaryMisspelling = ""
     var body: some View {
         @Bindable var settings = settings
         return Form {
             Section {
-                Toggle(isOn: enabledBinding) {
+                HStack(spacing: Theme.Spacing.lg) {
                     SettingsFeatureToggleLabel(
                         anchor: .dictationDictation, title: "Enable Dictation",
                         subtitle: "Transcribe speech on your Mac with a local model.")
+                    Spacer(minLength: Theme.Spacing.lg)
+                    Toggle("Enable Dictation", isOn: enabledBinding)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
                 }
                 if microphoneAccess != .authorized {
                     HStack(alignment: .center, spacing: Theme.Spacing.lg) {
@@ -50,113 +56,115 @@ struct DictationSettingsView: View {
 
             if settings.dictationEnabled {
                 Section {
-                    Picker(selection: $settings.dictationMode) {
-                        ForEach(DictationMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                    let issue = coordinator.holdShortcutIssue
+                    let holdHint = issue ?? String(
+                        localized: "Hold a key combination or a single modifier, then release it to transcribe.")
+                    HStack {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                            SettingsRowTitle(.dictationCommands, "Hold to talk")
+                            Text(holdHint)
+                                .font(.caption)
+                                .foregroundStyle(issue == nil ? Color.secondary : Color.orange)
                         }
-                    } label: {
-                        SettingsRowTitle(.dictationCommands, "Shortcut behavior")
+                        Spacer()
+                        ShortcutRecorder(action: .dictationHold)
                     }
                     HStack {
-                        SettingsRowTitle(.dictationCommands, "Shortcut")
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                            SettingsRowTitle(.dictationCommands, "Hands-free")
+                            Text("Press to start or stop")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        ShortcutRecorder(action: .dictation)
+                        ShortcutRecorder(action: .dictationToggle)
                     }
-                    if settings.dictationMode == .pushToTalk {
-                        let issue = coordinator.holdShortcutIssue
-                        Text(
-                            issue
-                                ?? String(
-                                    localized: """
-                                        Hold a key combination or a single modifier; release it to \
-                                        transcribe. Double taps work in toggle mode.
-                                        """)
-                        )
-                        .font(.caption)
-                        .foregroundStyle(issue == nil ? Color.secondary : Color.orange)
-                    }
-                    Toggle(isOn: $settings.dictationPlaysSounds) {
-                        SettingsRowTitle(.dictationCommands, "Play sounds")
-                        Text("Play a sound when recording starts and stops.")
+                    settingToggle(
+                        anchor: .dictationCommands, title: "Play sounds",
+                        subtitle: "Play a sound when recording starts and stops.", isOn: $settings.dictationPlaysSounds)
+                    ForEach(CommandCatalog.entries(ownedBy: .dictation)) { entry in
+                        FeatureCommandRow(entry: entry)
                     }
                 } header: {
                     SettingsSectionHeader(.dictationCommands)
                 }
 
                 Section {
-                    Picker(selection: familyBinding) {
+                    modelPicker(anchor: .dictationModel, title: "Engine", subtitle: engineSummary, selection: engineBinding) {
+                        Text("Apple Dictation").tag(nil as DictationModel.Family?)
                         ForEach(DictationModel.Family.allCases) { family in
-                            Text(family.rawValue).tag(family)
+                            Text(family.rawValue).tag(Optional(family))
                         }
-                    } label: {
-                        SettingsRowTitle(.dictationModel, "Engine")
-                        Text(
-                            settings.dictationModel.family.summary + " · " + settings.dictationModel.coverage)
                     }
-                    Picker(selection: $settings.dictationModel) {
-                        ForEach(
-                            DictationModel.allCases.filter { $0.family == settings.dictationModel.family }
-                        ) { model in
-                            Text(model.variantTitle).tag(model)
+                    if !settings.dictationUsesApple {
+                        modelPicker(
+                            anchor: .dictationModel, title: "Model",
+                            subtitle: settings.dictationModel.summary, selection: $settings.dictationModel
+                        ) {
+                            ForEach(
+                                DictationModel.allCases.filter { $0.family == settings.dictationModel.family }
+                            ) { model in
+                                let title = model == .v3 ? String(localized: "V3 (Recommended)") : model.variantTitle
+                                Text(title).tag(model)
+                            }
                         }
-                    } label: {
-                        SettingsRowTitle(.dictationModel, "Model")
-                        Text(settings.dictationModel.summary)
-                    }
 
-                    let installed = coordinator.models.isInstalled(settings.dictationModel)
-                    let downloading = coordinator.models.downloading == settings.dictationModel
-                    if downloading {
-                        DownloadProgressView(models: coordinator.models)
-                    } else {
-                        LabeledContent {
-                            if installed {
-                                Button("Remove") { removeModel(settings.dictationModel) }
-                                    .disabled(
-                                        coordinator.models.transcribing || coordinator.models.removing != nil)
-                            } else {
-                                Button("Download") { downloadModel(settings.dictationModel) }
-                                    .disabled(
-                                        coordinator.models.downloading != nil
-                                            || coordinator.models.removing == settings.dictationModel)
+                        let installed = coordinator.models.isInstalled(settings.dictationModel)
+                        let downloading = coordinator.models.downloading == settings.dictationModel
+                        if downloading {
+                            DownloadProgressView(models: coordinator.models)
+                        } else {
+                            let title: LocalizedStringResource = installed
+                                ? .init("dictation-model-installed", defaultValue: "Installed")
+                                : "Not installed"
+                            SettingsRow(title: title.resolved(), subtitle: modelDescription, subtitleLineLimit: 2) {
+                                if installed {
+                                    Button("Remove") { removeModel(settings.dictationModel) }
+                                        .disabled(
+                                            coordinator.models.transcribing || coordinator.models.removing != nil)
+                                } else {
+                                    Button("Download") { downloadModel(settings.dictationModel) }
+                                        .disabled(
+                                            coordinator.models.downloading != nil
+                                                || coordinator.models.removing == settings.dictationModel)
+                                }
                             }
-                        } label: {
-                            Text(
-                                installed
-                                    ? LocalizedStringResource(
-                                        "dictation-model-installed", defaultValue: "Installed")
-                                    : "Not installed")
-                            Text(modelDescription)
+                        }
+                        if settings.dictationModel.isQwen, installed {
+                            Picker(selection: languageBinding) {
+                                Text(LocalizedStringResource("dictation-language-auto", defaultValue: "Auto"))
+                                    .tag("")
+                                Divider()
+                                ForEach(DictationLanguage.allCases) { language in
+                                    Text(language.displayName(locale: .current)).tag(language.rawValue)
+                                }
+                            } label: {
+                                SettingsRowTitle(.dictationModel, "Language")
+                            }
                         }
                     }
-                    if settings.dictationModel.isQwen, installed {
-                        Picker(selection: languageBinding) {
-                            Text(LocalizedStringResource("dictation-language-auto", defaultValue: "Auto"))
-                                .tag("")
-                            Divider()
-                            ForEach(DictationLanguage.allCases) { language in
-                                Text(language.displayName(locale: .current)).tag(language.rawValue)
-                            }
-                        } label: {
-                            SettingsRowTitle(.dictationModel, "Language")
-                        }
-                    }
+                    settingToggle(
+                        anchor: .dictationModel, title: "Remove filler words",
+                        subtitle: "Remove English hesitations like “um” and “uh” from the transcript.",
+                        isOn: $settings.dictationRemovesFillerWords)
                 } header: {
                     SettingsSectionHeader(.dictationModel)
                 }
 
-                Section {
-                    Picker(selection: $settings.dictationIdleRelease) {
-                        ForEach(DictationIdleRelease.allCases) { option in
-                            Text(option.title(locale: .current)).tag(option)
+                if !settings.dictationUsesApple {
+                    Section {
+                        Picker(selection: $settings.dictationIdleRelease) {
+                            ForEach(DictationIdleRelease.allCases) { option in
+                                Text(option.title(locale: .current)).tag(option)
+                            }
+                        } label: {
+                            SettingsRowTitle(.dictationMemory, "Release model from memory")
                         }
-                    } label: {
-                        SettingsRowTitle(.dictationMemory, "Release model from memory")
+                    } header: {
+                        SettingsSectionHeader(.dictationMemory)
+                    } footer: {
+                        Text("Releasing it when idle frees memory. The next dictation takes a moment longer.")
                     }
-                } header: {
-                    SettingsSectionHeader(.dictationMemory)
-                } footer: {
-                    Text("Releasing it when idle frees memory. The next dictation takes a moment longer.")
                 }
 
                 Section {
@@ -170,21 +178,20 @@ struct DictationSettingsView: View {
                     } label: {
                         SettingsRowTitle(.dictationOutput, "Microphone")
                     }
-                    Picker(selection: $settings.dictationDestination) {
-                        ForEach(DictationDestination.allCases) { destination in
-                            Text(destination.title).tag(destination)
+                    Picker(selection: $settings.dictationIndicatorStyle) {
+                        ForEach(DictationIndicatorStyle.allCases) { style in
+                            Text(style.title).tag(style)
                         }
                     } label: {
-                        SettingsRowTitle(.dictationOutput, "When finished")
+                        SettingsRowTitle(.dictationOutput, "Indicator style")
                     }
-                    Toggle(isOn: $settings.dictationLiveInsertion) {
-                        SettingsRowTitle(.dictationOutput, "Insert while recording")
-                        Text("Paste each chunk as you speak, instead of only when finished.")
+                    SettingsRow(title: String(localized: "Preview")) {
+                        DictationIndicatorPreviews(style: settings.dictationIndicatorStyle)
                     }
-                    Toggle(isOn: $settings.dictationAdaptsCapitalization) {
-                        SettingsRowTitle(.dictationOutput, "Adapt capitalization")
-                        Text("Match the first letter to the text before the cursor.")
-                    }
+                    settingToggle(
+                        anchor: .dictationOutput, title: "Adapt capitalization",
+                        subtitle: "Match the first letter to the text before the cursor.",
+                        isOn: $settings.dictationAdaptsCapitalization)
                 } header: {
                     SettingsSectionHeader(.dictationOutput)
                 } footer: {
@@ -194,9 +201,53 @@ struct DictationSettingsView: View {
                 }
 
             }
+
+            Section {
+                settingToggle(
+                    anchor: .dictationDictionary, title: "Auto-learn words",
+                    subtitle: "Learn spelling corrections you make just after dictation.",
+                    isOn: $settings.dictationAutoLearnsWords)
+                .settingsEnabled(settings.dictationEnabled)
+                HStack(spacing: Theme.Spacing.lg) {
+                    TextField("Word or phrase", text: $dictionaryWord, prompt: Text("Word or phrase"))
+                        .labelsHidden()
+                    TextField(
+                        "Misspelling (optional)", text: $dictionaryMisspelling, prompt: Text("Misspelling (optional)"))
+                    .labelsHidden()
+                    Button("Add", action: addDictionaryWord)
+                        .disabled(dictionaryWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .onSubmit(addDictionaryWord)
+                ForEach(coordinator.corrections.entries) { correction in
+                    let title = correction.original == correction.spelling
+                        ? correction.spelling : "\(correction.original) → \(correction.spelling)"
+                    SettingsRow(title: title) {
+                        Button("Remove") { coordinator.removeCorrection(correction) }
+                    }
+                }
+            } header: {
+                SettingsSectionHeader(.dictationDictionary)
+            }
+
+            Section {
+                Picker(selection: $settings.dictationHistoryRetention) {
+                    ForEach(ClipboardRetention.allCases) { retention in
+                        Text(retention.title).tag(retention)
+                    }
+                } label: {
+                    SettingsRowTitle(.dictationHistory, "Keep history for")
+                }
+            } header: {
+                SettingsSectionHeader(.dictationHistory)
+            }
         }
         .formStyle(.grouped)
         .settingsScrollTarget(.dictation)
+        .onChange(of: settings.dictationAutoLearnsWords) { _, enabled in
+            if !enabled { coordinator.stopCorrectionLearning() }
+        }
         .onAppear {
             microphoneAccess = Permissions.microphoneAccess()
             if settings.dictationEnabled { microphones = DictationCapture.microphones }
@@ -212,12 +263,20 @@ struct DictationSettingsView: View {
                 if settings.dictationEnabled { microphones = DictationCapture.microphones }
             }
         }
-        .task(id: settings.dictationEnabled ? settings.dictationModel : nil) {
+        .task(id: settings.dictationEnabled && !settings.dictationUsesApple ? settings.dictationModel : nil) {
             modelSize = nil
-            guard settings.dictationEnabled else { return }
+            guard settings.dictationEnabled, !settings.dictationUsesApple else { return }
             coordinator.models.refreshInstalledModels()
             await refreshModelSize(settings.dictationModel)
         }
+    }
+
+    private func addDictionaryWord() {
+        guard let correction = DictationCorrection.manual(spelling: dictionaryWord, misspelling: dictionaryMisspelling),
+            coordinator.addCorrection(correction)
+        else { return }
+        dictionaryWord = ""
+        dictionaryMisspelling = ""
     }
 
     private var enabledBinding: Binding<Bool> {
@@ -226,17 +285,48 @@ struct DictationSettingsView: View {
             set: { coordinator.setEnabled($0) })
     }
 
+    private func settingToggle(
+        anchor: SettingsAnchor, title: LocalizedStringResource, subtitle: LocalizedStringResource, isOn: Binding<Bool>
+    ) -> some View {
+        SettingsRow(title: title, subtitle: subtitle.resolved(), subtitleLineLimit: 2, anchor: anchor) {
+            Toggle(isOn: isOn) { Text(title) }
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+    }
+
+    private func modelPicker<Value: Hashable, Choices: View>(
+        anchor: SettingsAnchor, title: LocalizedStringResource, subtitle: String, selection: Binding<Value>,
+        @ViewBuilder choices: () -> Choices
+    ) -> some View {
+        SettingsRow(title: title, subtitle: subtitle, subtitleLineLimit: 2, anchor: anchor) {
+            Picker(selection: selection, content: choices) { Text(title) }
+                .labelsHidden()
+                .fixedSize()
+        }
+    }
+
+    private var engineSummary: String {
+        if settings.dictationUsesApple {
+            return String(localized: "Uses your Mac’s preferred language and downloads speech assets as needed.")
+        }
+        return settings.dictationModel.family.summary + " · " + settings.dictationModel.coverage
+    }
+
     private var microphoneBinding: Binding<String> {
         Binding(
             get: { settings.dictationMicrophone ?? "" },
             set: { settings.dictationMicrophone = $0.isEmpty ? nil : $0 })
     }
 
-    private var familyBinding: Binding<DictationModel.Family> {
+    private var engineBinding: Binding<DictationModel.Family?> {
         Binding(
-            get: { settings.dictationModel.family },
-            set: {
-                settings.dictationModel = $0 == .parakeet ? .redux : .qwenSmall
+            get: { settings.dictationUsesApple ? nil : settings.dictationModel.family },
+            set: { family in
+                if let family, family != settings.dictationModel.family {
+                    settings.dictationModel = family.defaultModel
+                }
+                settings.dictationUsesApple = family == nil
             })
     }
 
@@ -316,5 +406,30 @@ struct DictationSettingsView: View {
             await coordinator.removeModel(model)
             await refreshModelSize(model)
         }
+    }
+}
+
+private struct DictationIndicatorPreviews: View {
+    let style: DictationIndicatorStyle
+    @State private var transcribing = DictationIndicatorView.Phase.randomTranscribing()
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.xl) { previews }
+            VStack(spacing: Theme.Spacing.md) { previews }
+        }
+    }
+
+    private var previews: some View {
+        Group {
+            preview(.listening)
+            preview(transcribing)
+        }
+    }
+
+    private func preview(_ phase: DictationIndicatorView.Phase) -> some View {
+        DictationIndicatorView(
+            style: style, phase: phase,
+            levels: [0.05, 0.25, 0.55, 0.75, 0.45, 0.25, 0.05])
     }
 }

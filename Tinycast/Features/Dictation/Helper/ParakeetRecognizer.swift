@@ -16,8 +16,9 @@ final class ParakeetRecognizer {
         }
         preprocessor = try DictationTensor.load("Preprocessor", at: directory, units: .cpuOnly)
         encoder = try DictationTensor.load(
-            "Encoder", at: directory,
-            units: configuration.encoderUsesGPU ? .cpuAndGPU : .cpuAndNeuralEngine)
+            configuration.encoder, at: directory,
+            units: configuration.encoderUsesGPU ? .cpuAndGPU : .cpuAndNeuralEngine,
+            function: configuration.encoderFunction)
         decoder = try DictationTensor.load("Decoder", at: directory, units: .cpuAndNeuralEngine)
         joint = try DictationTensor.load(
             configuration.joint,

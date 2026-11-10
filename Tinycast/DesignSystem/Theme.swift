@@ -8,7 +8,10 @@ enum Theme {
 
     enum Spacing {
         static let xxs: CGFloat = 2
-        static let dictationWaveGap: CGFloat = 3
+        static let dictationWaveGap: CGFloat = 5.0625
+        static let dictationLabelWaveGap: CGFloat = 3
+        static let dictationWaveInset: CGFloat = 16
+        static let dictationPanelBottomInset: CGFloat = 32
         static let xs: CGFloat = 4
         static let sm: CGFloat = 6
         static let md: CGFloat = 8
@@ -195,8 +198,8 @@ enum Theme {
         static let clipboardPreviewPixel: CGFloat = 900
         /// File search's preview stage: video's own shape, and enough height to read a page in.
         static let previewAspectRatio: CGFloat = 16 / 9
-        /// Opening size and resize floor: the Quick Actions row's width, the sidebar's full height.
         static let settingsWindow = CGSize(width: 900, height: 700)
+        static let settingsWindowMinimum = CGSize(width: 888, height: settingsWindow.height)
         /// Settings sidebar: a fixed column, wide enough for "Window Management".
         static let settingsSidebar: CGFloat = 215
         /// The narrowest the pane column may get before a grouped row's control starts colliding.
@@ -292,8 +295,12 @@ enum Theme {
         /// Transient volume HUD shown after any volume or mute command.
         static let hudWidth: CGFloat = 200
         static let hudHeight: CGFloat = 100
-        static let dictationPanel = CGSize(width: 144, height: 44)
-        static let dictationWaveBar: CGFloat = 2
+        static let dictationWaveBar: CGFloat = 2.5
+        static let dictationWaveBarCount = 7
+        static let dictationIndicatorHeight: CGFloat = 30
+        static let dictationOutlineWidth: CGFloat = 1
+        static let dictationLabelWaveBarCount = 5
+        static let dictationSpinnerDiameter: CGFloat = 14
         /// Read-only volume bar geometry used by the HUD.
         static let volumeTrackHeight: CGFloat = 6
         /// Fixed slot for the level readout, sized to the widest string it ever holds.
@@ -311,6 +318,9 @@ enum Theme {
     }
 
     enum Duration {
+        static let dictationProcessingWord: TimeInterval = 2
+        static let dictationTranscribingShimmer: TimeInterval = 1.8
+        static let dictationSpinnerRotation: TimeInterval = 1
         static let caretBlink: TimeInterval = 1.2
         /// How long each HUD stays up; a sentence needs longer than a level does.
         static let messageHUD: TimeInterval = 2.4
@@ -439,6 +449,12 @@ enum Theme {
             dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
 
         static let paletteGlassTint = adaptive(dark: .srgbInk(0, alpha: 0.55), light: .clear)
+        static let dictationBackground = adaptive(dark: .black, light: .black)
+        static let dictationLightBackground = Color(white: 0.80)
+        static let dictationLightInk = Color(white: 0.09)
+        static let dictationDarkInk = Color.white
+        static let dictationDarkBackground = Color(white: 0.14)
+        static let dictationOutline = Color(white: 0.27)
         /// Selection fill, shared by every list so they look identical.
         static let selection = ramp(dark: 0.08, light: 0.09)
         static let rowHover = ramp(dark: 0.03, light: 0.045)

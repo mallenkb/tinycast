@@ -21,16 +21,23 @@ does not grant a separate license to redistribute the original icon libraries as
 ## Dictation model resources
 
 Tinycast's dictation code uses Apple's frameworks only. No speech model is bundled with the app.
-Optional downloads use Moondream's Parakeet Ultra and Redux, derived from NVIDIA Parakeet
-(CC BY 4.0), and Qwen3-ASR (Apache 2.0).
-Parakeet Core ML conversions are provided by FluidInference; Qwen conversions by UniMocha.
+Optional downloads include NVIDIA Parakeet TDT V2 and V3, Moondream's Parakeet Ultra and Redux,
+Fermion Research's Phonon-2, and Qwen3-ASR (Apache 2.0). Moondream's models and Phonon-2 derive
+from NVIDIA Parakeet V3. Phonon-2 retrains and quantizes those weights for English. NVIDIA's models
+and the Phonon-2 weights use the [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/).
+FluidInference provides the Parakeet Core ML conversions. UniMocha provides the Qwen conversions.
 Qwen's tokenizer resources come from Qwen/Qwen3-ASR-0.6B. The Apache 2.0 licence follows.
 
 - https://huggingface.co/moondream/parakeet-ultra
 - https://huggingface.co/moondream/parakeet-redux
+- https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2
 - https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+- https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v2-coreml
+- https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml
 - https://huggingface.co/FluidInference/parakeet-ultra-coreml
 - https://huggingface.co/FluidInference/parakeet-redux-coreml
+- https://huggingface.co/FermionResearch/Phonon-2
+- https://huggingface.co/FluidInference/phonon-2-coreml/blob/1702fc22e76f203d5ca464cd5d3ef130a45ce2c0/NOTICE
 - https://huggingface.co/Qwen/Qwen3-ASR-0.6B
 - https://huggingface.co/Qwen/Qwen3-ASR-1.7B
 

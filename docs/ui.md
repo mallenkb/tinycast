@@ -201,7 +201,20 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 `dialogIcon 32` · `hudWidth 200` ·
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeReadout 38`
 
-The opt-in Dictation capsule adds `dictationPanel 144×44`, with 2pt waveform bars separated by 3pt.
+Every Dictation indicator is 30pt tall while starting, listening, and transcribing.
+Its bottom edge sits 32pt above the bottom of the usable screen area.
+The compact capsule has light and dark finishes. Its waveform centers seven bars with 16pt
+of horizontal padding on each side. The bars are
+2.5pt wide and 5.0625pt apart. The pill shows Starting… as soon as a recording begins setup.
+During transcription, a rounded dash spins on a faint ring. Labeled styles choose a status word
+at random when transcription starts. The word shimmers when motion is enabled.
+Every waveform bar and spinner stroke is 2.5pt wide, or 5 pixels at 2× scale.
+Dictation's Indicator style setting also offers labeled capsules and rounded rectangles, with
+light, dark, or outlined finishes. These versions show five bars with 3pt gaps
+and a text status. The 1pt outline straddles the fill edge within the shared 30pt height.
+All styles use the compact waveform's height profile. The panel keeps its
+bottom edge and horizontal center when its width changes. Settings previews listening and
+transcription for the selected style.
 
 Notes adds `noteWindow 440×180` (opening size on a first run, and the floor), `noteWindowMaxHeight 860`,
 `noteTitlebar 44`, `noteTitleInset 120`, `noteEditorInset 16`, `noteSearchHeight 34`,
@@ -710,6 +723,8 @@ apps) with real traffic lights and a lifecycle wholly its own. It does not share
 `Form` with `.formStyle(.grouped)`**, so the cards, headers, row insets and hairlines are all
 system-drawn and a pane reads exactly as macOS System Settings does.
 
+- The Settings window opens at 900 by 700 points. Resizing and saved frames respect a minimum of
+  888 by 700 points.
 - **A row is a stock control.** `LabeledContent`, `Toggle` or `Picker`, each with a two-view label —
   the first view is the title, the rest become the secondary subtitle. Never a hand-built `HStack`
   with its own padding.

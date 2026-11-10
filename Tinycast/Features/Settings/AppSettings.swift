@@ -439,21 +439,25 @@ final class AppSettings {
         didSet { defaults.set(dictationEnabled, forKey: Key.dictationEnabled.rawValue) }
     }
 
-    var dictationMode: DictationMode {
-        didSet { defaults.set(dictationMode.rawValue, forKey: Key.dictationMode.rawValue) }
-    }
-
     var dictationModel: DictationModel {
         didSet { defaults.set(dictationModel.rawValue, forKey: Key.dictationModel.rawValue) }
+    }
+
+    var dictationUsesApple: Bool {
+        didSet { defaults.set(dictationUsesApple, forKey: Key.dictationUsesApple.rawValue) }
+    }
+
+    var dictationRemovesFillerWords: Bool {
+        didSet { defaults.set(dictationRemovesFillerWords, forKey: Key.dictationRemovesFillerWords.rawValue) }
+    }
+
+    var dictationAutoLearnsWords: Bool {
+        didSet { defaults.set(dictationAutoLearnsWords, forKey: Key.dictationAutoLearnsWords.rawValue) }
     }
 
     /// Nil lets macOS follow the system input device as it changes.
     var dictationMicrophone: String? {
         didSet { defaults.set(dictationMicrophone, forKey: Key.dictationMicrophone.rawValue) }
-    }
-
-    var dictationDestination: DictationDestination {
-        didSet { defaults.set(dictationDestination.rawValue, forKey: Key.dictationDestination.rawValue) }
     }
 
     var dictationAdaptsCapitalization: Bool {
@@ -462,13 +466,18 @@ final class AppSettings {
         }
     }
 
-    /// Off by default: chunked transcription costs extra inference while recording.
-    var dictationLiveInsertion: Bool {
-        didSet { defaults.set(dictationLiveInsertion, forKey: Key.dictationLiveInsertion.rawValue) }
+    var dictationHistoryRetention: ClipboardRetention {
+        didSet {
+            defaults.set(dictationHistoryRetention.rawValue, forKey: Key.dictationHistoryRetention.rawValue)
+        }
     }
 
     var dictationPlaysSounds: Bool {
         didSet { defaults.set(dictationPlaysSounds, forKey: Key.dictationPlaysSounds.rawValue) }
+    }
+
+    var dictationIndicatorStyle: DictationIndicatorStyle {
+        didSet { defaults.set(dictationIndicatorStyle.rawValue, forKey: Key.dictationIndicatorStyle.rawValue) }
     }
 
     var dictationIdleRelease: DictationIdleRelease {
@@ -887,23 +896,25 @@ final class AppSettings {
             || defaults.bool(forKey: Key.fileSearchShowInLauncher.rawValue)
         notesEnabled = defaults.bool(forKey: Key.notesEnabled.rawValue)
         dictationEnabled = defaults.bool(forKey: Key.dictationEnabled.rawValue)
-        dictationMode =
-            defaults.string(forKey: Key.dictationMode.rawValue)
-            .flatMap(DictationMode.init) ?? .toggle
+        dictationUsesApple = defaults.bool(forKey: Key.dictationUsesApple.rawValue)
         dictationModel =
             defaults.string(forKey: Key.dictationModel.rawValue)
-            .flatMap(DictationModel.init) ?? .redux
+            .flatMap(DictationModel.init) ?? DictationModel.Family.parakeet.defaultModel
+        dictationRemovesFillerWords = defaults.object(forKey: Key.dictationRemovesFillerWords.rawValue) as? Bool ?? true
+        dictationAutoLearnsWords = defaults.object(forKey: Key.dictationAutoLearnsWords.rawValue) as? Bool ?? true
         dictationMicrophone = defaults.string(forKey: Key.dictationMicrophone.rawValue)
-        dictationDestination =
-            defaults.string(forKey: Key.dictationDestination.rawValue)
-            .flatMap(DictationDestination.init) ?? .paste
         dictationAdaptsCapitalization =
             defaults.object(forKey: Key.dictationAdaptsCapitalization.rawValue) == nil
             || defaults.bool(forKey: Key.dictationAdaptsCapitalization.rawValue)
-        dictationLiveInsertion = defaults.bool(forKey: Key.dictationLiveInsertion.rawValue)
+        dictationHistoryRetention =
+            ClipboardRetention(rawValue: defaults.integer(forKey: Key.dictationHistoryRetention.rawValue))
+            ?? .threeMonths
         dictationPlaysSounds =
             defaults.object(forKey: Key.dictationPlaysSounds.rawValue) == nil
             || defaults.bool(forKey: Key.dictationPlaysSounds.rawValue)
+        dictationIndicatorStyle =
+            defaults.string(forKey: Key.dictationIndicatorStyle.rawValue)
+            .flatMap(DictationIndicatorStyle.init(rawValue:)) ?? .compact
         dictationIdleRelease =
             defaults.object(forKey: Key.dictationIdleRelease.rawValue)
             .flatMap { $0 as? Int }

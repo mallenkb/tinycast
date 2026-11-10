@@ -45,18 +45,28 @@ final class DictationWorker: Sendable {
         _ samples: [Float], request: DictationWire.Request,
         onReady: @escaping @MainActor @Sendable () -> Void
     ) async throws -> String {
-        try Task.checkCancellation()
-        guard samples.count == request.sampleCount, (1...DictationWire.maximumSamples).contains(samples.count)
+        guard (1...DictationWire.maximumSamples).contains(samples.count),
+            let text = try await exchange(samples, request: request, onReady: onReady)
         else {
             throw DictationWire.Failure.unavailable
         }
+        return text
+    }
+
+    func prepare(_ request: DictationWire.Request) async throws {
+        _ = try await exchange([], request: request, onReady: nil)
+    }
+
+    private func exchange(
+        _ samples: [Float], request: DictationWire.Request, onReady: (@MainActor @Sendable () -> Void)?
+    ) async throws -> String? {
+        try Task.checkCancellation()
+        guard samples.count == request.sampleCount else { throw DictationWire.Failure.unavailable }
         let timeout = 60 + samples.count / DictationWire.sampleRate * 2
-        let deadline = Task.detached(priority: .utility) {
-            do { try await Task.sleep(for: .seconds(timeout)) } catch { return }
-            self.terminate()
-        }
-        defer { deadline.cancel() }
+        let hasExtendedLoadTimeout = request.model == .phonon2
         return try await withTaskCancellationHandler {
+            var deadline = terminationDeadline(after: hasExtendedLoadTimeout ? 180 : timeout)
+            defer { deadline.cancel() }
             let responses = AsyncThrowingStream<DictationWire.Response, Error>(
                 bufferingPolicy: .bufferingOldest(2)
             ) { continuation in
@@ -71,6 +81,10 @@ final class DictationWorker: Sendable {
                             throw DictationWire.Failure.unavailable
                         }
                         continuation.yield(ready)
+                        if request.isPreparation {
+                            continuation.finish()
+                            return
+                        }
                         try samples.withUnsafeBytes { try self.input.write(contentsOf: $0) }
                         guard
                             let result = try DictationWire.read(
@@ -89,13 +103,25 @@ final class DictationWorker: Sendable {
             }
             var text: String?
             for try await response in responses {
-                if response.status == .ready { await onReady() }
+                if response.status == .ready {
+                    if hasExtendedLoadTimeout, !request.isPreparation {
+                        deadline.cancel()
+                        deadline = terminationDeadline(after: timeout)
+                    }
+                    await onReady?()
+                }
                 if response.status == .result { text = response.text }
             }
             try Task.checkCancellation()
-            guard let text else { throw DictationWire.Failure.unavailable }
             return text
         } onCancel: {
+            self.terminate()
+        }
+    }
+
+    private func terminationDeadline(after seconds: Int) -> Task<Void, Never> {
+        Task.detached(priority: .utility) {
+            do { try await Task.sleep(for: .seconds(seconds)) } catch { return }
             self.terminate()
         }
     }

@@ -46,6 +46,7 @@ final class ShortcutCaptureSession {
             matching: .keyDown,
             handler: { [weak self, weak hotKeys] event in
                 let keyCode = Int(event.keyCode)
+                guard keyCode != ModifierKey.globeReleaseKeyCode else { return nil }
                 let flags = event.modifierFlags
                 MainActor.assumeIsolated {
                     guard let self, let hotKeys else { return }
@@ -206,6 +207,10 @@ final class ShortcutCaptureSession {
             if key != awaitingSecondModifier { cancelModifierCommit() }
         case .released(let key, let doubleTap, let held):
             cancelModifierCommit()
+            if action == .dictationHold {
+                commit(key.singleBinding, action: action, hotKeys: hotKeys)
+                return
+            }
             if doubleTap || held {
                 commit(
                     doubleTap ? key.doubleBinding : key.singleBinding,

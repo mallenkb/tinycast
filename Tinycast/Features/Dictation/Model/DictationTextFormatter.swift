@@ -24,38 +24,16 @@ enum DictationTextFormatter {
         }
     }
 
-    static func stripEcho(_ text: String, after previous: String) -> String {
-        guard !text.isEmpty, !previous.isEmpty else { return text }
-        let tail = Array(previous.split(separator: " ").suffix(8))
-        let head = Array(text.split(separator: " "))
-        let plain = { (word: Substring) in
-            word.lowercased().trimmingCharacters(in: .alphanumerics.inverted)
-        }
-        var drop = 0
-        for skip in 0..<min(3, head.count) {
-            let minimum = skip == 0 ? 1 : skip + 1
-            var run = min(tail.count, head.count - skip)
-            while run >= minimum {
-                guard
-                    (0..<run).allSatisfy({ plain(head[skip + $0]) == plain(tail[tail.count - run + $0]) })
-                else {
-                    run -= 1
-                    continue
-                }
-                drop = max(drop, skip + run)
-                break
+    static func removingFillerWords(_ transcript: String) -> String {
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.wholeMatch(of: /(?:[Uu][mh][,.!?…]*(?:[ \t]+|$))+/) != nil { return "" }
+        return text
+            .replacing(/(^|\n|[.!?…][ \t]+)(?:[Uu][mh][,.!?…]*[ \t]+)+(\p{L})/) { match in
+                String(match.1) + match.2.uppercased()
             }
-        }
-        guard drop > 0 else { return text }
-        var index = text.startIndex
-        for _ in 0..<drop {
-            while index < text.endIndex, text[index].isWhitespace { index = text.index(after: index) }
-            while index < text.endIndex, !text[index].isWhitespace {
-                index = text.index(after: index)
-            }
-        }
-        let rest = String(text[index...])
-        return rest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : rest
+            .replacing(/([.!?…])[ \t]+(?:[Uu][mh][,.!?…]*(?:[ \t]+|$))+$/) { String($0.1) }
+            .replacing(/(?:,[ \t]+[Uu][mh],|[ \t]+[Uu][mh],?)(?=\s|$)/, with: "")
+            .replacing(/,?[ \t]+[Uu][mh](?=[.!?…]+(?:\s|$))/, with: "")
     }
 
     static func format(_ transcription: String, context: Context?, adaptCapitalization: Bool = true) -> String

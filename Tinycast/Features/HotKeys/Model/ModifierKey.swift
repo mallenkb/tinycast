@@ -7,6 +7,9 @@ enum ModifierKey: String, CaseIterable, Codable, Sendable {
     case leftCommand, rightCommand
     case globe
 
+    // macOS sends this key-down after a bare Globe release.
+    static let globeReleaseKeyCode = 179
+
     var modifier: DoubleTapModifier? {
         switch self {
         case .leftControl, .rightControl: .control

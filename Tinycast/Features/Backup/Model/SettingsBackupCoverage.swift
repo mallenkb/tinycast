@@ -89,18 +89,22 @@ enum SettingsBackupCoverage {
     static let deliberatelyExcluded: [String: String] = [
         AppSettingsKey.dictationEnabled.rawValue:
             "Microphone capture is an opt-in capability on this Mac; a backup must not enable it.",
-        AppSettingsKey.dictationMode.rawValue: "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationModel.rawValue: "Downloaded models are local to this Mac.",
+        AppSettingsKey.dictationUsesApple.rawValue: "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationRemovesFillerWords.rawValue:
+            "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationAutoLearnsWords.rawValue:
+            "Reading corrections in another app requires enabling Dictation on this Mac.",
         AppSettingsKey.dictationLanguage.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationMicrophone.rawValue: "Names a microphone attached to this Mac.",
-        AppSettingsKey.dictationDestination.rawValue:
-            "An import must not change where dictated text is sent.",
         AppSettingsKey.dictationAdaptsCapitalization.rawValue:
             "Dictation preferences stay local until backup supports them.",
-        AppSettingsKey.dictationLiveInsertion.rawValue:
-            "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationHistoryRetention.rawValue:
+            "Dictation history retention stays local to avoid pruning transcripts during a restore.",
         AppSettingsKey.dictationPlaysSounds.rawValue:
+            "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationIndicatorStyle.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationIdleRelease.rawValue:
             "Dictation memory use stays a device-local preference.",

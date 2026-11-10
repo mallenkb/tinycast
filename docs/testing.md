@@ -155,8 +155,10 @@ If a change touches anything in the right column, the harness on the left is man
 | `dictation-key-test` | `HotKeys/Service/DictationKeyManager.swift` — shared and separate preference domains, ownership handoff through the real health ticker, and retry cancellation on unbind or termination; isolated preferences, lock files and simulated keyboards |
 | `dictation-test` | `Dictation/Model/DictationModel.swift`, `DictationTextFormatter.swift` — model paths and text formatting |
 | `dictation-field-test` | Composer rebinding and teardown, field-scoped dictation cancellation, and queued insertion validity; synthetic capture and real AppKit editors |
+| `dictation-destination-migration-test` | Removes the retired output preferences and accepts older settings.json files while still reporting unknown keys |
+| `dictation-shortcuts-migration-test` | Moves the previous Dictation binding to the matching shortcut and preserves explicitly set bindings in preferences and settings.json |
 | `dictation-cue-test` | System dictation sound paths, stop-before-play ordering and missing resources, without playing audio |
-| `dictation-volume-test` | Volume recovery across fade steps, user changes, output switching, failed writes and cancellation; injected audio controls only |
+| `dictation-volume-migration-test` | Recovers output volume left lowered by an older build, preserves newer user settings and retries unavailable devices with injected audio controls |
 | `dictation-inference-test` | Dictation byte BPE, Fourier/mel features and non-overlapping audio chunks; no downloaded models |
 | `dictation-worker-test` | Dictation's framed channel, worker reuse/switching, removal, cancellation and broken pipes with a fixture helper |
 | `fallback-test` | `Launcher/Model/Fallback.swift`, plus the `CommandID` and `Quicklink` ids it is built from |
@@ -410,7 +412,7 @@ swiftc -O -swift-version 6 Tinycast/Platform/{Signposts,Appearance,NotificationT
 leaks the interval when the work throws, because the `.end` emit is skipped on the throw path and the
 instrument then shows an interval that never closes.
 
-`./Scripts/benchmark-dictation.sh AUDIO` measures all four installed dictation models with fresh and
+`./Scripts/benchmark-dictation.sh AUDIO` measures all installed dictation models with fresh and
 reused helpers, reporting load time, transcription time, sampled helper footprint and recognized text.
 It uses only the supplied audio and already downloaded models, outside the app and deterministic suite.
 See [Dictation validation](features/dictation.md#validation) for comparison limits and optional arguments.

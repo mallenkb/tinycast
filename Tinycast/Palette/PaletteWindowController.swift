@@ -374,7 +374,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     func releaseHiddenSearchContent() {
         guard let panel, !panel.isVisible, panel.contentView != nil, !core.extensions.isSigningIn,
-            [.launcher, .fileSearch, .clipboard, .emoji].contains(core.palette.mode)
+            [.launcher, .fileSearch, .clipboard, .dictationHistory, .emoji].contains(core.palette.mode)
         else { return }
         core.palette.menuOpen = false
         core.palette.menuQuery = ""

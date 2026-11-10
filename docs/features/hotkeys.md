@@ -135,15 +135,17 @@ Globally, a single modifier fires on release when no double-tap action is bound.
 the single action waits until the double-tap window expires. Another modifier, key, or mouse click
 cancels the gesture, even while a single tap awaits the second. Both the monitor and the recorder
 track Globe from the physical `kVK_Function` keycode, not just the fn flag, because F-keys also carry it.
+They ignore the synthetic key-down macOS emits after Globe release so it cannot cancel the gesture.
 It shares the double-tap's listen-only monitor, permission warning, lifecycle and pause while
 recording. macOS may perform its own Globe action too; set “Press fn/Globe key to” to “Do Nothing” in
 Keyboard settings if it conflicts. Globe+key chords use Carbon registration, like other combos.
 
-Dictation's hold-to-talk mode reserves its single physical modifier across both tap gestures. It
+Dictation's Hold to talk shortcut reserves its single physical modifier across both tap gestures. It
 starts after 250 ms held alone, so ordinary modifier+key chords do not briefly start recording. Another
 key, modifier or mouse click cancels a pending or active hold; Return and Escape belong to the dictation
 panel while listening. Release finishes the recording. Pausing, rebinding, disabling Dictation,
-session changes and tap teardown cancel any hold. Double-tap bindings require toggle mode.
+session changes and tap teardown cancel any hold. Dictation's Hands-free shortcut
+also accepts double taps and can be assigned alongside Hold to talk.
 
 ## Double-tap modifiers
 

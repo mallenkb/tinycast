@@ -302,6 +302,7 @@ final class DeepLinkCoordinator {
         case .searchEmoji: paletteCoordinator.togglePalette(mode: .emoji, seeding: text)
         case .calculatorHistory:
             paletteCoordinator.togglePalette(mode: .calculatorHistory, seeding: text)
+        case .dictationHistory: paletteCoordinator.togglePalette(mode: .dictationHistory, seeding: text)
         case .searchQuicklinks: paletteCoordinator.togglePalette(mode: .quicklinks, seeding: text)
         case .searchFiles: core.fileSearchCoordinator.show(query: text)
         case .define: core.dictionaryCoordinator.show(term: text)

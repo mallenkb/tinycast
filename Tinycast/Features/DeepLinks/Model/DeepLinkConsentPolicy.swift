@@ -34,7 +34,7 @@ enum DeepLinkConsentPolicy {
             requiresConsent(id)
         case .togglePalette, .settingsPane:
             false
-        case .dictation, .app, .customCommand, .systemAction, .windowCommand, .windowLayout,
+        case .dictationHold, .dictationToggle, .app, .customCommand, .systemAction, .windowCommand, .windowLayout,
             .windowRoom, .customWindowSize, .quicklink, .quickAction, .appleShortcut, .snippet,
             .extensionCommand:
             true
@@ -49,6 +49,7 @@ enum DeepLinkConsentPolicy {
             .runShellCommand, .quit:
             true
         case .quickAI, .aiChat, .calculatorHistory, .clipboardHistory, .searchEmoji, .searchFiles,
+            .dictationHistory, .dictationSettings,
             .searchMenuItems, .switchWindows, .switchWindowsBackwards, .createCustomCommand,
             .searchCustomCommands, .define, .mySchedule, .createEvent, .showNotes, .createNote,
             .searchNotes, .createWindowLayout, .switchRoom, .createRoom, .createQuicklink,

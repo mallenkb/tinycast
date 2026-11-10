@@ -12,6 +12,9 @@ final class DictationModelStore {
     private(set) var loadedModel: DictationModel?
     private(set) var installedModels: Set<DictationModel> = []
     @ObservationIgnored private var worker: DictationWorker?
+    @ObservationIgnored private var stoppingWorker: (worker: DictationWorker, task: Task<Void, Never>)?
+    @ObservationIgnored private var recordingModel: DictationModel?
+    @ObservationIgnored private var preparation: (model: DictationModel, task: Task<Void, Never>)?
     @ObservationIgnored private var releaseTask: Task<Void, Never>?
     @ObservationIgnored private var idleRelease: DictationIdleRelease
     @ObservationIgnored private var downloadTask: Task<Void, Error>?
@@ -32,12 +35,7 @@ final class DictationModelStore {
 
     func setIdleRelease(_ option: DictationIdleRelease) {
         idleRelease = option
-        if worker != nil, !transcribing {
-            scheduleRelease()
-        } else {
-            releaseTask?.cancel()
-            releaseTask = nil
-        }
+        scheduleRelease()
     }
 
     func isInstalled(_ model: DictationModel) -> Bool {
@@ -115,7 +113,12 @@ final class DictationModelStore {
         guard !transcribing, removing == nil, downloading != model else { throw Failure.busy }
         removing = model
         defer { removing = nil }
-        if loadedModel == model { await release() }
+        if let preparation, preparation.model == model {
+            preparation.task.cancel()
+            await preparation.task.value
+        }
+        if loadedModel == model { await stopWorker() }
+        await stoppingWorker?.task.value
         let directory = directory(for: model)
         try await Task.detached(priority: .utility) {
             if FileManager.default.fileExists(atPath: directory.path) {
@@ -123,6 +126,50 @@ final class DictationModelStore {
             }
         }.value
         installedModels.remove(model)
+    }
+
+    func beginRecording(_ model: DictationModel) {
+        recordingModel = model
+        releaseTask?.cancel()
+        releaseTask = nil
+        prepareRecordingModelIfNeeded()
+    }
+
+    func endRecording() {
+        guard recordingModel != nil else { return }
+        recordingModel = nil
+        preparation?.task.cancel()
+        scheduleRelease()
+    }
+
+    private func prepareRecordingModelIfNeeded() {
+        guard let model = recordingModel, loadedModel != model, preparation == nil,
+            !transcribing, removing != model, isInstalled(model)
+        else { return }
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await prepare(model)
+        }
+        preparation = (model, task)
+    }
+
+    private func prepare(_ model: DictationModel) async {
+        defer {
+            preparation = nil
+            if Task.isCancelled { prepareRecordingModelIfNeeded() }
+            scheduleRelease()
+        }
+        guard !Task.isCancelled else { return }
+        do {
+            let worker = try await worker(for: model)
+            let request = DictationWire.Request(
+                id: UUID(), model: model, directory: directory(for: model), sampleCount: 0, language: nil)
+            try await worker.prepare(request)
+            try Task.checkCancellation()
+            loadedModel = model
+        } catch {
+            await stopWorker()
+        }
     }
 
     func transcribe(
@@ -135,11 +182,13 @@ final class DictationModelStore {
         releaseTask = nil
         transcribing = true
         defer { transcribing = false; scheduleRelease() }
+        if let preparation {
+            if preparation.model != model { preparation.task.cancel() }
+            await preparation.task.value
+        }
+        try Task.checkCancellation()
         do {
-            if loadedModel != model { await release() }
-            try Task.checkCancellation()
-            let worker = try self.worker ?? makeWorker()
-            self.worker = worker
+            let worker = try await worker(for: model)
             let request = DictationWire.Request(
                 id: UUID(), model: model, directory: directory(for: model),
                 sampleCount: samples.count, language: model.isQwen ? language : nil)
@@ -149,37 +198,64 @@ final class DictationModelStore {
             }
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
-            await release()
+            await stopWorker()
             throw error
         }
     }
 
-    func release() async {
-        releaseTask?.cancel()
-        releaseTask = nil
-        let worker = self.worker
+    private func worker(for model: DictationModel) async throws -> DictationWorker {
+        if loadedModel != model { await stopWorker() }
+        try Task.checkCancellation()
+        if let worker { return worker }
+        let worker = try makeWorker()
+        self.worker = worker
+        return worker
+    }
+
+    private func stopWorker() async {
+        guard let worker else {
+            await stoppingWorker?.task.value
+            return
+        }
         self.worker = nil
         loadedModel = nil
-        await worker?.stop()
+        let task = Task { await worker.stop() }
+        stoppingWorker = (worker, task)
+        await task.value
+        if stoppingWorker?.worker === worker { stoppingWorker = nil }
     }
 
     func stop() async {
+        recordingModel = nil
+        releaseTask?.cancel()
+        releaseTask = nil
+        preparation?.task.cancel()
         downloadTask?.cancel()
+        await preparation?.task.value
+        await stopWorker()
         try? await downloadTask?.value
-        await release()
     }
 
-    func prepareForTermination() { downloadTask?.cancel(); worker?.terminate() }
+    func prepareForTermination() {
+        recordingModel = nil
+        releaseTask?.cancel()
+        preparation?.task.cancel()
+        downloadTask?.cancel()
+        worker?.terminate()
+    }
 
     private func scheduleRelease() {
         releaseTask?.cancel()
-        guard worker != nil, idleRelease != .never else { releaseTask = nil; return }
+        releaseTask = nil
+        guard worker != nil, recordingModel == nil, preparation == nil, !transcribing, idleRelease != .never
+        else { return }
         let interval = Duration.seconds(idleRelease.rawValue * 60)
         releaseTask = Task { [weak self] in
             try? await Task.sleep(for: interval, tolerance: .seconds(1))
             guard !Task.isCancelled else { return }
-            guard let self, !self.transcribing else { return }
-            await self.release()
+            guard let self, recordingModel == nil, preparation == nil, !transcribing else { return }
+            releaseTask = nil
+            await stopWorker()
         }
     }
 

@@ -113,21 +113,26 @@ enum SettingsFileSchema {
         case .notesShowsInMenuBar: return bind(settings, \.notesShowsInMenuBar)
         case .notesFolder: return bind(settings, \.notesFolder, accept: folder)
         case .notesCommands: return launcher.commandsBinding(for: key, owner: .notes)
-        case .dictationMode: return bind(settings, \.dictationMode)
-        case .dictationShortcut:
-            return shortcuts.binding(for: key, action: .dictation, name: String(localized: "Dictation"))
+        case .dictationHoldShortcut:
+            return shortcuts.binding(for: key, action: .dictationHold, name: String(localized: "Hold to talk"))
+        case .dictationToggleShortcut:
+            return shortcuts.binding(
+                for: key, action: .dictationToggle, name: String(localized: "Hands-free"))
         case .dictationPlaysSounds: return bind(settings, \.dictationPlaysSounds)
+        case .dictationIndicatorStyle: return bind(settings, \.dictationIndicatorStyle)
         case .dictationModel: return bind(settings, \.dictationModel)
+        case .dictationUsesApple: return bind(settings, \.dictationUsesApple)
+        case .dictationRemovesFillerWords: return bind(settings, \.dictationRemovesFillerWords)
         case .dictationMicrophone: return bind(settings, \.dictationMicrophone)
-        case .dictationDestination: return bind(settings, \.dictationDestination)
         case .dictationAdaptsCapitalization: return bind(settings, \.dictationAdaptsCapitalization)
-        case .dictationLiveInsertion: return bind(settings, \.dictationLiveInsertion)
+        case .dictationHistoryRetention: return bind(settings, \.dictationHistoryRetention)
         case .dictationIdleRelease: return bind(settings, \.dictationIdleRelease)
         case .dictationLanguage:
             return bind(settings, \.dictationLanguage) { language in
                 guard let language else { return .some(nil) }
                 return DictationLanguage(rawValue: language) == nil ? nil : .some(language)
             }
+        case .dictationCommands: return launcher.commandsBinding(for: key, owner: .dictation)
         case .snippetsShowInLauncher: return bind(settings, \.snippetsShowInLauncher)
         case .snippetsFolder: return bind(settings, \.snippetsFolder, accept: folder)
         case .snippetsCommands: return launcher.commandsBinding(for: key, owner: .snippets)
@@ -202,8 +207,7 @@ extension ClipboardDefaultAction: SettingsFileRawValue {}
 extension EmojiSkinTone: SettingsFileRawValue {}
 extension EmojiGridColumns: SettingsFileRawValue {}
 extension DictationModel: SettingsFileRawValue {}
-extension DictationMode: SettingsFileRawValue {}
-extension DictationDestination: SettingsFileRawValue {}
+extension DictationIndicatorStyle: SettingsFileRawValue {}
 extension DictationIdleRelease: SettingsFileRawValue {}
 extension JoinWindow: SettingsFileRawValue {}
 

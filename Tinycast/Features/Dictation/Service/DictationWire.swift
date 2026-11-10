@@ -22,6 +22,8 @@ nonisolated enum DictationWire {
         let directory: URL
         let sampleCount: Int
         let language: String?
+
+        var isPreparation: Bool { sampleCount == 0 }
     }
 
     struct Response: Codable, Sendable {

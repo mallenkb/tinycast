@@ -7,14 +7,13 @@ struct DictationFieldTest {
     static func main() async throws {
         NSApplication.shared.setActivationPolicy(.prohibited)
         try await testDelivery()
+        try await testShortcutOwnership()
         try await testScopedCancellation()
         try await testChatSwitch()
         try await testWindowClose()
         try await testQueuedCancellation(closing: false)
         try await testQueuedCancellation(closing: true)
-        try await testLiveDeliveryFailure()
-        try await testQueuedLiveChunk(cancelling: false)
-        try await testQueuedLiveChunk(cancelling: true)
+        try await testDeliveryFailure()
         try await testSoundsOff()
         try await testSounds()
         try await testCancelSilently()
@@ -24,25 +23,55 @@ struct DictationFieldTest {
     }
 
     private static func testDelivery() async throws {
-        for mode in [DictationMode.toggle, .pushToTalk] {
-            let fixture = Fixture()
-            fixture.settings.dictationMode = mode
-            let editor = ComposerTextView()
-            try await fixture.start(into: editor)
-            fixture.coordinator.toggle(into: editor)
-            try await wait { fixture.models.pending != nil }
-            fixture.models.finish("Spoken words")
-            try await wait { fixture.coordinator.field == nil }
-            expect(editor.string == "Spoken words", "Both shortcut modes insert the field's transcript")
-            expect(Paster.copies.isEmpty, "A field mic ignores the copy-only destination setting")
-        }
+        let fixture = Fixture()
+        let editor = ComposerTextView()
+        try await fixture.start(into: editor)
+        fixture.coordinator.releasedHold()
+        fixture.coordinator.cancelHold()
+        expect(fixture.capture.isRecording, "A hold gesture cannot stop the field mic")
+        fixture.coordinator.toggle(into: editor)
+        try await wait { fixture.models.pending != nil }
+        fixture.models.finish("Spoken words")
+        try await wait { fixture.coordinator.field == nil }
+        expect(editor.string == "Spoken words", "The field mic inserts its transcript")
+        expect(Paster.copies.isEmpty, "A field mic leaves the clipboard alone")
+        expect(fixture.transcripts == ["Spoken words"], "A field mic saves its transcript once")
+        expect(fixture.pasteAppIDs == [NSRunningApplication.current.processIdentifier], "History records the editor's app")
+    }
+
+    private static func testShortcutOwnership() async throws {
+        let toggle = Fixture()
+        toggle.coordinator.pressed(.toggle)
+        try await wait { toggle.capture.isRecording }
+        toggle.coordinator.pressed(.pushToTalk)
+        toggle.coordinator.releasedHold()
+        toggle.coordinator.cancelHold()
+        expect(toggle.capture.isRecording, "A hold gesture leaves the toggle recording active")
+        toggle.coordinator.pressed(.toggle)
+        try await wait { toggle.models.pending != nil }
+        toggle.coordinator.cancel()
+        toggle.models.finish("")
+        try await wait { toggle.models.finished }
+
+        let hold = Fixture()
+        hold.coordinator.pressed(.pushToTalk)
+        try await wait { hold.capture.isRecording }
+        hold.coordinator.pressed(.toggle)
+        expect(hold.capture.isRecording, "Toggle leaves a held recording active")
+        hold.coordinator.releasedHold()
+        try await wait { hold.models.pending != nil }
+        hold.coordinator.cancel()
+        hold.models.finish("")
+        try await wait { hold.models.finished }
     }
 
     private static func testScopedCancellation() async throws {
         let fixture = Fixture()
         let editor = ComposerTextView()
         fixture.coordinator.toggle(into: editor)
+        expect(fixture.panel.isVisible && !fixture.capture.isRecording, "The pill opens during microphone setup")
         fixture.coordinator.cancel(in: editor)
+        expect(!fixture.panel.isVisible, "Cancelling startup closes the pill immediately")
         try await wait { fixture.capture.stopCount > 0 }
         expect(fixture.coordinator.field == nil, "Cancellation covers a recording still starting")
         expect(!fixture.capture.isRecording, "A canceled start cannot leave recording active")
@@ -136,68 +165,21 @@ struct DictationFieldTest {
         expect(fixture.messages.isEmpty, "Discarding queued speech is silent")
     }
 
-    private static func testLiveDeliveryFailure() async throws {
+    private static func testDeliveryFailure() async throws {
         let fixture = Fixture()
-        fixture.settings.dictationDestination = .paste
-        fixture.settings.dictationLiveInsertion = true
-        _ = fixture.coordinator
-        fixture.capture.snapshotSamples =
-            [Float](repeating: 0.5, count: 32_000)
-            + [Float](repeating: 0, count: 16_000)
-        fixture.coordinator.pressed()
-        try await waitLong { fixture.capture.isRecording }
-        try await waitLong { fixture.models.pending != nil }
-        fixture.models.finish("Spoken words")
-        try await wait { fixture.models.finished }
-        fixture.coordinator.accept()
-        try await waitLong { !fixture.messages.isEmpty }
-        expect(
-            fixture.messages == ["Couldn't paste some dictation into this app"],
-            "A failed live chunk is reported once at finish, never silently lost")
-        expect(Paster.copies.isEmpty, "A paste destination copies nothing on the way out")
-    }
-
-    private static func testQueuedLiveChunk(cancelling: Bool) async throws {
-        let fixture = Fixture()
-        fixture.settings.dictationLiveInsertion = true
         let editor = ComposerTextView()
-        var release: CheckedContinuation<Void, Never>?
-        fixture.queue.enqueue(isAutomatic: false) {
-            await withCheckedContinuation { release = $0 }
-        }
-        try await wait { release != nil }
         try await fixture.start(into: editor)
-        fixture.capture.snapshotSamples =
-            [Float](repeating: 0.5, count: 32_000)
-            + [Float](repeating: 0, count: 16_000)
-        try await waitLong { fixture.models.pending != nil }
-        fixture.models.finish("Spoken words")
-        try await wait { fixture.models.finished }
-
-        guard cancelling else {
-            fixture.coordinator.toggle(into: editor)
-            release?.resume()
-            try await wait { fixture.coordinator.field == nil }
-            expect(editor.string == "Spoken words", "Finishing lets a queued live chunk land")
-            expect(fixture.messages.isEmpty, "A landed live chunk reports nothing")
-            return
-        }
-        fixture.coordinator.cancel(in: editor)
-        release?.resume()
-        await fixture.queue.drain()
-        try await wait { !fixture.capture.isRecording }
-        fixture.settings.dictationLiveInsertion = false
-        // Stopping ignores a toggle, so retry until the cancelled session has wound down.
-        try await wait {
-            if fixture.coordinator.field == nil { fixture.coordinator.toggle(into: editor) }
-            return fixture.capture.isRecording
-        }
-        fixture.coordinator.toggle(into: editor)
+        editor.isEditable = false
+        fixture.coordinator.accept()
         try await wait { fixture.models.pending != nil }
-        fixture.models.finish("More words")
-        try await wait { fixture.coordinator.field == nil }
-        expect(editor.string == "More words", "Cancelling drops a queued live chunk")
-        expect(fixture.messages.isEmpty, "A chunk dropped by cancelling never fails the next session")
+        fixture.models.finish("Spoken words")
+        try await wait { !fixture.messages.isEmpty }
+        expect(
+            fixture.messages == ["Couldn't paste dictation into this app"],
+            "A failed paste is reported once")
+        expect(fixture.transcripts == ["Spoken words"], "A failed paste still saves its completed transcript")
+        expect(fixture.pasteAppIDs == [nil], "History leaves the app blank when a paste fails")
+        expect(Paster.copies.isEmpty, "A failed paste leaves the clipboard alone")
     }
 
     private static func testSoundsOff() async throws {
@@ -206,7 +188,7 @@ struct DictationFieldTest {
         let editor = ComposerTextView()
         AudioEvents.log = []
         fixture.coordinator.toggle(into: editor)
-        expect(AudioEvents.log == ["duck"], "Without sounds, ducking still starts at the press")
+        expect(AudioEvents.log.isEmpty, "Without sounds, recording starts quietly")
         try await wait { fixture.capture.isRecording }
         fixture.coordinator.toggle(into: editor)
         try await wait { fixture.models.pending != nil }
@@ -225,14 +207,14 @@ struct DictationFieldTest {
         try await Task.sleep(for: .milliseconds(20))
         expect(AudioEvents.log.isEmpty, "The start cue waits for the microphone's first samples")
         fixture.capture.onLevels?([])
-        try await wait { AudioEvents.log.contains("duck") }
+        try await wait { AudioEvents.log.contains("start cue") }
         expect(
-            AudioEvents.log == ["start cue", "duck"],
-            "The start cue plays on the first samples, with ducking")
+            AudioEvents.log == ["start cue"],
+            "The start cue plays on the first samples")
         fixture.coordinator.toggle(into: editor)
         expect(
-            AudioEvents.log == ["start cue", "duck", "restore", "stop cue"],
-            "The stop cue plays once the volume is restored, before the microphone closes")
+            AudioEvents.log == ["start cue", "stop cue"],
+            "The stop cue plays after the start cue")
         expect(fixture.capture.isRecording, "The microphone is still open when the stop cue plays")
         try await wait { fixture.models.pending != nil }
         fixture.models.finish("Spoken words")
@@ -246,7 +228,7 @@ struct DictationFieldTest {
         AudioEvents.log = []
         try await fixture.start(into: editor)
         fixture.capture.onLevels?([])
-        try await wait { AudioEvents.log.contains("duck") }
+        try await wait { AudioEvents.log.contains("start cue") }
         fixture.coordinator.cancel(in: editor)
         try await wait { !fixture.capture.isRecording }
         try await Task.sleep(for: .milliseconds(50))
@@ -263,8 +245,8 @@ struct DictationFieldTest {
         fixture.coordinator.cancel(in: editor)
         try await Task.sleep(for: .milliseconds(600))
         expect(
-            !AudioEvents.log.contains("start cue") && !AudioEvents.log.contains("duck"),
-            "A session cancelled before its start cue plays no cue and never ducks")
+            AudioEvents.log.isEmpty,
+            "A session cancelled before its start cue plays no sound")
     }
 
     private static func testBluetoothStartCue() async throws {
@@ -280,15 +262,6 @@ struct DictationFieldTest {
             ContinuousClock.now - samples >= .milliseconds(500),
             "A Bluetooth microphone delays the start cue until its headset has switched output")
         fixture.coordinator.cancel(in: editor)
-    }
-
-    /// The live poll sleeps longer than `wait` allows.
-    private static func waitLong(until condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(8)
-        while !condition() {
-            guard ContinuousClock.now < deadline else { throw CocoaError(.coderInvalidValue) }
-            try await Task.sleep(for: .milliseconds(1))
-        }
     }
 
     private static func wait(until condition: () -> Bool) async throws {
@@ -310,12 +283,20 @@ struct DictationFieldTest {
         let models = DictationModelStore()
         let queue = DeliveryQueue()
         var messages: [String] = []
+        var transcripts: [String] = []
+        var pasteAppIDs: [pid_t?] = []
         lazy var coordinator = DictationCoordinator(
             settings: settings, hotKeys: HotKeyManager(), models: models,
+            corrections: DictationCorrectionStore(fileURL: FileManager.default.temporaryDirectory
+                .appending(path: "dictation-corrections-\(UUID()).json")),
             injector: TextInjector(
                 clipboardManager: ClipboardManager(), settings: settings, deliveryQueue: queue),
-            audioDucker: DictationAudioDucker(), confirmEnable: { false },
-            showMessage: { [weak self] message, _ in self?.messages.append(message) })
+            confirmEnable: { false },
+            showMessage: { [weak self] message, _ in self?.messages.append(message) },
+            recordTranscript: { [weak self] text, app in
+                self?.transcripts.append(text)
+                self?.pasteAppIDs.append(app?.processIdentifier)
+            })
 
         var capture: DictationCapture { DictationCapture.latest! }
         var panel: DictationPanelController { DictationPanelController.latest! }
@@ -395,24 +376,22 @@ struct DictationFieldTest {
 final class AppSettings {
     var snippetsEnabled = false
     var dictationEnabled = true
-    var dictationMode = DictationMode.toggle
     var dictationModel = DictationModel.redux
+    var dictationUsesApple = false
     var dictationMicrophone: String?
     var dictationLanguage: String?
-    var dictationDestination = DictationDestination.copy
     var dictationAdaptsCapitalization = true
-    var dictationLiveInsertion = false
+    var dictationRemovesFillerWords = false
+    var dictationAutoLearnsWords = false
     var dictationPlaysSounds = true
+    var dictationIndicatorStyle = DictationIndicatorStyle.compact
 }
 
-enum HotKeyAction { case dictation }
+enum HotKeyAction { case dictationHold }
 
 @MainActor
 final class HotKeyManager {
-    struct Binding {
-        var shortcut: Int?
-        var holdKey: Int?
-    }
+    struct Binding { var supportsHold: Bool }
     func binding(for action: HotKeyAction) -> Binding? { nil }
     func conflictOwner(of binding: Binding, excluding action: HotKeyAction) -> String? { nil }
 }
@@ -427,9 +406,10 @@ final class DictationCapture {
     var stopCount = 0
 
     init() { Self.latest = self }
-    func start(microphoneID: String?) async throws { isRecording = true }
-    var snapshotSamples: [Float] = []
-    func snapshot() -> [Float] { snapshotSamples }
+    func start(microphoneID: String?) async throws {
+        try Task.checkCancellation()
+        isRecording = true
+    }
     func stop() async -> [Float] {
         isRecording = false
         stopCount += 1
@@ -443,6 +423,8 @@ final class DictationModelStore {
     var finished = false
 
     func isInstalled(_ model: DictationModel) -> Bool { true }
+    func beginRecording(_ model: DictationModel) {}
+    func endRecording() {}
     func download(_ model: DictationModel) async throws {}
     func delete(_ model: DictationModel) async throws {}
     func stop() async {}
@@ -462,10 +444,8 @@ final class DictationModelStore {
 
 @MainActor
 final class DictationPanelController {
-    enum Phase { case listening, transcribing }
     @MainActor
     final class State {
-        var phase = Phase.listening
         var levels: [Float] = []
     }
     static weak var latest: DictationPanelController?
@@ -474,20 +454,15 @@ final class DictationPanelController {
     var onCancel: (() -> Void)?
     var isVisible = false
     init() { Self.latest = self }
-    func show() { isVisible = true }
+    func showStarting(style: DictationIndicatorStyle) { isVisible = true }
+    func showListening() {}
+    func showTranscribing() {}
     func close() { isVisible = false }
 }
 
 @MainActor
 enum AudioEvents {
     static var log: [String] = []
-}
-
-@MainActor
-final class DictationAudioDucker {
-    func begin() { AudioEvents.log.append("duck") }
-    func end() { AudioEvents.log.append("fade up") }
-    func restoreImmediately() { AudioEvents.log.append("restore") }
 }
 
 @MainActor

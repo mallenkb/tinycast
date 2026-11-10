@@ -31,3 +31,6 @@ When the check fails, delete everything the row lists, then the row.
 
 | Migration | Repairs | Delete with it |
 | --- | --- | --- |
+| `DictationShortcutsMigration` | Moves the single Dictation shortcut to the hold or toggle binding according to its saved mode. Recognizes the retired keys when reading settings.json. | Calls in `AppCore.start()` and `SettingsFileFormat.parse()`, the `dictation-shortcuts-migration-test` harness and its runner and testing table entries, and the migration source entries in the other settings file harnesses. |
+| `DictationDestinationMigration` | Drops the retired Dictation destination, live insertion and count-based history preferences and skips their old settings.json keys. | References in `AppCore.start()` and `SettingsFileFormat.parse()`, the `dictation-destination-migration-test` harness and its runner and testing table entries, and the migration source entries in the other settings file harnesses. |
+| `DictationVolumeMigration` | Restores output volume left lowered by an older build when it still matches the saved fade step. | Call in `AppCore.start()` and the `dictation-volume-migration-test` harness and its runner and testing table entries. |

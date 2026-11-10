@@ -14,15 +14,14 @@ private func modifierTapEventTapCallback(
         return Unmanaged.passUnretained(event)
     }
 
-    // macOS follows a bare Globe release with key-down 179; it is not a separate key press.
-    if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 179 {
-        return Unmanaged.passUnretained(event)
-    }
     let isFlagsChanged = type == .flagsChanged
     let flagsRaw = event.flags.rawValue
     let keyCode =
         type == .keyDown || isFlagsChanged
         ? Int(event.getIntegerValueField(.keyboardEventKeycode)) : -1
+    if type == .keyDown, keyCode == ModifierKey.globeReleaseKeyCode {
+        return Unmanaged.passUnretained(event)
+    }
     MainActor.assumeIsolated {
         monitor.process(isFlagsChanged: isFlagsChanged, flagsRaw: flagsRaw, keyCode: keyCode)
     }

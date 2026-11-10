@@ -129,7 +129,7 @@ struct DeepLinkTests {
                 "\(action.defaultsKey) names an entry ID that parses back to it")
         }
         let unnamed: [HotKeyAction] = [
-            .togglePalette, .dictation, .app(bundleID: "com.apple.Safari"),
+            .togglePalette, .dictationHold, .dictationToggle, .app(bundleID: "com.apple.Safari"),
             .settingsPane(bundleID: "com.apple.Wallpaper-Settings.extension"),
             .extensionCommand(entryID: "extension:demo/search"), .command(.quit)
         ]

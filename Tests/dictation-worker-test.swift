@@ -81,12 +81,21 @@ struct DictationWorkerTest {
         guard readiness.workers == 0, store.loadedModel == nil, !store.transcribing else {
             fatalError("Cancelled transcription launched a helper")
         }
+        store.beginRecording(.redux)
+        let readyDeadline = ContinuousClock.now + .seconds(3)
+        while store.loadedModel == nil, ContinuousClock.now < readyDeadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        guard readiness.workers == 1, store.loadedModel == .redux, !store.transcribing else {
+            fatalError("Recording did not prepare the model before any audio was sent")
+        }
         for model in [DictationModel.redux, .redux, .ultra] {
             let text = try await store.transcribe([0], model: model)
             guard text == model.rawValue, store.loadedModel == model, !store.transcribing else {
                 fatalError("Model store failed to finish a request")
             }
         }
+        store.endRecording()
         guard readiness.workers == 2 else { fatalError("Worker reuse or model-switch cleanup failed") }
         try await store.delete(.ultra)
         guard store.loadedModel == nil, store.removing == nil, !store.isInstalled(.ultra),
@@ -208,6 +217,7 @@ struct DictationWorkerTest {
         while let request = try DictationWire.read(DictationWire.Request.self, from: .standardInput) {
             try DictationWire.write(
                 DictationWire.Response(id: request.id, status: .ready), to: .standardOutput)
+            if request.isPreparation { continue }
             if CommandLine.arguments.contains("crash") { exit(1) }
             _ = try DictationWire.readExactly(request.sampleCount * 4, from: .standardInput)
             if CommandLine.arguments.contains("wait") {

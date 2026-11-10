@@ -19,6 +19,8 @@ Version 0.1.12 defaults Launch at login to on, saves your choice, and reports wh
 Version 0.1.13 downloads updates automatically while idle and asks before installing and restarting.
 Version 0.1.14 adds natural-language file search, Context Search results from Spotlight, a progress
 indicator while searches run, and lower idle memory use after closing the palette.
+Version 0.1.15 expands local dictation with additional models, history, correction learning,
+customizable indicators and shortcut options.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

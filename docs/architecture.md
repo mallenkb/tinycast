@@ -130,7 +130,6 @@ clipboard's downscaled image copies, so a full-size decode stays out of the app 
 Dictation similarly runs its model adapters in a bundled helper, with bounded in-memory audio and
 text over pipes. The coordinator keeps microphone capture, UI and insertion in Tinycast; the model
 store starts the helper on demand and reaps it after the selected idle delay or a model switch.
-`AppCore` owns the audio ducker and starts volume recovery on every launch, even when Dictation is off.
 
 `AppCore` also owns `MemoryReclaimer`. Its local event monitor and palette observation reschedule a
 single idle timer. After two seconds it detaches hidden search views and releases image caches, then

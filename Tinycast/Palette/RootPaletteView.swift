@@ -137,6 +137,8 @@ struct RootPaletteView: View {
             return CalculatorHistoryScreen(
                 history: calcHistory, currencyRates: currencyRates, core: core, vm: vm,
                 openActions: openActions)
+        case .dictationHistory:
+            return DictationHistoryScreen(history: core.dictationHistory, core: core, vm: vm, openActions: openActions)
         case .extensionCommand:
             return ExtensionCommandScreen(
                 screen: extensionScreen, extensions: extensions, vm: vm, openActions: openActions)
@@ -1729,6 +1731,7 @@ private extension PaletteMode {
         switch self {
         case .launcher: nil
         case .clipboard: .clipboard
+        case .dictationHistory: .dictation
         case .ai, .aiHistory: .ai
         case .calculatorHistory, .dictionary, .dictionarySavedWords: nil
         case .emoji: .emoji
@@ -1746,6 +1749,7 @@ private extension PaletteMode {
     var featureTitle: String {
         switch self {
         case .clipboard: String(localized: "Clipboard History")
+        case .dictationHistory: String(localized: "Dictation History")
         case .calculatorHistory: String(localized: "Calculator History")
         case .dictionary, .dictionarySavedWords: String(localized: "Dictionary")
         case .launcher: String(localized: "Tinycast")

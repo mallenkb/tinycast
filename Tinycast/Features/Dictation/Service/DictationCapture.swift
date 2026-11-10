@@ -19,7 +19,7 @@ final class DictationCapture {
         }
     }
 
-    static var microphones: [AVCaptureDevice] {
+    nonisolated static var microphones: [AVCaptureDevice] {
         AVCaptureDevice.DiscoverySession(
             deviceTypes: [.microphone, .external], mediaType: .audio, position: .unspecified
         ).devices
@@ -28,12 +28,11 @@ final class DictationCapture {
     var onLevels: (([Float]) -> Void)?
     var onLimit: (() -> Void)?
 
-    private(set) var isBluetooth = false
-    private var session: AVCaptureSession?
-    private var output: AVCaptureAudioDataOutput?
-    private var collector: AudioCollector?
+    private var active: CaptureSessionBox?
+    var isBluetooth: Bool { active?.isBluetooth == true }
 
     func start(microphoneID: String?) async throws {
+        try Task.checkCancellation()
         let permission = AVCaptureDevice.authorizationStatus(for: .audio)
         let granted: Bool
         if permission == .notDetermined {
@@ -42,14 +41,58 @@ final class DictationCapture {
             granted = permission == .authorized
         }
         guard granted else { throw Failure.microphoneDenied }
+        let id = UUID()
+        let box = try await CaptureSessionBox.configure(
+            id: id, microphoneID: microphoneID,
+            onLevels: { [weak self] levels in
+                Task { @MainActor [weak self] in
+                    guard let self, active?.id == id else { return }
+                    onLevels?(levels)
+                }
+            },
+            onLimit: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self, active?.id == id else { return }
+                    onLimit?()
+                }
+            })
+        try Task.checkCancellation()
+        active = box
+        guard await box.start() else {
+            _ = await stop()
+            try Task.checkCancellation()
+            throw Failure.captureUnavailable
+        }
+    }
+
+    func stop() async -> [Float] {
+        guard let active else { return [] }
+        self.active = nil
+        return await active.stop()
+    }
+}
+
+// The coordinator waits for startup before stopping, so the capture graph has one caller at a time.
+private struct CaptureSessionBox: @unchecked Sendable {
+    let id: UUID
+    let isBluetooth: Bool
+    private let session: AVCaptureSession
+    private let output: AVCaptureAudioDataOutput
+    private let collector: AudioCollector
+
+    @concurrent static func configure(
+        id: UUID, microphoneID: String?, onLevels: @escaping @Sendable ([Float]) -> Void,
+        onLimit: @escaping @Sendable () -> Void
+    ) async throws -> Self {
+        try Task.checkCancellation()
         let device =
-            microphoneID.map { id in Self.microphones.first { $0.uniqueID == id } }
+            microphoneID.map { id in DictationCapture.microphones.first { $0.uniqueID == id } }
             ?? AVCaptureDevice.default(for: .audio)
-        guard let device else { throw Failure.microphoneUnavailable }
-        isBluetooth = [kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE]
+        guard let device else { throw DictationCapture.Failure.microphoneUnavailable }
+        let isBluetooth = [kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE]
             .contains(UInt32(bitPattern: device.transportType))
         guard let input = try? AVCaptureDeviceInput(device: device) else {
-            throw Failure.captureUnavailable
+            throw DictationCapture.Failure.captureUnavailable
         }
 
         let capture = AVCaptureSession()
@@ -63,51 +106,26 @@ final class DictationCapture {
             AVLinearPCMIsNonInterleaved: false
         ]
         guard capture.canAddInput(input), capture.canAddOutput(output) else {
-            throw Failure.captureUnavailable
+            throw DictationCapture.Failure.captureUnavailable
         }
         capture.addInput(input)
         capture.addOutput(output)
-        let collector = try AudioCollector(
-            onLevels: { [weak self] levels in
-                Task { @MainActor [weak self] in self?.onLevels?(levels) }
-            },
-            onLimit: { [weak self] in
-                Task { @MainActor [weak self] in self?.onLimit?() }
-            })
+        let collector = try AudioCollector(onLevels: onLevels, onLimit: onLimit)
         output.setSampleBufferDelegate(collector, queue: collector.queue)
-        self.session = capture
-        self.output = output
-        self.collector = collector
-        let box = CaptureSessionBox(capture)
-        await Task.detached { box.session.startRunning() }.value
-        guard capture.isRunning else {
-            _ = await stop()
-            throw Failure.captureUnavailable
-        }
+        return Self(id: id, isBluetooth: isBluetooth, session: capture, output: output, collector: collector)
     }
 
-    func stop() async -> [Float] {
-        guard let session else { return [] }
-        self.session = nil
-        let box = CaptureSessionBox(session)
-        await Task.detached { box.session.stopRunning() }.value
-        output?.setSampleBufferDelegate(nil, queue: nil)
-        output = nil
-        let samples = collector?.finish() ?? []
-        collector = nil
-        return samples
+    @concurrent func start() async -> Bool {
+        guard !Task.isCancelled else { return false }
+        session.startRunning()
+        return session.isRunning
     }
 
-    func snapshot() -> [Float] {
-        guard session != nil else { return [] }
-        return collector?.snapshot() ?? []
+    @concurrent func stop() async -> [Float] {
+        session.stopRunning()
+        output.setSampleBufferDelegate(nil, queue: nil)
+        return collector.finish()
     }
-}
-
-// Configuration stays on main; only start/stop run off-main, in sequence.
-private struct CaptureSessionBox: @unchecked Sendable {
-    let session: AVCaptureSession
-    init(_ session: AVCaptureSession) { self.session = session }
 }
 
 // Sample buffers and mutable state are confined to the delegate queue, including finish().
@@ -168,6 +186,4 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     }
 
     func finish() -> [Float] { queue.sync { samples } }
-
-    func snapshot() -> [Float] { queue.sync { samples } }
 }

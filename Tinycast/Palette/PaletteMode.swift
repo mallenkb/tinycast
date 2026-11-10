@@ -6,6 +6,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case ai
     case aiHistory
     case calculatorHistory
+    case dictationHistory
     case emoji
     case fileSearch
     case menuSearch
@@ -40,7 +41,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "magnifyingglass"
         case .clipboard: return "doc.on.doc"
         case .ai: return "sparkles"
-        case .aiHistory: return "clock.arrow.circlepath"
+        case .aiHistory, .dictationHistory: return "clock.arrow.circlepath"
         case .calculatorHistory: return "plus.forwardslash.minus"
         case .emoji: return "face.smiling"
         case .fileSearch: return "doc.text.magnifyingglass"
@@ -63,7 +64,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     var placeholder: String {
         switch self {
         case .launcher: return String(localized: "Search for apps and commands…")
-        case .clipboard: return String(localized: "Type to filter entries…")
+        case .clipboard, .dictationHistory: return String(localized: "Type to filter entries…")
         case .ai: return String(localized: "Ask anything…")
         case .aiHistory: return String(localized: "Search chats…")
         case .calculatorHistory:

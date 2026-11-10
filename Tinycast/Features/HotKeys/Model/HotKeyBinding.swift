@@ -51,6 +51,8 @@ enum HotKeyBinding: Hashable, Sendable, Codable {
         }
     }
 
+    var supportsHold: Bool { shortcut != nil || holdKey != nil }
+
     private var modifierKeys: Set<ModifierKey> {
         switch self {
         case .modifier(let key), .doubleModifier(let key): [key]

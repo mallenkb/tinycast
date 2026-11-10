@@ -28,23 +28,34 @@ struct HotKeyDispatchTest {
         var releases = 0
         var cancellations = 0
         var palette = 0
-        manager.onDictationPressed = { presses += 1 }
-        manager.onDictationReleased = { releases += 1 }
-        manager.onDictationCancelled = { cancellations += 1 }
+        manager.onDictationHoldPressed = { presses += 1 }
+        manager.onDictationHoldReleased = { releases += 1 }
+        manager.onDictationHoldCancelled = { cancellations += 1 }
         manager.onTogglePalette = { palette += 1 }
         manager.dictationEnabled = true
-        manager.dictationHoldToTalk = true
         let chord = KeyShortcut.hyperChord(includesShift: includesShift)
         let hyper = KeyShortcut(
             carbonKeyCode: kVK_ANSI_G, carbonModifiers: KeyShortcut.carbonModifiers(from: chord))
         let control = KeyShortcut(carbonKeyCode: kVK_ANSI_G, carbonModifiers: controlKey)
-        manager.setBinding(.combo(hyper), for: .dictation)
-        let normal = center.entries[HotKeyAction.dictation.defaultsKey]!
+        manager.setBinding(.combo(hyper), for: .dictationHold)
+        let normal = center.entries[HotKeyAction.dictationHold.defaultsKey]!
         normal.onKeyDown(0)
         normal.onKeyUp?()
         check("normal dictation has both callbacks", presses == 1 && releases == 1)
+        var toggles = 0
+        manager.onDictationTogglePressed = { toggles += 1 }
+        let toggle = KeyShortcut(carbonKeyCode: kVK_ANSI_T, carbonModifiers: controlKey)
+        manager.setBinding(.combo(toggle), for: .dictationToggle)
+        let toggleEntry = center.entries[HotKeyAction.dictationToggle.defaultsKey]!
+        toggleEntry.onKeyDown(0)
+        toggleEntry.onKeyUp?()
+        check("toggle works alongside hold and has no release callback", toggles == 1 && releases == 1)
+        check(
+            "the hold chord cannot also bind toggle",
+            manager.conflictOwner(of: .combo(hyper), excluding: .dictationToggle) != nil)
+
         manager.setSecureInputEquivalents(includesShift: includesShift)
-        let id = "secureInputEquivalent." + HotKeyAction.dictation.defaultsKey
+        let id = "secureInputEquivalent." + HotKeyAction.dictationHold.defaultsKey
         let secure = center.entries[id]!
         secure.onKeyDown(CGEventFlags.maskControl.rawValue | 1)
         secure.onKeyUp?()
@@ -90,19 +101,19 @@ struct HotKeyDispatchTest {
             "leaving Secure Input restores ordinary registration",
             center.entries[HotKeyAction.togglePalette.defaultsKey]?.shortcut == control)
         manager.setSecureInputEquivalents(includesShift: includesShift)
-        manager.setBinding(nil, for: .dictation)
+        manager.setBinding(nil, for: .dictationHold)
         check("unbinding removes equivalent", center.entries[id] == nil)
         check(
             "unbinding preserves ordinary Control registration",
             center.entries[HotKeyAction.togglePalette.defaultsKey]?.shortcut == control)
-        manager.setBinding(.combo(hyper), for: .dictation)
+        manager.setBinding(.combo(hyper), for: .dictationHold)
         manager.setBinding(nil, for: .togglePalette)
         check(
             "deleting ordinary binding preserves Hyper equivalent",
             center.entries[id]?.shortcut == control
                 && center.entries[HotKeyAction.togglePalette.defaultsKey] == nil)
         manager.setSecureInputEquivalents(includesShift: nil)
-        manager.setBinding(.combo(control), for: .dictation)
+        manager.setBinding(.combo(control), for: .dictationHold)
         manager.setBinding(.combo(hyper), for: .togglePalette)
         manager.setSecureInputEquivalents(includesShift: includesShift)
         let swappedID = "secureInputEquivalent." + HotKeyAction.togglePalette.defaultsKey

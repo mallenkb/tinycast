@@ -2,7 +2,7 @@ import Foundation
 
 @main
 struct DictationTest {
-    static func main() {
+    static func main() throws {
         let locale = Locale(identifier: "en_US")
         func check(_ actual: String, _ expected: String) {
             guard actual == expected else {
@@ -12,6 +12,11 @@ struct DictationTest {
         }
 
         typealias Context = DictationTextFormatter.Context
+        check(DictationTextFormatter.removingFillerWords("Um, I, uh, like this."), "I like this.")
+        check(DictationTextFormatter.removingFillerWords("I think um."), "I think.")
+        check(DictationTextFormatter.removingFillerWords("Let's go. Um."), "Let's go.")
+        check(DictationTextFormatter.removingFillerWords("Um, uh."), "")
+        check(DictationTextFormatter.removingFillerWords("She said “um” on the album."), "She said “um” on the album.")
         check(DictationTextFormatter.format("  Hello. \n", context: nil), "Hello.")
         check(DictationTextFormatter.format("hello", context: Context(before: "", after: "")), "Hello")
         check(DictationTextFormatter.format("World", context: Context(before: "Hello", after: "")), " world")
@@ -48,20 +53,33 @@ struct DictationTest {
                 "world",
                 context: Context(
                     before: document.prefix(7), after: document.suffix(6))), " World ")
-        check(DictationTextFormatter.stripEcho(" world peace", after: "Hello world"), " peace")
-        check(DictationTextFormatter.stripEcho("theatre tickets", after: "said the"), "theatre tickets")
-        check(DictationTextFormatter.stripEcho(" world", after: "Hello world"), "")
-        check(DictationTextFormatter.stripEcho("good morning", after: "Hello world"), "good morning")
-        check(DictationTextFormatter.stripEcho(" hello", after: ""), " hello")
+        let recognized = "Try Whisper Flow."
+        let edited = "Try Wispr Flow."
+        guard let correction = DictationCorrection.infer(from: recognized, to: edited, recognized: recognized),
+            let updated = DictationCorrection.infer(from: edited, to: "Try Wisper Flow.", recognized: recognized)
+        else { fatalError("Expected a spelling correction and an update to it") }
+        check(correction.original, "Whisper")
+        check(correction.spelling, "Wispr")
+        check(updated.original, "Whisper")
+        check(updated.spelling, "Wisper")
         check(
-            DictationTextFormatter.stripEcho("Für, Jonathan", after: "kein kuchen für"),
-            " Jonathan")
+            DictationCorrection.applying([correction], to: "WHISPER, whisper.ai, whisper@example.com."),
+            "Wispr, whisper.ai, whisper@example.com.")
+        guard let phrase = DictationCorrection.manual(spelling: "Tinycast", misspelling: "tiny cast"),
+            let short = DictationCorrection.manual(spelling: "Small", misspelling: "tiny"),
+            let word = DictationCorrection.manual(spelling: "  OpenAI  ", misspelling: ""),
+            let punctuation = DictationCorrection.manual(spelling: ".NET", misspelling: "")
+        else { fatalError("Expected valid manual dictionary entries") }
         check(
-            DictationTextFormatter.stripEcho("ein Kuchen für Jonathan", after: "aber kein Kuchen für"),
-            " Jonathan")
-        check(
-            DictationTextFormatter.stripEcho("äh also weiter gehts", after: "und dann"),
-            "äh also weiter gehts")
+            DictationCorrection.applying([short, phrase, word, punctuation], to: "Try (TINY  CAST), openai, and .net."),
+            "Try (Tinycast), OpenAI, and .NET.")
+        let oldEntry = try JSONDecoder().decode(
+            DictationCorrection.self, from: Data(#"{"original":"Wisper","spelling":"Wispr"}"#.utf8))
+        guard !oldEntry.isManual else { fatalError("Existing corrections should still be treated as learned") }
+        for rewrite in ["Use Wispr Flow.", "Try Wispr Flow!", "Try Wispr Flow. Extra text."] {
+            guard DictationCorrection.infer(from: recognized, to: rewrite, recognized: recognized) == nil
+            else { fatalError("An edit outside the corrected word must not be learned") }
+        }
         check(DictationModel.redux.folderName, "parakeet-redux")
         check(DictationModel.ultra.folderName, "parakeet-ultra")
         check(DictationModel.redux.title, "Parakeet · Redux")
@@ -87,8 +105,10 @@ struct DictationTest {
                 fatalError("Model installation metadata is incomplete")
             }
             if let configuration = model.parakeetConfiguration {
-                guard model.family == .parakeet, configuration.blankToken == 8192,
+                guard model.family == .parakeet,
+                    configuration.blankToken == (model == .v2 ? 1024 : 8192),
                     configuration.encoderUsesGPU == (model == .redux),
+                    model.components.contains(configuration.encoder + ".mlmodelc"),
                     model.components.contains(configuration.joint + ".mlmodelc")
                 else {
                     fatalError("Parakeet download and inference disagree")
