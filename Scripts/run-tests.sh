@@ -179,7 +179,6 @@ run launcher-settings-file-test \
                            Tinycast/Features/Launcher/Service/VisibilityStore.swift \
                            Tinycast/Features/Settings/SettingsTab.swift \
                            Tinycast/Features/Settings/Model/*.swift \
-                           Tinycast/Migrations/Dictation{Shortcuts,Destination}Migration.swift \
                            Tinycast/Features/HotKeys/Service/HotKeySettingsFile.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
@@ -374,7 +373,6 @@ run palette-tab-test       Tinycast/Palette/PaletteMode.swift \
 run compact-bar-test       Tinycast/Features/Launcher/Model/CompactBarSelection.swift \
                            Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/Settings/Model/*.swift \
-                           Tinycast/Migrations/Dictation{Shortcuts,Destination}Migration.swift \
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
@@ -428,10 +426,6 @@ run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.sw
 run dictation-test         Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationCorrection.swift
 run -O dictation-advanced-test Tinycast/Features/Dictation/Model/DictationTextFormatter.swift
 run dictation-cue-test     Tinycast/Features/Dictation/Service/DictationCueRunner.swift
-run dictation-destination-migration-test Tinycast/Migrations/Dictation{Shortcuts,Destination}Migration.swift \
-                           Tinycast/Features/Settings/Model/SettingsFile{Format,Issue,JSON,Key}.swift
-run dictation-shortcuts-migration-test Tinycast/Migrations/Dictation{Shortcuts,Destination}Migration.swift \
-                           Tinycast/Features/Settings/Model/SettingsFile{Format,Issue,JSON,Key}.swift
 run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Model/DictationCorrection.swift \
                            Tinycast/Features/Dictation/Model/DictationIndicatorStyle.swift \
@@ -450,7 +444,6 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swif
                            Tinycast/Platform/AccessibilityText.swift Tinycast/Platform/AppPaths.swift \
                            Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift
-run dictation-volume-migration-test Tinycast/Migrations/DictationVolumeMigration.swift Tinycast/Platform/AppPaths.swift
 run index -O dictation-performance Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift
@@ -779,7 +772,6 @@ run hotkey-dispatch-test   Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
 run extension-output-tail-test Tinycast/Features/Extensions/Service/ExtensionOutputTail.swift
 
 run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
-                           Tinycast/Migrations/Dictation{Shortcuts,Destination}Migration.swift \
                            Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
                            Tinycast/Features/Settings/Service/SettingsFileRepository.swift \
                            Tinycast/Platform/AppPaths.swift

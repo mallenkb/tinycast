@@ -74,7 +74,6 @@
 		1321118AD23048FDD90537A2 /* WindowSwitchSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491B8A6ED9732D9B0A33026C /* WindowSwitchSession.swift */; };
 		137A3474D4734DF43E6412D2 /* CalculatorCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72DF1178CD8AD726AC6F9874 /* CalculatorCardView.swift */; };
 		13B95710F2DE9DF047E4363A /* FileIndexHelper in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 49189B798CFFB81477BF04CB /* FileIndexHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		13C353313072508B22EABC17 /* DictationShortcutsMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3479A3CD036A64DE6A3D45 /* DictationShortcutsMigration.swift */; };
 		13D418FB2F8A1AE896234CAD /* SnippetEditorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B749BA5E790DCB1B8C9A7E99 /* SnippetEditorSession.swift */; };
 		14D056C9DA105D9D89A9691E /* HealthTicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB023D167225228757CC4B2 /* HealthTicker.swift */; };
 		15292937738B7CD3AE23EF73 /* VolumeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27FB790A72ACD75DFCDFDDF /* VolumeSlider.swift */; };
@@ -213,7 +212,6 @@
 		3B02D6CE68E0E488955A19B5 /* SnippetTemplateEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58E564E6181EB15497E51CD /* SnippetTemplateEngine.swift */; };
 		3B0A75B76B65E651BCB97D71 /* CameraPreviewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AEBAA9641BC6C279DB0123C /* CameraPreviewController.swift */; };
 		3B0E1DFB220BCBB7EADF65B7 /* AIRequestBody.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F1010FAC9C0EC4DBDE58A8 /* AIRequestBody.swift */; };
-		3B21E0209A193543E66718CA /* DictationVolumeMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2BF082C97649D6108084ED /* DictationVolumeMigration.swift */; };
 		3BB27B8A793054D8524D2DB0 /* DictationSettingsOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B82D619B4D297EA487AD19 /* DictationSettingsOverview.swift */; };
 		3BC6CC35889FFC77D640C7CA /* SnippetsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2EF66267B0141279A43613 /* SnippetsSettingsView.swift */; };
 		3BF31D4A2297E50D195D0CBA /* CustomCommandEditorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73397884822CD8D0D79B760 /* CustomCommandEditorSession.swift */; };
@@ -745,7 +743,6 @@
 		C7468FBE50BAEC5084D4DB17 /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848E14DE51403235A82BC287 /* AIProvider.swift */; };
 		C75868B7FBA96939089EDBA6 /* CustomWindowSizesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F81A385A824D02C1466F8BF8 /* CustomWindowSizesSection.swift */; };
 		C785431D09E6A27D49C310C3 /* DictationInsertionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77BF823C2A041D9F5F03A854 /* DictationInsertionContext.swift */; };
-		C80FD8A92E6241D063E38909 /* DictationDestinationMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A004FB4D99C1D42196A1AA2 /* DictationDestinationMigration.swift */; };
 		C890F517AA487C4C6CD25298 /* MathNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9E140AF0EE4548DDC4814D7 /* MathNode.swift */; };
 		C8D4DDD0DDA678429552E062 /* MCPOAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222F9EE432F608B5C907E7C2 /* MCPOAuth.swift */; };
 		C9A7290682E9D0881713C009 /* ExtensionGridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85C82C66132C7723272E873 /* ExtensionGridGeometry.swift */; };
@@ -1059,7 +1056,6 @@
 		09633E6F9C37F89267341D1D /* VolumeHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeHUDController.swift; sourceTree = "<group>"; };
 		0966995230FE7B7072C0018B /* EmojiGridGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridGeometry.swift; sourceTree = "<group>"; };
 		096F955B26BAEE5AED65B559 /* HTTPAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPAIProvider.swift; sourceTree = "<group>"; };
-		0A004FB4D99C1D42196A1AA2 /* DictationDestinationMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationDestinationMigration.swift; sourceTree = "<group>"; };
 		0AB691265C48648210F1F6D7 /* WindowLayoutPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutPreview.swift; sourceTree = "<group>"; };
 		0ADFFB5180991764FB13FE0B /* ExtensionPackageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionPackageManager.swift; sourceTree = "<group>"; };
 		0B2FAC737503B853DE6B5ED4 /* MeetingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingCardView.swift; sourceTree = "<group>"; };
@@ -1190,7 +1186,6 @@
 		2BECF24B674F9458E4A876DA /* AppCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCore.swift; sourceTree = "<group>"; };
 		2BF8A60B3C0F4CF45B84F315 /* HyperKeyConflictScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperKeyConflictScanner.swift; sourceTree = "<group>"; };
 		2C5FFE395B9164BDC77B3470 /* SettingsBackupCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsBackupCoverage.swift; sourceTree = "<group>"; };
-		2D2BF082C97649D6108084ED /* DictationVolumeMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationVolumeMigration.swift; sourceTree = "<group>"; };
 		2D303E193CFEFE455778C150 /* CommandsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandsSettingsView.swift; sourceTree = "<group>"; };
 		2D70641CACF5FE83A09F2275 /* BackupClipboardItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupClipboardItem.swift; sourceTree = "<group>"; };
 		2D76186A7F36C4EEDCCC8A54 /* ExtensionCaret.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionCaret.swift; sourceTree = "<group>"; };
@@ -1534,7 +1529,6 @@
 		8CBD6D8BC6951A482BDF6169 /* SettingsCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCoordinator.swift; sourceTree = "<group>"; };
 		8CD7591D273A6484DD48018A /* RaycastImportReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaycastImportReader.swift; sourceTree = "<group>"; };
 		8D0371F4748011D45C185444 /* TextTranslator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextTranslator.swift; sourceTree = "<group>"; };
-		8D3479A3CD036A64DE6A3D45 /* DictationShortcutsMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationShortcutsMigration.swift; sourceTree = "<group>"; };
 		8D73B3CE6BC5047698DE427F /* DictationWritingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationWritingCoordinator.swift; sourceTree = "<group>"; };
 		8D7D18BE38D2CD54CE6AB6DC /* ClipboardTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardTextExtractor.swift; sourceTree = "<group>"; };
 		8DA2EC0303BFCB1212E69B54 /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
@@ -2880,16 +2874,6 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
-		6C4ED93E6A6FB648F38E96F2 /* Migrations */ = {
-			isa = PBXGroup;
-			children = (
-				0A004FB4D99C1D42196A1AA2 /* DictationDestinationMigration.swift */,
-				8D3479A3CD036A64DE6A3D45 /* DictationShortcutsMigration.swift */,
-				2D2BF082C97649D6108084ED /* DictationVolumeMigration.swift */,
-			);
-			path = Migrations;
-			sourceTree = "<group>";
-		};
 		6D3312FA1849B303BECA8AEA /* Model */ = {
 			isa = PBXGroup;
 			children = (
@@ -3649,7 +3633,6 @@
 				BCD69CF996AA28C1A52C0D05 /* App */,
 				1FC9BDBE6549F7189CB995AB /* DesignSystem */,
 				95CA98985928A88B33F82556 /* Features */,
-				6C4ED93E6A6FB648F38E96F2 /* Migrations */,
 				BCE065D58E699AFB41A13CD3 /* Palette */,
 				02ADF9B2610482EE749E5C66 /* Platform */,
 				AAC55CF3217A6A536330E9CF /* Resources */,
@@ -4816,7 +4799,6 @@
 				FA4CD96259E1978A4F2E86B4 /* DictationCorrection.swift in Sources */,
 				F4E2FDC0E7ECF00769D1EB66 /* DictationCorrectionStore.swift in Sources */,
 				48BB85C5EBF0AFF7783C7CA4 /* DictationCueRunner.swift in Sources */,
-				C80FD8A92E6241D063E38909 /* DictationDestinationMigration.swift in Sources */,
 				5546FCE4E8549F66F07F7FD0 /* DictationHistoryScreen.swift in Sources */,
 				76A77E809C6D66C07DB8A29A /* DictationHistoryStore.swift in Sources */,
 				FED9738484D355CC9C0EEB63 /* DictationIdleRelease.swift in Sources */,
@@ -4832,11 +4814,9 @@
 				16B744C774114CAEDC3BDDF1 /* DictationPanel.swift in Sources */,
 				3BB27B8A793054D8524D2DB0 /* DictationSettingsOverview.swift in Sources */,
 				4963DF703487FA79850C2DF3 /* DictationSettingsView.swift in Sources */,
-				13C353313072508B22EABC17 /* DictationShortcutsMigration.swift in Sources */,
 				2672173B7EE995B0FD4A0E13 /* DictationSpectrum.swift in Sources */,
 				9640B5D294EA4D3ACA1D0A85 /* DictationTextFormatter.swift in Sources */,
 				EFC1A265B1B182F8DFCE9B73 /* DictationTransformStore.swift in Sources */,
-				3B21E0209A193543E66718CA /* DictationVolumeMigration.swift in Sources */,
 				A25B529CE2BACE856D70D346 /* DictationWire.swift in Sources */,
 				767032852F22044D23FA031A /* DictationWorker.swift in Sources */,
 				A5F27569FBD6B4BA7C2D55AF /* DictationWritingCoordinator.swift in Sources */,

@@ -360,11 +360,6 @@ final class AppCore {
     }
 
     func start(launchedByUser: Bool) {
-        Task { await DictationVolumeMigration.apply() }
-        DictationDestinationMigration.apply(defaults: .standard)
-        DictationShortcutsMigration.apply(
-            defaults: .standard, holdKey: HotKeyAction.dictationHold.defaultsKey,
-            toggleKey: HotKeyAction.dictationToggle.defaultsKey)
         memoryReclaimer.start()
         clipboardStore.setTextSearchActive(false)
         clipboardStore.onSearchResultsChanged = { [weak self] query, previous, current in

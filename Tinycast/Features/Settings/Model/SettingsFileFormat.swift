@@ -47,15 +47,10 @@ enum SettingsFileFormat {
                 parsed.issues.append(.notAnObject(section.key))
                 continue
             }
-            let currentMembers =
-                section.key == SettingsFileKey.dictationHoldShortcut.section
-                ? DictationShortcutsMigration.settingsMembers(members) : members
-            for member in currentMembers {
+            for member in members {
                 let path = section.key + "." + member.key
                 guard let key = SettingsFileKey(rawValue: path) else {
-                    if !DictationDestinationMigration.retiredSettingsFileKeys.contains(path) {
-                        parsed.issues.append(.unknownSetting(path))
-                    }
+                    parsed.issues.append(.unknownSetting(path))
                     continue
                 }
                 parsed.values[key] = member.value
