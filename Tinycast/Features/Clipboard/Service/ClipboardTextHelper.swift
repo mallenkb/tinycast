@@ -6,6 +6,14 @@ import UniformTypeIdentifiers
 @main
 nonisolated enum ClipboardTextHelper {
     static func main() async {
+        let parent = getppid()
+        guard parent != 1 else { _exit(EXIT_FAILURE) }
+        let parentExit = DispatchSource.makeProcessSource(identifier: parent, eventMask: .exit, queue: .global())
+        parentExit.setEventHandler { _exit(EXIT_FAILURE) }
+        parentExit.activate()
+        defer { parentExit.cancel() }
+        guard getppid() == parent else { _exit(EXIT_FAILURE) }
+
         if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "image-content" {
             guard setiopolicy_np(
                 IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES, IOPOL_SCOPE_PROCESS,

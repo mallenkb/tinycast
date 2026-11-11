@@ -9,6 +9,8 @@ enum ClipboardFilter: CaseIterable, Sendable {
     case link
     case email
 
+    var searchesExtractedContent: Bool { self == .all || self == .image || self == .file }
+
     var title: String {
         switch self {
         case .all: return String(localized: "All Types")

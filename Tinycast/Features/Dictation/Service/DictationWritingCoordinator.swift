@@ -88,6 +88,7 @@ final class DictationWritingCoordinator {
     }
 
     func process(_ original: String, isEnglish: Bool? = nil) async -> String {
+        defer { endRecording() }
         let smart = settings.dictationSmartCleanup
         let engine = settings.dictationCleanupEngine
         let model = selectedLocalModel

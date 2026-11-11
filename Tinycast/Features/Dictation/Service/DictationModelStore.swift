@@ -247,11 +247,13 @@ final class DictationModelStore {
     private func scheduleRelease() {
         releaseTask?.cancel()
         releaseTask = nil
-        guard worker != nil, recordingModel == nil, preparation == nil, !transcribing, idleRelease != .never
+        guard worker != nil, recordingModel == nil, preparation == nil, !transcribing,
+            let delay = idleRelease.delay
         else { return }
-        let interval = Duration.seconds(idleRelease.rawValue * 60)
         releaseTask = Task { [weak self] in
-            try? await Task.sleep(for: interval, tolerance: .seconds(1))
+            if delay > .zero {
+                do { try await Task.sleep(for: delay, tolerance: .seconds(1)) } catch { return }
+            }
             guard !Task.isCancelled else { return }
             guard let self, recordingModel == nil, preparation == nil, !transcribing else { return }
             releaseTask = nil

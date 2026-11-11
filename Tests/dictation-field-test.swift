@@ -8,6 +8,7 @@ struct DictationFieldTest {
         NSApplication.shared.setActivationPolicy(.prohibited)
         try await testDelivery()
         try await testShortcutOwnership()
+        try await testShortcutFollowsFocusDuringProcessing()
         try await testScopedCancellation()
         try await testChatSwitch()
         try await testWindowClose()
@@ -63,6 +64,23 @@ struct DictationFieldTest {
         hold.coordinator.cancel()
         hold.models.finish("")
         try await wait { hold.models.finished }
+    }
+
+    private static func testShortcutFollowsFocusDuringProcessing() async throws {
+        let fixture = Fixture()
+        let original = ComposerTextView()
+        let destination = ComposerTextView()
+        fixture.focusedTarget = .ownEditor(original)
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.capture.isRecording }
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.models.pending != nil }
+        fixture.focusedTarget = .ownEditor(destination)
+        fixture.models.finish("Switched inputs")
+        try await wait { !fixture.transcripts.isEmpty }
+        expect(original.string.isEmpty, "Shortcut dictation leaves the original input untouched")
+        expect(destination.string == "Switched inputs", "Shortcut dictation inserts into the newly focused input")
+        expect(fixture.messages.isEmpty, "Switching inputs during processing does not report a paste failure")
     }
 
     private static func testScopedCancellation() async throws {
@@ -285,12 +303,14 @@ struct DictationFieldTest {
         var messages: [String] = []
         var transcripts: [String] = []
         var pasteAppIDs: [pid_t?] = []
+        var focusedTarget: InjectionTarget?
         lazy var coordinator = DictationCoordinator(
             settings: settings, hotKeys: HotKeyManager(), models: models,
             corrections: DictationCorrectionStore(fileURL: FileManager.default.temporaryDirectory
                 .appending(path: "dictation-corrections-\(UUID()).json")),
             injector: TextInjector(
                 clipboardManager: ClipboardManager(), settings: settings, deliveryQueue: queue),
+            focusedTarget: { [weak self] in self?.focusedTarget },
             confirmEnable: { false },
             showMessage: { [weak self] message, _ in self?.messages.append(message) },
             recordTranscript: { [weak self] text, _, app in
@@ -453,17 +473,20 @@ final class DictationPanelController {
     @MainActor
     final class State {
         var animatesTranscript = true
+        var twoLinePreview = false
         var levels: [Float] = []
     }
     static weak var latest: DictationPanelController?
     let state = State()
     var onAccept: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onStart: (() -> Void)?
     var isVisible = false
     init() { Self.latest = self }
     func showStarting(style: DictationIndicatorStyle) { isVisible = true }
     func showListening() {}
-    func showPreview(_ text: String) {}
+    func showPreview(_ text: String, twoLines: Bool) {}
+    func hidePreview() {}
     func showIdle(style: DictationIndicatorStyle) { isVisible = true }
     func showTranscribing() {}
     func close() { isVisible = false }

@@ -23,6 +23,8 @@ Version 0.1.15 expands local dictation with additional models, history, correcti
 customizable indicators and shortcut options.
 Version 0.1.16 adds Advanced transcript formatting, S1-mini cleanup, animated dictation previews,
 dictation writing settings, improved settings navigation, and refinements to search and shortcuts.
+Version 0.1.17 improves dictation preview and paste latency, releases speech and cleanup models after
+dictation by default, and runs clipboard text recognition on demand.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

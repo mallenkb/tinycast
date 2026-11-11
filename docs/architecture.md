@@ -87,8 +87,8 @@ flat selection index, and `SearchDescription.swift` parses file and clipboard de
 injected clock and calendar. `Features/IntelligentSearch/` owns the on-device intent resolver,
 validation policy and AppCore-owned coordinator; it passes plain constraints into existing search
 stores. `Features/ImageSearch/` owns image-description extraction and the file image content cache.
-AppCore owns its background indexer; clipboard and file indexing share the disposable OCR helper
-and coordinate admission so only one background image extraction runs at a time.
+AppCore owns the file background indexer and the on-demand clipboard indexer. They share the
+disposable OCR helper and coordinate so only one indexed image extraction runs at a time.
 `DesignSystem/` and `Platform/` hold shared visual components and system
 helpers. They may not depend on a feature.
 
@@ -120,7 +120,8 @@ fine too; deciding something with one is what the rule forbids. `showNotice`, `c
 
 New long-lived state belongs on `AppCore`, wired in `start()`. Do not create a competing singleton: this is a singleton, not a container.
 
-Clipboard text recognition runs outside the process. `AppCore` owns the indexer;
+Clipboard text recognition runs outside the process. `AppCore` owns the indexer and starts it for
+eligible searches in the visible Clipboard History. Clearing the search or leaving history cancels it.
 the stateless `ClipboardTextWorker` runs one bundled `ClipboardTextHelper` per item, from
 `Contents/Helpers`, and reaps it before returning. Vision's and PDFKit's allocations therefore belong
 to a process that exits, and the helper — which has no database, clipboard or settings access — is

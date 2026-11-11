@@ -20838,6 +20838,58 @@
         }
       }
     },
+    "After each dictation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach jedem Diktat"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después de cada dictado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Après chaque dictée"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声入力のたびに"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "받아쓸 때마다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Após cada ditado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После каждой диктовки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每次听写后"
+          }
+        }
+      }
+    },
     "After the launcher closes." : {
       "localizations" : {
         "de" : {
@@ -100403,54 +100455,54 @@
         }
       }
     },
-    "Recognized on this Mac while idle." : {
+    "Recognized on this Mac while you search." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wird im Leerlauf auf diesem Mac erkannt."
+            "value" : "Texterkennung auf diesem Mac während der Suche."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se reconoce en este Mac durante la inactividad."
+            "value" : "El texto se reconoce en este Mac durante la búsqueda."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le texte est reconnu sur ce Mac pendant les périodes d’inactivité."
+            "value" : "Le texte est reconnu sur ce Mac pendant la recherche."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アイドル中にこのMac上で認識されます。"
+            "value" : "検索中にこのMacでテキストを認識します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "대기 중에 이 Mac에서 인식됩니다."
+            "value" : "검색하는 동안 이 Mac에서 텍스트를 인식합니다."
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reconhecido neste Mac enquanto ocioso."
+            "value" : "O texto é reconhecido neste Mac durante a pesquisa."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Распознаётся на этом Mac в режиме простоя."
+            "value" : "Текст распознаётся на этом Mac во время поиска."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "空闲时在这台 Mac 上识别。"
+            "value" : "搜索时在此 Mac 上识别文本。"
           }
         }
       }

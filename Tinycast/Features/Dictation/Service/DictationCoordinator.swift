@@ -14,6 +14,7 @@ final class DictationCoordinator {
     private let cues = DictationCueRunner()
     private let panel = DictationPanelController()
     private let injector: TextInjector
+    private let focusedTarget: @MainActor () -> InjectionTarget?
     private let showMessage: (String, DialogTone) -> Void
     private let confirmEnable: () async -> Bool
     private let setupModels: () async -> Void
@@ -46,6 +47,7 @@ final class DictationCoordinator {
         settings: AppSettings, hotKeys: HotKeyManager, models: DictationModelStore,
         corrections: DictationCorrectionStore,
         injector: TextInjector,
+        focusedTarget: @escaping @MainActor () -> InjectionTarget? = InjectionTarget.current,
         confirmEnable: @escaping () async -> Bool,
         setupModels: @escaping () async -> Void = { _ = Permissions.ensureAccessibility() },
         showMessage: @escaping (String, DialogTone) -> Void,
@@ -56,6 +58,7 @@ final class DictationCoordinator {
         self.models = models
         self.corrections = corrections
         self.injector = injector
+        self.focusedTarget = focusedTarget
         self.confirmEnable = confirmEnable
         self.setupModels = setupModels
         self.showMessage = showMessage
@@ -258,6 +261,7 @@ final class DictationCoordinator {
                     transcript = try await models.transcribe(samples, model: model, language: language)
                 }
                 guard token == current else { return }
+                models.endRecording()
                 let isEnglish = englishOverride(model: applePreparation == nil ? model : nil, language: language)
                 let cleaned = await DictationLocalCleanup.clean(transcript, mode: cleanupMode, isEnglish: isEnglish)
                 guard token == current, !Task.isCancelled else { return }
@@ -274,23 +278,24 @@ final class DictationCoordinator {
                 } else {
                     panel.close()
                 }
-                let destination = followsFocus ? InjectionTarget.current() : target
+                let destination = followsFocus ? focusedTarget() : target
+                let insertion = DictationInsertionContext.read(
+                    in: destination, learnsCorrections: settings.dictationEnabled && settings.dictationAutoLearnsWords)
                 let original = processed == transcript ? nil : transcript
                 let formatted = DictationTextFormatter.format(
                     processed,
-                    context: DictationInsertionContext.read(in: destination),
+                    context: insertion?.context,
                     adaptCapitalization: settings.dictationAdaptsCapitalization)
                 let text = DictationCorrection.applying(corrections.entries, to: formatted)
                 guard !text.isEmpty else { reset(cancelTranscription: false); return }
-                let probe = settings.dictationEnabled && settings.dictationAutoLearnsWords
-                    ? DictationInsertionContext.correctionProbe(in: destination, inserted: text) : nil
+                let probe = insertion?.correctionProbe(inserted: text)
                 injector.deliver(
                     InjectedText(text), target: destination, expectedKeyword: nil,
                     keywordLength: 0, automaticGeneration: nil, activateTarget: !followsFocus,
                     isValid: { [weak self] in
-                        guard self?.token == current else { return false }
+                        guard let self, token == current else { return false }
                         guard followsFocus, let editor = destination?.ownEditor else { return true }
-                        return InjectionTarget.current()?.ownEditor === editor
+                        return focusedTarget()?.ownEditor === editor
                     },
                     onDelivered: { [weak self] in
                         guard let self, token == current else { return }
@@ -464,7 +469,9 @@ final class DictationCoordinator {
         previewTask = Task { [weak self] in
             guard let self else { return }
             defer {
-                if token == current, phase == .listening { panel.hidePreview() }
+                if token == current, phase == .listening, !settings.dictationLivePreview {
+                    panel.hidePreview()
+                }
             }
             do {
                 while token == current, phase == .listening, settings.dictationLivePreview {
@@ -484,9 +491,9 @@ final class DictationCoordinator {
                     } else {
                         text = try await models.transcribe(samples, model: model, language: language)
                     }
-                    guard token == current, phase == .listening, !Task.isCancelled else { return }
-                    panel.state.twoLinePreview = settings.dictationTwoLinePreview
-                    panel.showPreview(text)
+                    guard token == current, phase == .listening, settings.dictationLivePreview, !Task.isCancelled
+                    else { return }
+                    panel.showPreview(text, twoLines: settings.dictationTwoLinePreview)
                 }
             } catch {
                 // The full recording remains available for the final transcription.

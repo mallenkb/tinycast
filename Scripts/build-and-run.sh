@@ -3,9 +3,9 @@ set -euo pipefail
 
 MODE="${1:-run}"
 case "$MODE" in
-    run|--debug|--logs|--telemetry|--verify) ;;
+    run|--build-only|--debug|--logs|--telemetry|--verify) ;;
     *)
-        echo "Usage: $0 [--debug|--logs|--telemetry|--verify]" >&2
+        echo "Usage: $0 [--build-only|--debug|--logs|--telemetry|--verify]" >&2
         exit 2
         ;;
 esac
@@ -22,13 +22,38 @@ if ! security find-identity -p codesigning | grep -q 'Tinycast Self-Signed'; the
     exit 1
 fi
 
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
-
+BUILD_LOG=$(mktemp -t tinycast-dev-build)
+trap 'rm -f "$BUILD_LOG"' EXIT
+retry_deadline=$((SECONDS + 120))
+waiting_for_build=0
 echo "Building $APP_NAME..."
-xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
-    -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath "$DERIVED" \
-    -quiet build
+while true; do
+    if xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
+        -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath "$DERIVED" \
+        -quiet build >"$BUILD_LOG" 2>&1; then
+        cat "$BUILD_LOG"
+        break
+    else
+        build_status=$?
+    fi
+    if (( SECONDS >= retry_deadline )) || ! grep -Fq 'unable to attach DB:' "$BUILD_LOG" \
+        || ! grep -Fq 'database is locked' "$BUILD_LOG"; then
+        cat "$BUILD_LOG" >&2
+        exit "$build_status"
+    fi
+    if (( ! waiting_for_build )); then
+        echo "Waiting for the other Xcode build to release the database..."
+        waiting_for_build=1
+    fi
+    sleep 2
+done
 
+if [[ "$MODE" == --build-only ]]; then
+    echo "Build complete."
+    exit 0
+fi
+
+pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 echo "Build complete. Launching $APP_NAME..."
 case "$MODE" in
     run)

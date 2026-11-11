@@ -163,7 +163,7 @@ and `emoji.commands`. Commands without a feature pane use `commands.builtIn`. Ea
 ID after `command:`. The recording shortcuts use `dictation.holdShortcut`, `dictation.toggleShortcut`, and
 `dictation.toggleAlternateShortcut`.
 The palette shortcut uses `general.launcherShortcut`.
-`dictation.animateTranscript` controls word-reveal animation and defaults to true.
+`dictation.animateTranscript` controls the character fade and defaults to true.
 `dictation.livePreview` and `dictation.idleIndicator` are opt-in booleans for the transcript preview
 and the idle bar. `dictation.twoLinePreview` wraps the live preview across two lines and defaults to false.
 `dictation.indicatorStyle` stores the shape and background selection. It accepts `compact`
@@ -171,6 +171,9 @@ for dark compact, `lightCompact`, `grayCompact`, `lightGrayCompact`, `lightCapsu
 `lightOutlinedCapsule`, `lightRounded`, `darkRounded`, `outlinedRounded`, or `lightOutlinedRounded`.
 Setting `dictation.useApple` to `true` selects Apple Dictation. The `dictation.model` value remembers
 the Parakeet or Qwen model to use when Apple Dictation is off.
+`dictation.releaseAfterMinutes` controls how long the local speech model stays loaded. The default
+`-1` releases it after each dictation. `0` keeps it loaded until you quit or switch models. Positive
+values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
 
 ```json
 "clipboard-history": { "shortcut": "cmd+shift+v", "alias": "ch", "showInLauncher": true }

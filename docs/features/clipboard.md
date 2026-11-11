@@ -194,23 +194,20 @@ settings backups. It includes saved on-device visual descriptions when supported
 and loads no extracted strings. Existing derived data stays on disk when disabled and is reused on
 reenabling; deletion and retention still remove it with its original item.
 
-When both clipboard history and text search are enabled, `AppCore` creates its
-`ClipboardTextIndexer`. It recognizes locally with Vision's `RecognizeTextRequest`, starting one
-background-priority job after two seconds without input, even while the palette is open. A 250 ms
-pause separates items; continued typing or mouse movement defers the next job. Existing and imported
-history is backfilled, including rows beyond the resident window. Nothing recognizes on the capture
-or search path. When only failed work is left the indexer sleeps until a retry is due — a new capture
-wakes that wait — and an empty queue exits rather than polling.
+When clipboard text search is enabled, a nonempty search in the visible Clipboard History starts
+recognition on demand for All, Images, and Files. After a 250 ms delay, `ClipboardTextIndexer` uses
+Vision's `RecognizeTextRequest` to process one unindexed item at a time in the selected scope.
+One- and two-character queries process recent and pinned items. Longer queries can reach older
+history. Already recognized text is reused from disk.
 
-Turning either switch off cancels the run in flight; the indexer is kept and reschedules itself once
-that run winds down, which is why `applyClipboardTextSearch` can be called again at any time.
+Clearing the query, leaving Clipboard History, or disabling the feature cancels recognition in flight.
+Normal app quit waits for the helper to exit. The helper also watches for the parent app to exit.
 
 Recognition runs in a bundled `ClipboardTextHelper`, one item at a time, and Vision's and PDFKit's
 state leaves with it. The parent accepts at most 32 KB from the helper's output pipe, propagates
 cancellation, and terminates and reaps a helper that runs past 60 seconds. `ClipboardTextWorker`
-does its blocking read and wait on its own `DispatchQueue`, never the cooperative pool. No helper
-exists while text search is off or the queue is empty — a Copy Text trigger is the exception: the
-helper is bundled either way, so an explicit extraction spawns one with the search switch off.
+does its blocking read and wait on its own `DispatchQueue`, never the cooperative pool. OCR has no
+resident process between jobs. Copy Text can still start an extraction with the search switch off.
 
 Images include owned clipboard PNGs and referenced image files. Referenced PDFs use PDFKit's embedded
 text page by page, with Vision OCR for pages without text. Mixed text-and-scan documents therefore

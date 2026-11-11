@@ -5,7 +5,7 @@ import AppKit
 /// Always against a named process: the system-wide focus answers with ours.
 enum AccessibilityText {
     /// Generous for a responsive app, short enough that a wedged one can't stall the main actor.
-    private static let timeout: Float = 1
+    private static let defaultTimeout: Float = 1
 
     /// The two have different fixes; collapsing them tells a reader to select what they selected.
     enum Selection: Equatable {
@@ -14,7 +14,7 @@ enum AccessibilityText {
         case empty
     }
 
-    static func focusedElement(in app: NSRunningApplication) -> AXUIElement? {
+    static func focusedElement(in app: NSRunningApplication, timeout: Float = defaultTimeout) -> AXUIElement? {
         let application = AXUIElementCreateApplication(app.processIdentifier)
         // Per element and never inherited, so the focused element needs its own against a hang.
         AXUIElementSetMessagingTimeout(application, timeout)

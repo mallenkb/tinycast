@@ -35,6 +35,7 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var searchIntentCoordinator = SearchIntentCoordinator(core: self)
     let linkPreviews = LinkPreviewStore()
     @ObservationIgnored private var clipboardTextIndexer: ClipboardTextIndexer?
+    @ObservationIgnored private var clipboardTextIsTerminating = false
     let clipboardManager: ClipboardManager
     let snippetsStore: SnippetsStore
     let snippetListener = SnippetKeywordListener(
@@ -374,8 +375,9 @@ final class AppCore {
             _ = $0.mode
             _ = $0.isVisible
             _ = $0.isComposing
+            _ = $0.clipboardFilter
         }, reproject: {
-            $0.clipboardStore.setTextSearchActive($0.palette.isVisible && $0.palette.mode == .clipboard)
+            $0.applyClipboardTextSearchDemand()
             $0.searchIntentCoordinator.update()
         })
         track(palette, {
@@ -485,6 +487,7 @@ final class AppCore {
             }
             dictationCoordinator.onRecordingEnded = { [weak self] in
                 self?.dictationWriting.endRecording()
+                self?.memoryReclaimer.schedule()
             }
             dictationCoordinator.processTranscript = { [weak self] text, isEnglish in
                 guard let self else { return text }
@@ -690,12 +693,12 @@ final class AppCore {
         dictationCleanup.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         await dictationModels.stop()
+        await dictationCleanup.waitUntilStopped()
     }
 
     /// Idempotent: both switches are tracked, and either one flipping re-runs the whole decision.
     func applyClipboardTextSearch() {
         guard settings.clipboardEnabled, settings.clipboardTextSearchEnabled else {
-            clipboardStore.onItemsChanged = nil
             clipboardStore.setTextSearchEnabled(false)
             clipboardTextIndexer?.stop()
             return
@@ -706,16 +709,36 @@ final class AppCore {
                 tone: .danger)
             return
         }
-        clipboardStore.setTextSearchActive(palette.isVisible && palette.mode == .clipboard)
-        // Kept across a disable: the indexer reschedules itself once a cancelled run winds down.
-        let indexer =
-            clipboardTextIndexer
-            ?? ClipboardTextIndexer(store: clipboardStore, canRun: { [weak self] in
-                ClipboardTextIndexer.isSystemIdle && self?.fileImageContentIndexer.isExtracting != true
+        applyClipboardTextSearchDemand()
+    }
+
+    private func applyClipboardTextSearchDemand() {
+        let showingClipboard = palette.isVisible && palette.mode == .clipboard
+        clipboardStore.setTextSearchActive(showingClipboard && !clipboardTextIsTerminating)
+        let query = palette.query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filter = palette.clipboardFilter
+        guard !clipboardTextIsTerminating, clipboardStore.textSearchEnabled, showingClipboard,
+            !palette.isComposing, !query.isEmpty, filter.searchesExtractedContent
+        else {
+            clipboardTextIndexer?.stop()
+            return
+        }
+        if clipboardTextIndexer == nil {
+            let indexer = ClipboardTextIndexer(store: clipboardStore, canRun: { [weak self] in
+                self?.fileImageContentIndexer.isExtracting != true
             })
-        clipboardTextIndexer = indexer
-        clipboardStore.onItemsChanged = { [weak indexer] in indexer?.schedule() }
-        indexer.start()
+            clipboardTextIndexer = indexer
+            clipboardStore.onItemsChanged = { [weak indexer] in indexer?.schedule() }
+        }
+        clipboardTextIndexer?.start(scope: .init(filter: filter, residentOnly: query.count < 3))
+    }
+
+    func stopClipboardTextForTermination() async {
+        clipboardTextIsTerminating = true
+        clipboardStore.setTextSearchActive(false)
+        clipboardTextIndexer?.stop()
+        clipboardCoordinator.cancelTextRecognitionForTermination()
+        await clipboardTextIndexer?.waitUntilStopped()
     }
 
     func relaunch() {

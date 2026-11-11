@@ -84,7 +84,7 @@ struct DictationTest {
         check(DictationModel.ultra.folderName, "parakeet-ultra")
         check(DictationModel.redux.title, "Parakeet · Redux")
         check(DictationModel.ultra.title, "Parakeet · Ultra")
-        check(DictationIdleRelease.allCases.map(\.rawValue).description, "[0, 1, 2, 5, 10, 15, 20, 30, 60]")
+        check(DictationIdleRelease.allCases.map(\.rawValue).description, "[-1, 0, 1, 2, 5, 10, 15, 20, 30, 60]")
         check(DictationIdleRelease.never.title(locale: locale), "Never")
         check(DictationIdleRelease.oneHour.title(locale: locale), "1 hour")
         check(DictationIdleRelease.oneHour.title(locale: Locale(identifier: "fr_FR")), "1\u{00a0}heure")

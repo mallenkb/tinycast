@@ -13,6 +13,7 @@ final class ClipboardCoordinator {
     private unowned let core: AppCore
     /// One Copy Text at a time: a newer trigger cancels the helper an older one is waiting on.
     private var textTask: Task<Void, Never>?
+    private var isTerminating = false
     private var pasteSequence: PasteSequence?
 
     init(
@@ -212,7 +213,7 @@ final class ClipboardCoordinator {
     }
 
     func copyImageText(_ item: ClipboardItem) {
-        guard let path = item.imagePath ?? item.filePath else { return }
+        guard !isTerminating, let path = item.imagePath ?? item.filePath else { return }
         paletteCoordinator.hidePalette(restoreFocus: false)
         core.showProgress(String(localized: "Reading text…"))
         let changeCount = NSPasteboard.general.changeCount
@@ -243,6 +244,11 @@ final class ClipboardCoordinator {
                 core.showMessage(String(localized: "Couldn’t read the text"), tone: .danger)
             }
         }
+    }
+
+    func cancelTextRecognitionForTermination() {
+        isTerminating = true
+        textTask?.cancel()
     }
 
     /// Nil once the file is gone, so every action reports rather than silently no-opping.

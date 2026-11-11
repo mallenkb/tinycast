@@ -31,7 +31,9 @@ Build and launch Tinycast Dev from the project folder:
 
 The Codex environment's Run action uses the same script. It restarts only Tinycast Dev and
 uses the project's signing identity. `DEVELOPER_DIR` defaults to the Xcode installation below.
-Optional flags are `--debug` for LLDB, `--logs` for process logs, `--telemetry` for subsystem
+If another Xcode build locks the shared build database, the script retries for up to two minutes.
+The running app stays open until the build succeeds. Use `--build-only` to build without restarting
+the app. Other flags are `--debug` for LLDB, `--logs` for process logs, `--telemetry` for subsystem
 logs, and `--verify` to check that the app starts.
 
 Or open the project in Xcode:

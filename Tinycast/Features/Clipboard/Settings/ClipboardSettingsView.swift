@@ -31,7 +31,7 @@ struct ClipboardSettingsView: View {
                 }
                 Toggle(isOn: $settings.clipboardTextSearchEnabled) {
                     SettingsRowTitle(.clipboardHistory, "Search image, video and PDF content")
-                    Text("Recognized on this Mac while idle.")
+                    Text("Recognized on this Mac while you search.")
                 }
                 Picker(selection: $settings.clipboardDefaultAction) {
                     ForEach(ClipboardDefaultAction.allCases) { action in

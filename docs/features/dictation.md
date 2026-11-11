@@ -73,7 +73,8 @@ models use CPU/Neural Engine.
 - The compact dictation indicators use seven bars. The other styles use a capsule or rounded
   rectangle and include a status label. The style picker selects the shape. A Dark mode switch
   chooses light or dark for every style. Gray is no longer offered in Settings.
-  The light transcript preview uses the light pill’s background and border.
+  The pill and transcript preview share the background for the selected appearance. In light mode,
+  they also share the border color. Both appearances show an outline around the pill and transcript.
   The pill appears when the shortcut or composer mic starts a recording and shows Starting…
   until microphone setup completes off the main thread.
   It sits 16 points above a visible bottom Dock, or above the screen edge when the Dock is hidden,
@@ -94,14 +95,15 @@ models use CPU/Neural Engine.
   separately opt-in and shows recent words above the pill. It transcribes up to eight seconds of
   recent audio at a time, with a 1.5-second pause between requests. Preview requests are serialized
   with the final transcription. The full recording is transcribed when recording stops.
+  The last preview stays visible through pauses when a recognition pass returns no text or only
+  repeats the end of the visible transcript. New text resumes the fade.
   Transcript animation defaults to on and follows global animations and Reduce Motion.
-  Its dedicated Settings toggle is removed; the stored preference remains accessible in settings.json. New words appear in groups of up to three,
-  and later recognition results can correct previously shown words. The preview grows to its
+  The animation preference remains accessible in settings.json. New characters appear from left
+  to right over 30 ms per character, with cubic ease-out and 150 ms character fades. The preview grows to its
   maximum width without shrinking during a recording. By default it scrolls along one line.
   With Two-line live preview on, the bubble starts at one line and grows on the first wrap.
-  It keeps that height for the rest of the recording. Completed lines scroll up as new words fill the bottom line.
-  New groups arrive 160 ms apart and fade in over 320 ms with eased opacity. Each word keeps its
-  fade progress across incoming updates; corrections update in place without replaying earlier words.
+  The bubble fits the visible text up to two lines. Older lines scroll up as new words wrap below.
+  Corrections update in place without replaying earlier text.
   Text updates without an implicit crossfade inside the separately animated, clipped viewport.
   Reduce Motion or turning the effect off displays updates immediately.
   Each indicator fits the current state. Settings previews both listening and processing for the
@@ -134,10 +136,10 @@ models use CPU/Neural Engine.
 - The Apple Dictation engine uses Apple's on-device `DictationTranscriber` and the Mac's preferred
   language. Tinycast starts preparation when recording begins. macOS installs missing speech assets,
   then manages those assets and their memory. The analyzer lives for one recording.
-- Core ML models live under this build's bundle-ID cache. The idle timer starts after the recording
-  and transcription finish. After one minute idle by default, the
-  store terminates and reaps the helper, releasing its model memory. Other delays or Never are
-  selectable. Switching models reaps the old helper before loading the next; removing a loaded model
+- Core ML models live under this build's bundle-ID cache. By default, the store terminates and reaps
+  the helper as soon as speech recognition finishes, so cleanup can run without keeping the speech
+  model resident. Choose a delay or Never to keep it warm between recordings. Switching models
+  reaps the old helper before loading the next. Removing a loaded model
   stops its helper before deleting the directory and blocks new requests for that model meanwhile.
   Cancelling an in-flight load or transcription, failed inference and normal quit stop the helper.
   Late results cannot paste.
@@ -165,6 +167,7 @@ models use CPU/Neural Engine.
 - The `Model/` folder imports Foundation only. Context-sensitive spaces and capitalization are a
   pure decision driven by text around the caret. Capitalization adapts by default.
   The `dictation.adaptsCapitalization` override in `settings.json` leaves contextual spaces enabled.
+  Capitalization, spacing, and correction learning share one snapshot of the focused editor.
   If an app does not expose caret context through Accessibility, Tinycast inserts the plain transcript.
 - **Remove filler words** in the Model section is on by default. When enabled, Tinycast removes
   standalone English hesitations such as “um” and “uh” before inserting or copying text.
@@ -220,8 +223,10 @@ For Smart cleanup, both models use their published settings and disable thinking
 semi-formal, lists, and general. S1-ASR-Cleanup uses semi-formal, prose, general, and layers 1 and 2.
 When a recording will use Smart cleanup or an automatic transform, Tinycast starts loading the
 selected cleanup engine at recording start. The local helper stays available through the recording
-and exits after one minute of inactivity. It also stops on request errors, disabling dictation,
-changing engines, or quitting. Tinycast releases its Apple Intelligence session after use.
+and exits when the recording and its cleanup or transform finish. Cancelling a recording releases
+its helper too. Standalone previews and manual transforms keep a one-minute idle grace period.
+The helper also stops on request errors, disabling dictation, changing engines, or quitting.
+Tinycast releases its Apple Intelligence session after use.
 macOS manages the shared Apple Intelligence model's memory.
 
 Saved transforms live in `dictation-transforms.json` in this channel's application-support directory.

@@ -546,13 +546,35 @@ final class ClipboardStore {
         return true
     }
 
-    func nextExtractionItem(now: Date = Date(), version: Int = 1) -> ClipboardItem? {
+    struct ExtractionScope: Equatable {
+        var filter: ClipboardFilter = .all
+        var residentOnly = false
+
+        fileprivate var predicate: String {
+            let kind = switch filter {
+            case .all: "i.kind IN ('image', 'file')"
+            case .image: "i.kind = 'image'"
+            case .file: "i.kind = 'file'"
+            case .text, .color, .link, .email: "0"
+            }
+            guard residentOnly else { return kind }
+            return """
+                \(kind) AND (i.pinned_at IS NOT NULL OR i.rowid >= COALESCE(
+                    (SELECT rowid FROM items WHERE pinned_at IS NULL ORDER BY rowid DESC
+                     LIMIT 1 OFFSET \(ClipboardStore.memoryWindow - 1)), 0))
+                """
+        }
+    }
+
+    func nextExtractionItem(
+        now: Date = Date(), version: Int = 1, scope: ExtractionScope = .init()
+    ) -> ClipboardItem? {
         guard textSearchEnabled else { return nil }
         guard
             let stmt = prepare(
                 """
                 SELECT id, kind, text, image_path, created_at, source_app, pinned_at
-                FROM items WHERE kind IN ('image', 'file')
+                FROM items i WHERE \(scope.predicate)
                   AND id NOT IN (SELECT t.item_id FROM item_text t JOIN item_text_versions v ON v.item_id = t.item_id
                     WHERE v.version >= ?2)
                   AND id NOT IN (SELECT item_id FROM item_text_failures
@@ -566,13 +588,14 @@ final class ClipboardStore {
         return sqlite3_step(stmt) == SQLITE_ROW ? Self.row(stmt) : nil
     }
 
-    func nextExtractionRetry(version: Int = 1) -> Date? {
+    func nextExtractionRetry(version: Int = 1, scope: ExtractionScope = .init()) -> Date? {
         guard textSearchEnabled,
             let stmt = prepare(
                 """
                 SELECT MIN(f.retry_at) FROM item_text_failures f
+                JOIN items i ON i.id = f.item_id
                 LEFT JOIN item_text_versions v ON v.item_id = f.item_id
-                WHERE f.attempts < 3 AND COALESCE(v.version, 0) < ?1
+                WHERE f.attempts < 3 AND COALESCE(v.version, 0) < ?1 AND \(scope.predicate)
                 """)
         else { return nil }
         defer { sqlite3_finalize(stmt) }
@@ -775,7 +798,7 @@ final class ClipboardStore {
     private func updateTextSearch(_ key: SearchKey, rawQuery: String) {
         let (query, filter, description) = (key.query, key.filter, key.description)
         guard textSearchActive, db != nil, !query.isEmpty,
-            description != nil || (textSearchEnabled && (filter == .all || filter == .image || filter == .file))
+            description != nil || (textSearchEnabled && filter.searchesExtractedContent)
         else {
             if textSearchKey != nil { invalidateSearch() }
             return

@@ -22,10 +22,11 @@ struct InjectedText: Equatable, Sendable {
 enum AccessibilityReplacement: Equatable {
     case delivered
     case unavailable
+    case renderer
     case rejected
 
     /// `.rejected` means the document is not the one we measured, so events would edit the wrong text.
-    var fallsBackToEvents: Bool { self == .unavailable }
+    var fallsBackToEvents: Bool { self == .unavailable || self == .renderer }
 }
 
 /// The two judgements a replacement makes, kept pure so the harness can drive both tiers.
@@ -403,7 +404,9 @@ final class TextInjector {
                 injected.text,
                 keywordLength: keywordLength,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration)
+                automaticGeneration: automaticGeneration,
+                targetAlreadyActive: !activateTarget,
+                canReadPasteState: accessibilityReplacement != .renderer)
         else { return }
 
         guard let offset = injected.cursorOffsetFromEnd, offset > 0 else {
@@ -431,7 +434,9 @@ final class TextInjector {
         _ text: String,
         keywordLength: Int,
         targetApp: NSRunningApplication?,
-        automaticGeneration: AutomaticGeneration?
+        automaticGeneration: AutomaticGeneration?,
+        targetAlreadyActive: Bool,
+        canReadPasteState: Bool
     ) async -> Bool {
         let isShortSingleLine =
             text.count <= 100
@@ -456,7 +461,7 @@ final class TextInjector {
         defer { finish(lease) }
 
         guard let deletionEvents = makeDeletionEvents(count: keywordLength),
-            await wait(for: .milliseconds(80)),
+            await wait(for: .milliseconds(targetAlreadyActive ? 50 : 80)),
             lease.isOwned,
             deliveryIsAllowed(
                 automaticGeneration: automaticGeneration,
@@ -474,7 +479,7 @@ final class TextInjector {
                 promptForInteractiveAccessibility: false)
         else { return false }
 
-        let stateBeforePaste = accessibilityTextState(in: targetApp)
+        let stateBeforePaste = canReadPasteState ? accessibilityTextState(in: targetApp) : nil
         Paster.postCommandV(toPid: targetApp?.processIdentifier)
         return await waitForPasteConfirmation(
             previousState: stateBeforePaste,
@@ -643,6 +648,7 @@ final class TextInjector {
         case ready(AccessibilityTarget)
         case pending
         case unavailable
+        case renderer
         case rejected
     }
 
@@ -662,6 +668,7 @@ final class TextInjector {
             automaticGeneration: automaticGeneration)
         guard case .ready(let target) = state else {
             if case .rejected = state { return .rejected }
+            if case .renderer = state { return .renderer }
             return .unavailable
         }
 
@@ -728,9 +735,9 @@ final class TextInjector {
         expectedKeyword: String?,
         keywordLength: Int
     ) -> AccessibilityTargetState {
-        guard let element = AccessibilityText.focusedElement(in: targetApp),
-            !usesTextMarkerSelection(element),
-            isAttributeSettable(kAXSelectedTextRangeAttribute, in: element),
+        guard let element = AccessibilityText.focusedElement(in: targetApp) else { return .unavailable }
+        if usesTextMarkerSelection(element) { return .renderer }
+        guard isAttributeSettable(kAXSelectedTextRangeAttribute, in: element),
             isAttributeSettable(kAXSelectedTextAttribute, in: element),
             let value = stringValue(in: element),
             let originalRange = selectedRange(in: element)

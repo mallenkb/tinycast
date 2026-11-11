@@ -9,10 +9,9 @@ final class ClipboardTextIndexer {
     private let retryDelay: TimeInterval
     private let delay: Duration
     private var task: Task<Void, Never>?
-    private var isEnabled = false
+    private var scope: ClipboardStore.ExtractionScope?
     private var waitingForRetry = false
     private(set) var isExtracting = false
-    /// Recognition only starts in a lull, and a busy Mac is rechecked no sooner than the same lull.
     private static let idleWindow: TimeInterval = 2
     private static let logger = Logger(subsystem: "com.tinycast", category: "ClipboardText")
 
@@ -40,13 +39,16 @@ final class ClipboardTextIndexer {
         CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .null) >= idleWindow
     }
 
-    func start() {
-        isEnabled = true
-        schedule()
+    func start(scope: ClipboardStore.ExtractionScope = .init()) {
+        if self.scope != scope {
+            self.scope = scope
+            task?.cancel()
+        }
+        if task == nil { schedule() }
     }
 
     func stop() {
-        isEnabled = false
+        scope = nil
         task?.cancel()
     }
 
@@ -55,7 +57,7 @@ final class ClipboardTextIndexer {
     }
 
     func schedule() {
-        guard isEnabled else { return }
+        guard let scope else { return }
         if waitingForRetry {
             task?.cancel()
             return
@@ -67,14 +69,14 @@ final class ClipboardTextIndexer {
                 self?.task = nil
                 self?.waitingForRetry = false
                 self?.isExtracting = false
-                if Task.isCancelled, self?.isEnabled == true { self?.schedule() }
+                if Task.isCancelled { self?.schedule() }
             }
             while !Task.isCancelled {
                 do { try await Task.sleep(for: delay) } catch { return }
-                guard let self, self.isEnabled else { return }
+                guard let self, self.scope == scope, !Task.isCancelled else { return }
                 let version = ImageContentWorker.version
-                guard let item = self.store.nextExtractionItem(version: version) else {
-                    guard let retry = self.store.nextExtractionRetry(version: version) else { return }
+                guard let item = self.store.nextExtractionItem(version: version, scope: scope) else {
+                    guard let retry = self.store.nextExtractionRetry(version: version, scope: scope) else { return }
                     self.waitingForRetry = true
                     do { try await Task.sleep(for: .seconds(max(0, retry.timeIntervalSinceNow))) } catch {
                         return

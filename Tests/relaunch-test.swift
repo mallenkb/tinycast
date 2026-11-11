@@ -77,7 +77,8 @@ struct RelaunchTests {
         check(
             "repeated termination runs cleanup and teardown once",
             first == [
-                "first.start", "first.request-returned", "first.cleanup-start", "first.repeat-deferred",
+                "first.start", "first.request-returned", "first.clipboard-stop",
+                "first.cleanup-start", "first.repeat-deferred",
                 "first.heartbeat", "first.cleanup-end", "first.flush-start", "first.flush-end",
                 "first.teardown"
             ])
@@ -157,6 +158,10 @@ final class AppCore {
             if launchedByUser { record("user-launch") }
             Task { @MainActor in record("heartbeat") }
         }
+    }
+
+    func stopClipboardTextForTermination() async {
+        record("clipboard-stop")
     }
 
     func stopDictationForTermination() async {

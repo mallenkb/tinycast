@@ -326,7 +326,8 @@ struct DictationSettingsView: View {
                 DictationIndicatorPreviews(
                     style: settings.dictationIndicatorStyle,
                     showsTranscript: settings.dictationLivePreview,
-                    twoLines: settings.dictationTwoLinePreview)
+                    twoLines: settings.dictationTwoLinePreview,
+                    animatesTranscript: settings.dictationAnimateTranscript)
             }
             settingToggle(
                 anchor: .dictationOutput, title: "Live transcript preview",
@@ -562,16 +563,13 @@ struct DictationIndicatorPreviews: View {
     let style: DictationIndicatorStyle
     var showsTranscript = false
     var twoLines = false
-    @State private var hasReachedTwoLines = false
+    var animatesTranscript = true
     @State private var transcribing = DictationIndicatorView.Phase.randomTranscribing()
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .bottom, spacing: Theme.Spacing.xl) { previews }
             VStack(spacing: Theme.Spacing.md) { previews }
-        }
-        .onChange(of: showsTranscript) {
-            if !showsTranscript { hasReachedTwoLines = false }
         }
     }
 
@@ -582,9 +580,9 @@ struct DictationIndicatorPreviews: View {
                     DictationTranscriptView(
                         transcript: String(
                             localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda."),
-                        animates: true, twoLines: twoLines, style: style,
-                        hasReachedTwoLines: $hasReachedTwoLines,
+                        animates: animatesTranscript, twoLines: twoLines, style: style,
                         maximumWidth: Theme.Size.dictationSettingsPreviewWidth)
+                        .id(twoLines)
                 }
                 preview(.listening)
             }
