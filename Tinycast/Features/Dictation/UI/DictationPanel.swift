@@ -301,8 +301,20 @@ struct DictationTranscriptView: View {
     @State private var viewportWidth: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     @State private var wrappedLines: ArraySlice<NSRange> = []
+    @State private var hasReachedTwoLines = false
 
     private var transcriptFont: NSFont { .systemFont(ofSize: Theme.Typography.dictationTranscriptSize) }
+
+    private var lineHeight: CGFloat {
+        let font = transcriptFont
+        return ceil(font.ascender - font.descender + font.leading)
+    }
+
+    private var lineStride: CGFloat { lineHeight + Theme.Spacing.md }
+    private var visibleLineCount: Int { twoLines && hasReachedTwoLines ? 2 : 1 }
+    private var lineAnimation: Animation? {
+        usesMotion ? .easeInOut(duration: Theme.Duration.dictationWordFade) : nil
+    }
 
     private var maximumTextWidth: CGFloat {
         maximumWidth - 2 * Theme.Spacing.xl
@@ -317,13 +329,15 @@ struct DictationTranscriptView: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !revealing || !usesMotion)) { timeline in
             let text = text(at: timeline.date)
-            if twoLines {
+            if twoLines && !wrappedLines.isEmpty {
                 rollingLines(text)
             } else {
                 transcriptLine(text)
             }
         }
         .fixedSize(horizontal: true, vertical: false)
+        .frame(height: lineHeight + CGFloat(visibleLineCount - 1) * lineStride, alignment: .topLeading)
+        .animation(lineAnimation, value: visibleLineCount)
         .offset(x: twoLines ? 0 : -scrollOffset)
         .frame(width: viewportWidth, alignment: .leading)
         .clipped()
@@ -388,11 +402,10 @@ struct DictationTranscriptView: View {
     }
 
     private func rollingLines(_ text: AttributedString) -> some View {
-        let font = transcriptFont
-        let lineHeight = ceil(font.ascender - font.descender + font.leading)
-        let stride = lineHeight + Theme.Spacing.md
+        let stride = lineStride
         let source = words.joined(separator: " ")
         let lines = wrappedLines
+        let firstRow = visibleLineCount - lines.count
         return ZStack(alignment: .topLeading) {
             ForEach(Array(lines.indices), id: \.self) { index in
                 if let range = Range(lines[index], in: source),
@@ -401,14 +414,12 @@ struct DictationTranscriptView: View {
                 {
                     transcriptLine(AttributedString(text[start..<end]))
                         .frame(height: lineHeight)
-                        .offset(y: CGFloat(index - lines.startIndex) * stride)
+                        .offset(y: CGFloat(firstRow + index - lines.startIndex) * stride)
                         .transition(.asymmetric(insertion: .offset(y: stride), removal: .offset(y: -stride)))
                 }
             }
         }
-        .frame(height: lineHeight + CGFloat(max(0, lines.count - 1)) * stride, alignment: .top)
-        .clipped()
-        .animation(usesMotion ? .easeInOut(duration: Theme.Duration.dictationWordFade) : nil, value: lines.indices)
+        .animation(lineAnimation, value: lines.indices)
     }
 
     private func reveal(_ next: [String]) {
@@ -452,6 +463,7 @@ struct DictationTranscriptView: View {
 
     private func updateWrappedLines(_ source: String) {
         guard twoLines, !source.isEmpty else {
+            if !twoLines { hasReachedTwoLines = false }
             wrappedLines = []
             return
         }
@@ -465,6 +477,7 @@ struct DictationTranscriptView: View {
             lines.append(NSRange(location: location, length: length))
             location += length
         }
+        if lines.count >= 2 { hasReachedTwoLines = true }
         wrappedLines = lines.suffix(2)
     }
 

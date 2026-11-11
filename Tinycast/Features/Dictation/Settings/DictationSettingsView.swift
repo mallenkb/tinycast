@@ -578,7 +578,7 @@ struct DictationIndicatorPreviews: View {
                     DictationTranscriptView(
                         transcript: String(
                             localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda."),
-                        animates: false, twoLines: twoLines, style: style,
+                        animates: true, twoLines: twoLines, style: style,
                         maximumWidth: Theme.Size.dictationSettingsPreviewWidth)
                 }
                 preview(.listening)
