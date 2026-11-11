@@ -95,14 +95,18 @@ models use CPU/Neural Engine.
   separately opt-in and shows recent words above the pill. It transcribes up to eight seconds of
   recent audio at a time, with a 1.5-second pause between requests. Preview requests are serialized
   with the final transcription. The full recording is transcribed when recording stops.
-  The last preview stays visible through pauses when a recognition pass returns no text or only
-  repeats the end of the visible transcript. New text resumes the fade.
+  After four seconds without new preview text, the card fades out while the recording pill stays visible.
+  Its text and width are retained, and a new transcript update fades it back in. Empty or repeated
+  recognition results do not restart this timer. Finishing or cancelling recording cancels the timer.
   Transcript animation defaults to on and follows global animations and Reduce Motion.
   The animation preference remains accessible in settings.json. New characters appear from left
   to right over 30 ms per character, with cubic ease-out and 150 ms character fades. The preview grows to its
   maximum width without shrinking during a recording. By default it scrolls along one line.
-  With Two-line live preview on, the bubble starts at one line and grows on the first wrap.
-  The bubble fits the visible text up to two lines. Older lines scroll up as new words wrap below.
+  Both preview modes grow with the revealed text up to 360 points. Two-line mode grows on the first wrap.
+  Overlapping audio windows use bounded word alignment to retain recent words and apply recognition
+  revisions. Uncertain overlaps replace the recent preview rather than append possible duplicates.
+  Preview history is limited to 100 words. The bubble fits the visible
+  text up to two lines. Older lines scroll up when new words begin appearing on the next line.
   Corrections update in place without replaying earlier text.
   Text updates without an implicit crossfade inside the separately animated, clipped viewport.
   Reduce Motion or turning the effect off displays updates immediately.

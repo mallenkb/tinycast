@@ -13,6 +13,7 @@ private extension DictationIndicatorStyle {
 @Observable
 final class DictationDisplayState {
     var transcript = ""
+    var previewPaused = false
     var animatesTranscript = true
     var twoLinePreview = false
     var idleHovered = false
@@ -325,6 +326,7 @@ struct DictationTranscriptView: View {
     private var ink: Color { style.isDark ? Theme.Colors.dictationDarkInk : Theme.Colors.dictationLightInk }
 
     @State private var viewportWidth: CGFloat = 0
+    @State private var previousViewportWidth: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     @State private var wrappedLines: ArraySlice<NSRange> = []
 
@@ -342,7 +344,6 @@ struct DictationTranscriptView: View {
         lineHeight + (twoLines ? lineStride : 0) + 2 * verticalInset
     }
 
-    private var visibleLineCount: Int { twoLines ? max(1, wrappedLines.count) : 1 }
     private var lineAnimation: Animation? {
         usesMotion ? .easeInOut(duration: Theme.Duration.dictationPreviewLineShift) : nil
     }
@@ -392,25 +393,31 @@ struct DictationTranscriptView: View {
 
     private func transcriptViewport(at date: Date) -> some View {
         let text = text(at: date)
+        let lines = visibleLines(at: date)
+        let lineCount = twoLines ? max(1, lines.count) : 1
         let activeReveal = usesMotion ? characterReveals.last {
             date >= $0.start && date.timeIntervalSince($0.start) < $0.duration
         } : nil
         let revealEdge = activeReveal.map { $0.leading + $0.width * $0.progress(at: date) }
+        let hasWrapped = twoLines && (lines.count > 1 || (lines.first?.location ?? 0) > 0)
+        let growingWidth = hasWrapped ? viewportWidth
+            : min(viewportWidth, max(previousViewportWidth, revealEdge ?? viewportWidth))
         let offset = twoLines ? 0 : revealEdge.map {
             min(scrollOffset, max(0, $0 - viewportWidth))
         } ?? scrollOffset
         return Group {
-            if twoLines && !wrappedLines.isEmpty {
-                rollingLines(text)
+            if twoLines && !lines.isEmpty {
+                rollingLines(text, lines: lines)
             } else {
                 transcriptLine(text)
             }
         }
         .fixedSize(horizontal: true, vertical: false)
-        .frame(height: Self.lineHeight + CGFloat(visibleLineCount - 1) * Self.lineStride, alignment: .topLeading)
-        .animation(lineAnimation, value: visibleLineCount)
+        .frame(height: Self.lineHeight + CGFloat(lineCount - 1) * Self.lineStride, alignment: .topLeading)
+        .animation(lineAnimation, value: lineCount)
         .offset(x: -offset)
-        .frame(width: viewportWidth, alignment: .leading)
+        .frame(width: max(24, growingWidth), alignment: .leading)
+        .animation(lineAnimation, value: viewportWidth)
         .clipped()
         .mask(alignment: .leading) {
             HStack(spacing: 0) {
@@ -431,8 +438,8 @@ struct DictationTranscriptView: View {
         updateText(source)
         let changed = prefix..<(source.count - suffix)
         let now = Date()
-        var start = now
         var pending = characterReveals.filter { $0.range.upperBound <= prefix && $0.end > now }
+        var start = max(now, pending.map(\.end).max() ?? now)
         let lines = twoLines ? Array(wrappedLines) : [NSRange(source.startIndex..., in: source)]
         for line in lines {
             guard let range = Range(line, in: source) else { continue }
@@ -465,10 +472,20 @@ struct DictationTranscriptView: View {
             .transaction { $0.animation = nil }
     }
 
-    private func rollingLines(_ text: AttributedString) -> some View {
+    private func visibleLines(at date: Date) -> ArraySlice<NSRange> {
+        guard twoLines else { return [] }
+        guard let next = characterReveals.first(where: { $0.start > date }) else {
+            return wrappedLines.suffix(2)
+        }
+        let boundary = displayedText.index(displayedText.startIndex, offsetBy: next.range.lowerBound)
+        let utf16Boundary = boundary.utf16Offset(in: displayedText)
+        let visible = wrappedLines.prefix { $0.location < utf16Boundary }
+        return visible.isEmpty ? wrappedLines.prefix(1) : visible.suffix(2)
+    }
+
+    private func rollingLines(_ text: AttributedString, lines: ArraySlice<NSRange>) -> some View {
         let stride = Self.lineStride
         let source = displayedText
-        let lines = wrappedLines
         return ZStack(alignment: .topLeading) {
             ForEach(Array(lines.indices), id: \.self) { index in
                 if let range = Range(lines[index], in: source),
@@ -486,6 +503,7 @@ struct DictationTranscriptView: View {
     }
 
     private func updateText(_ source: String) {
+        previousViewportWidth = viewportWidth
         displayedText = source
         updateWrappedLines(source)
         let contentWidth = measuredWidth(source)
@@ -508,7 +526,7 @@ struct DictationTranscriptView: View {
             lines.append(NSRange(location: location, length: length))
             location += length
         }
-        wrappedLines = lines.suffix(2)
+        wrappedLines = lines[...]
     }
 
     private func text(at date: Date) -> AttributedString {
@@ -535,6 +553,7 @@ struct DictationTranscriptView: View {
 }
 
 private struct DictationPanelView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let state: DictationDisplayState
     var style: DictationIndicatorStyle
     var phase: DictationIndicatorView.Phase
@@ -547,6 +566,12 @@ private struct DictationPanelView: View {
                     transcript: state.transcript, animates: state.animatesTranscript,
                     twoLines: state.twoLinePreview, style: style)
                     .frame(height: DictationTranscriptView.maximumHeight(twoLines: state.twoLinePreview), alignment: .bottom)
+                    .opacity(state.previewPaused ? 0 : 1)
+                    .animation(
+                        reduceMotion || !Motion.isEnabled || !state.animatesTranscript
+                            ? nil : .easeInOut(duration: Theme.Duration.dictationPreviewLineShift),
+                        value: state.previewPaused)
+                    .accessibilityHidden(state.previewPaused)
             }
             DictationIndicatorView(
                 style: style, phase: phase, levels: state.levels, idleHovered: state.idleHovered, onStart: onStart)
@@ -863,6 +888,7 @@ final class DictationPanelController {
     let state = DictationDisplayState()
     private var panel: DictationPanel?
     private var escapeMonitors: [Any] = []
+    private var previewPauseTask: Task<Void, Never>?
     var onAccept: (() -> Void)?
     var onCancel: (() -> Void)?
     var onStart: (() -> Void)?
@@ -871,6 +897,9 @@ final class DictationPanelController {
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         state.levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
+        previewPauseTask?.cancel()
+        previewPauseTask = nil
+        state.previewPaused = false
         state.transcript = ""
         if let panel, panel.isVisible {
             panel.ignoresMouseEvents = false
@@ -897,6 +926,9 @@ final class DictationPanelController {
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         if let panel, panel.isVisible {
+            previewPauseTask?.cancel()
+            previewPauseTask = nil
+            state.previewPaused = false
             state.transcript = ""
             panel.setStyle(style)
             panel.show(.idle)
@@ -919,22 +951,44 @@ final class DictationPanelController {
     func showListening() { panel?.show(.listening) }
 
     func showPreview(_ text: String, twoLines: Bool) {
-        let preview = text.suffix(500).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let incoming = text.split(whereSeparator: \.isWhitespace).suffix(100).joined(separator: " ")
         let previous = state.transcript
+        let preview = DictationPreviewSequence.merge(previous, incoming)
         let hasNewText = !preview.isEmpty && preview != previous && !previous.hasSuffix(" " + preview)
         guard hasNewText || state.twoLinePreview != twoLines else { return }
-        if hasNewText { state.transcript = preview }
+        if hasNewText {
+            state.transcript = preview
+            schedulePreviewPause()
+        }
         state.twoLinePreview = twoLines
         panel?.show(.listening)
     }
 
+    private func schedulePreviewPause() {
+        previewPauseTask?.cancel()
+        state.previewPaused = false
+        previewPauseTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(Theme.Duration.dictationPreviewPause)) } catch { return }
+            guard let self, !Task.isCancelled else { return }
+            state.previewPaused = true
+            previewPauseTask = nil
+        }
+    }
+
     func hidePreview() {
         guard !state.transcript.isEmpty else { return }
+        previewPauseTask?.cancel()
+        previewPauseTask = nil
+        state.previewPaused = false
         state.transcript = ""
         panel?.show(.listening)
     }
 
-    func showTranscribing() { panel?.show(.randomTranscribing(cycling: true)) }
+    func showTranscribing() {
+        previewPauseTask?.cancel()
+        previewPauseTask = nil
+        panel?.show(.randomTranscribing(cycling: true))
+    }
 
     private func watchForEscape() {
         guard escapeMonitors.isEmpty else { return }
@@ -960,6 +1014,9 @@ final class DictationPanelController {
 
     func close() {
         stopWatchingForEscape()
+        previewPauseTask?.cancel()
+        previewPauseTask = nil
+        state.previewPaused = false
         state.transcript = ""
         panel?.stopObservingPlacementChanges()
         panel?.orderOut(nil)

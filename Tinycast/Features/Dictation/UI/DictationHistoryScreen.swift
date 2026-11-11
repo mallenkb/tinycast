@@ -113,7 +113,7 @@ struct DictationHistoryScreen: PaletteScreen {
                     VStack(alignment: .leading, spacing: 0) {
                         ScrollView {
                             Text(verbatim: selected.text ?? "")
-                                .font(.subheadline)
+                                .font(metrics.typography.menuRow)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(.vertical, metrics.spacing.lg)

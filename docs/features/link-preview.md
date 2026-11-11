@@ -15,7 +15,7 @@ the palette indicates loading; Reduce Motion holds the strip still.
   Requests time out after 10 seconds.
 - Banners decode to a static first frame capped at 1000 pixels and 3 MB of decoded pixels;
   square and high-bit-depth images may render smaller to fit that budget. Icons stay at 64 pixels.
-- Bannerless results can retry after 60 seconds so failed image requests do not persist all session.
+- Bannerless results can retry on selection after 15 seconds; no background retry timer runs.
 - Metadata and favicons retain up to 24 entries with a 1 MiB cost limit. Only the latest banner
   stays cached, with a 3 MB budget. Revisiting an older banner fetches it again.
 - Hiding clears banners and prevents pending requests from restoring them.
@@ -28,7 +28,11 @@ the palette indicates loading; Reduce Motion holds the strip still.
 Card and HTML metadata, including `og:image:url`, `og:image:secure_url`, and `twitter:image:src`.
 The parser shares the fetcher’s 2 MiB limit so large page scripts do not hide later metadata. Relative image and icon URLs resolve against the final page URL.
 HTML requests use a browser-compatible user agent to avoid mobile shells that omit head metadata.
-When a page has no banner, the fetcher tries its site's home page metadata.
+Invalid image URLs are skipped. The fetcher tries up to three distinct Open Graph or Twitter image
+URLs sequentially, stopping at the first decodable image. If no banner loads, it tries the site's home
+page metadata, with at most four image downloads across both pages. Image requests also send the
+browser-compatible user agent. Downsampling disables the source-image cache to avoid retaining a
+full-size decoded copy alongside the thumbnail.
 
 `LinkPreviewCard` owns the selection task. `ClipboardView` reads cached titles and favicons.
 The parser harness is registered as `link-preview-test` in `Scripts/run-tests.sh`.

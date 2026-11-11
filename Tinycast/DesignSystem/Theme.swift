@@ -328,6 +328,7 @@ enum Theme {
     }
 
     enum Duration {
+        static let dictationPreviewPause: TimeInterval = 4
         static let dictationPreviewLineShift: TimeInterval = 0.32
         static let dictationCharacterStep: TimeInterval = 0.03
         static let dictationCharacterFade: TimeInterval = 0.15
@@ -475,8 +476,8 @@ enum Theme {
         static let dictationLightInk = Color(white: 23.0 / 255)
         static let dictationLightBorder = Color(white: 0.78)
         static let dictationDarkInk = Color.white
-        static let dictationDarkBackground = Color(white: 0.14)
-        static let dictationOutline = Color(white: 0.35)
+        static let dictationDarkBackground = Color(white: 0.10)
+        static let dictationOutline = Color(white: 0.6).opacity(0.15)
         /// Selection fill, shared by every list so they look identical.
         static let selection = ramp(dark: 0.08, light: 0.09)
         static let rowHover = ramp(dark: 0.03, light: 0.045)

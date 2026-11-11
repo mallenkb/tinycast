@@ -7,6 +7,7 @@ enum LinkPreviewDocument {
         var title: String?
         var description: String?
         var imagePath: String?
+        var alternateImagePaths: [String] = []
         var iconPath: String?
     }
 
@@ -26,18 +27,18 @@ enum LinkPreviewDocument {
             metaContent(in: head, key: "og:description")
             ?? metaContent(in: head, key: "twitter:description")
             ?? metaContent(in: head, key: "description")
-        let image = (metaContent(in: head, key: "og:image")
-            ?? metaContent(in: head, key: "og:image:url")
-            ?? metaContent(in: head, key: "og:image:secure_url")
-            ?? metaContent(in: head, key: "twitter:image")
-            ?? metaContent(in: head, key: "twitter:image:src")).flatMap {
-            resolve($0, baseURL: baseURL)
+        var images: [String] = []
+        for key in ["og:image", "og:image:url", "og:image:secure_url", "twitter:image", "twitter:image:src"] {
+            if let raw = metaContent(in: head, key: key), let image = resolve(raw, baseURL: baseURL),
+                !images.contains(image)
+            { images.append(image) }
         }
         return Head(
             title: metaContent(in: head, key: "og:title")
                 ?? metaContent(in: head, key: "twitter:title") ?? documentTitle(in: head),
             description: description,
-            imagePath: image,
+            imagePath: images.first,
+            alternateImagePaths: Array(images.dropFirst().prefix(2)),
             iconPath: iconLink(in: head, baseURL: baseURL))
     }
 

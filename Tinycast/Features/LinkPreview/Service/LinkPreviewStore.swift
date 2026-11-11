@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import ImageIO
 
-/// A page's title and favicon, fetched for the selected row only and kept in memory.
+/// Metadata and a bounded banner, fetched for the selected row only and kept in memory.
 @MainActor
 @Observable
 final class LinkPreviewStore {
@@ -42,7 +42,7 @@ final class LinkPreviewStore {
 
         init(_ preview: Preview) {
             hadBanner = preview.image != nil
-            retryAfter = preview.image == nil ? Date().addingTimeInterval(60) : nil
+            retryAfter = preview.image == nil ? Date().addingTimeInterval(15) : nil
             var metadata = preview
             metadata.image = nil
             self.preview = metadata
@@ -108,22 +108,31 @@ final class LinkPreviewStore {
         let page = await head(of: url)
         async let favicon = icon(for: url, href: page?.head.iconPath)
         var head = page?.head ?? LinkPreviewDocument.Head()
-        // A private or login-walled page (a Figma file answers 403) borrows its site's card.
-        if head.imagePath == nil, let root = LinkPreviewDocument.siteRoot(for: url),
+        var attempted = Set<String>()
+        var banner = await banner(for: head, attempted: &attempted)
+        if banner == nil, !Task.isCancelled, let root = LinkPreviewDocument.siteRoot(for: url),
             let site = await self.head(of: root)?.head
         {
-            head.imagePath = site.imagePath
             head.title = head.title ?? site.title
             head.description = head.description ?? site.description
-        }
-        var banner: NSImage?
-        if let imageURL = head.imagePath.flatMap({ URL(string: $0) }) {
-            banner = await download(imageURL, cap: imageCap).flatMap {
-                still($0, maxPixel: bannerPixels)
-            }
+            banner = await self.banner(for: site, attempted: &attempted)
         }
         return await Preview(
             title: head.title, description: head.description, image: banner, icon: favicon)
+    }
+
+    private nonisolated static func banner(
+        for head: LinkPreviewDocument.Head, attempted: inout Set<String>
+    ) async -> NSImage? {
+        let candidates = [head.imagePath].compactMap { $0 } + head.alternateImagePaths
+        for candidate in candidates {
+            guard !Task.isCancelled, attempted.count < 4 else { return nil }
+            guard attempted.insert(candidate).inserted, let url = URL(string: candidate) else { continue }
+            if let data = await download(url, cap: imageCap),
+                let image = still(data, maxPixel: bannerPixels)
+            { return image }
+        }
+        return nil
     }
 
     private struct Page {
@@ -181,7 +190,9 @@ final class LinkPreviewStore {
         var pixelLimit = maxPixel
         while true {
             let attempt = autoreleasepool { () -> (image: NSImage?, nextPixel: Int?) in
-                guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+                guard let source = CGImageSourceCreateWithData(
+                    data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
+                else {
                     return (nil, nil)
                 }
                 let options: [CFString: Any] = [
@@ -212,6 +223,7 @@ final class LinkPreviewStore {
     private nonisolated static func download(_ url: URL, cap: Int) async -> Data? {
         var request = URLRequest(url: url, timeoutInterval: timeout)
         // Image CDNs pick the format from this; Figma's banner is 9 MB as GIF, 1.8 MB as WebP.
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
         request.setValue(
             "image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8",
             forHTTPHeaderField: "Accept")
