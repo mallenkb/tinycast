@@ -99,7 +99,7 @@ models use CPU/Neural Engine.
   and later recognition results can correct previously shown words. The preview grows to its
   maximum width without shrinking during a recording. By default it scrolls along one line.
   With Two-line live preview on, the bubble starts at one line and grows on the first wrap.
-  After that, completed lines scroll up as new words fill the bottom line.
+  It keeps that height for the rest of the recording. Completed lines scroll up as new words fill the bottom line.
   New groups arrive 160 ms apart and fade in over 320 ms with eased opacity. Each word keeps its
   fade progress across incoming updates; corrections update in place without replaying earlier words.
   Text updates without an implicit crossfade inside the separately animated, clipped viewport.

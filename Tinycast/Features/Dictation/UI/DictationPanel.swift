@@ -9,8 +9,14 @@ final class DictationDisplayState {
     var transcript = ""
     var animatesTranscript = true
     var twoLinePreview = false
+    var hasReachedTwoLines = false
     var idleHovered = false
     var levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
+
+    func resetTranscript() {
+        transcript = ""
+        hasReachedTwoLines = false
+    }
 }
 
 private struct DictationWaveform: View {
@@ -290,6 +296,7 @@ struct DictationTranscriptView: View {
     let animates: Bool
     let twoLines: Bool
     let style: DictationIndicatorStyle
+    @Binding var hasReachedTwoLines: Bool
     var maximumWidth = Theme.Size.dictationPreviewWidth
     @State private var words: [String] = []
     @State private var revealStarts: [Int: Date] = [:]
@@ -301,7 +308,6 @@ struct DictationTranscriptView: View {
     @State private var viewportWidth: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     @State private var wrappedLines: ArraySlice<NSRange> = []
-    @State private var hasReachedTwoLines = false
 
     private var transcriptFont: NSFont { .systemFont(ofSize: Theme.Typography.dictationTranscriptSize) }
 
@@ -503,11 +509,13 @@ private struct DictationPanelView: View {
     var onStart: () -> Void = {}
 
     var body: some View {
+        @Bindable var state = state
         VStack(spacing: Theme.Spacing.md) {
             if !state.transcript.isEmpty {
                 DictationTranscriptView(
                     transcript: state.transcript, animates: state.animatesTranscript,
-                    twoLines: state.twoLinePreview, style: style)
+                    twoLines: state.twoLinePreview, style: style,
+                    hasReachedTwoLines: $state.hasReachedTwoLines)
             }
             DictationIndicatorView(
                 style: style, phase: phase, levels: state.levels, idleHovered: state.idleHovered, onStart: onStart)
@@ -832,7 +840,7 @@ final class DictationPanelController {
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         state.levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
-        state.transcript = ""
+        state.resetTranscript()
         if let panel, panel.isVisible {
             panel.ignoresMouseEvents = false
             panel.onAccept = onAccept
@@ -858,7 +866,7 @@ final class DictationPanelController {
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         if let panel, panel.isVisible {
-            state.transcript = ""
+            state.resetTranscript()
             panel.setStyle(style)
             panel.show(.idle)
             panel.ignoresMouseEvents = true
@@ -880,7 +888,13 @@ final class DictationPanelController {
     func showListening() { panel?.show(.listening) }
 
     func showPreview(_ text: String) {
+        guard !text.allSatisfy(\.isWhitespace) else { return }
         state.transcript = String(text.suffix(500))
+        panel?.show(.listening)
+    }
+
+    func hidePreview() {
+        state.transcript = ""
         panel?.show(.listening)
     }
 
@@ -910,7 +924,7 @@ final class DictationPanelController {
 
     func close() {
         stopWatchingForEscape()
-        state.transcript = ""
+        state.resetTranscript()
         panel?.stopObservingPlacementChanges()
         panel?.orderOut(nil)
         panel = nil

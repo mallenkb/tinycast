@@ -464,7 +464,7 @@ final class DictationCoordinator {
         previewTask = Task { [weak self] in
             guard let self else { return }
             defer {
-                if token == current, phase == .listening { panel.showPreview("") }
+                if token == current, phase == .listening { panel.hidePreview() }
             }
             do {
                 while token == current, phase == .listening, settings.dictationLivePreview {
