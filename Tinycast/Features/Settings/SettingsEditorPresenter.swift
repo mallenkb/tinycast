@@ -377,6 +377,7 @@ extension View {
             .environment(core)
             .environment(core.settings)
             .environment(core.dictationCoordinator)
+            .environment(core.dictationWriting)
             .environment(core.appIndex)
             .environment(core.hotKeys)
             .environment(core.visibility)

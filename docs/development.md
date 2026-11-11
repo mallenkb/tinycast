@@ -240,3 +240,17 @@ left out and decided by hand in `CalcCurrency.contested`. The crypto tickers are
 they have no external source of truth, so `CalcCurrency.crypto` is hand-written, and that same list is
 the set of symbols the fetch asks for. Re-run the script when a currency is added or retired; nothing
 breaks in the meantime, since an unquoted code just reports "no exchange rate".
+
+### Local text-cleanup runtime
+
+The S1-mini and S1-ASR-Cleanup options share a native llama.cpp runtime built by `Scripts/build-cleanup-runtime.sh`
+from a pinned source archive with a checked SHA-256 digest. CMake is required (`brew install cmake`).
+The first build needs network access for the source archive; subsequent builds reuse the compiled
+runtime under `build/cleanup-runtime`. The app build copies and signs the static ARM64 server into
+its Helpers directory. No Homebrew runtime is required on an end user's Mac. The models are
+separate optional downloads in Dictation settings. Model and runtime notices ship in Resources/Licenses.
+
+Basic and Advanced use `Scripts/build-dictation-formatting.sh` to bundle a signed native library
+from FluidInference's pinned `text-processing-rs` release. The first build verifies the release
+archive against its SHA-256 digest. Later builds reuse the library under `build/dictation-formatting`.
+The app loads the library on its first eligible formatting request. Building does not require Rust.

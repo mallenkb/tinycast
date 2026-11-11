@@ -20,6 +20,7 @@ A palette sub-screen (reached like Clipboard / Calculator History) presenting a 
 | `Model/EmojiData.generated.swift`                   | The dataset                                 |
 | `Resources/EmojiKeywords/<language>.txt`            | CLDR keyword packs, `glyph\|terms` per line |
 | `Service/EmojiIndex.swift`                          | Search index over the catalog               |
+| `Service/EmojiDescriptionSearch.swift`              | Local sentence embedding search over emoji |
 | `Service/FrequentEmojiStore.swift`                  | Persisted emoji history and usage counts    |
 | `Service/PinnedEmojiStore.swift`                    | Persisted pins, in the order the user set   |
 | `UI/EmojiGridView.swift`                            | The SwiftUI grid                            |
@@ -35,6 +36,33 @@ are pure.
   subsequence never spans two keywords.
 - **Every word of a multiword query must start a word** in the name or a keyword, in any order. A literal
   phrase outranks words found in the name, which outrank words assembled from name and keywords.
+- **English descriptions also match without filler words.** If an entry does not match the full query,
+  search retries without `a`, `an`, `the`, `on`, `of`, `with`, `in`, `at`, `to`, `my`, `your` and `its`.
+  Every remaining word must match; these results rank below full-query matches. Single-word queries
+  and queries made entirely of filler words keep their original behavior.
+- **Hand and face gestures have curated English descriptions** in `EmojiIndex`, added when search text
+  is folded. Queries such as `hand on face`, `hand of face`, `hand on chin` and `hands covering eyes`
+  use local text matching, without a model or network request. The generated CLDR catalog is unchanged.
+- **English phrases also receive local semantic matches.** After a 250 ms typing pause, Apple's
+  Natural Language sentence embedding compares the query with catalog names and keywords. This uses
+  machine learning, not an LLM or Apple Intelligence generation. It makes no network requests and
+  does not request model downloads. If the English embedding is unavailable or language detection
+  does not identify English, keyword results remain available.
+- **Semantic results are catalog emoji only.** Text-symbol categories are excluded. Up to 12 matches
+  with cosine similarity of at least 0.6 follow keyword results, without duplicates; category, pin and
+  frequency filters still apply. The threshold is an initial cutoff, not a calibrated confidence score.
+  Single words and queries longer than 200 characters use keyword search only.
+- **Embedding work stays off the main actor.** Catalog vectors are created on the first eligible query,
+  stored as normalized `Float` arrays, reused while the picker is open, and released on unload.
+  The view owns cancellation; query identity and catalog revision gate publication. Model loading and
+  the first catalog pass can delay semantic results but do not block keyword results. Latency, accuracy
+  and memory usage require measurement on supported hardware.
+- **AI Suggestions appear when an empty search can be retried with Apple Intelligence.** For phrases
+  in All Categories or a catalog category, the on-device model ranks a shortlist assembled from
+  nearby embeddings and overlapping words. Pose descriptions help retrieve entries such as a man
+  in lotus position for `man sitting`. Only valid shortlist IDs can produce results, with up to five
+  emoji shown. The picker honors Tinycast's Apple Intelligence route switch and model availability.
+  Pinned and Frequently Used remain limited to their own entries.
 - **A full name ranks first, then a complete leading name word, then an exact keyword**, then a partial
   leading word: `birthday` keeps 🎂 first, and `pray` favours the annotation over "prayer beads".
 - **Colon-wrapped queries are unwrapped**, so `:+1:` reuses CLDR's `+1` annotation with no alias table.

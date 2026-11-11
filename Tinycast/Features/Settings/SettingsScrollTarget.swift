@@ -89,8 +89,13 @@ private struct SettingsScrollTarget: ViewModifier {
         guard let request = navigation.scrollRequest, request.target.tab == tab else { return }
         // This pane may have just mounted, so let its `Form` lay the anchor out before scrolling.
         await Task.yield()
+        guard !Task.isCancelled, navigation.scrollRequest == request else { return }
         withAnimation(.easeOut(duration: Theme.Duration.settingsReveal)) {
             proxy.scrollTo(request.target, anchor: .center)
+        }
+        guard request.highlight else {
+            navigation.clear(request)
+            return
         }
         navigation.beginFlash(request.target)
         // Cancelled means a later jump replaced this one, and it owns the light now.

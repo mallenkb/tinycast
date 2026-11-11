@@ -11,7 +11,7 @@ Built with a memory target of under 100 MB of RAM.**
   <a href="https://x.com/mallenkb"><img src="https://img.shields.io/badge/X-%40mallenkb-black?logo=x&logoColor=white" alt="Follow mallenkb on X"></a>
 </p>
 
-SwiftUI and AppKit, **zero third-party dependencies**, no Electron and no telemetry. It also
+SwiftUI and AppKit, no Electron and no telemetry. Optional S1-mini cleanup uses a bundled llama.cpp runtime. It also
 **runs Raycast extensions**, rendered as native SwiftUI. Free and open source.
 
 Maintained by [mallenkb](https://github.com/mallenkb). This is an independent fork of

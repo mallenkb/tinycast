@@ -38,6 +38,27 @@ struct EmojiSearchTests {
         let index = EmojiIndex()
         await index.load()
 
+        expect(EmojiDescriptionSearch.accepts("hand on face"), "descriptions accept phrases")
+        expect(!EmojiDescriptionSearch.accepts("face"), "single words keep immediate keyword search")
+        expect(!EmojiDescriptionSearch.accepts(String(repeating: "hand ", count: 50)), "descriptions are bounded")
+        expect(EmojiDescriptionSearch.includes(.symbols), "Unicode emoji symbols are searchable")
+        expect(!EmojiDescriptionSearch.includes(.math), "semantic results exclude text symbols")
+        expect(EmojiDescriptionSearch.normalized([0, 0]) == nil, "zero vectors are rejected")
+        expect(EmojiDescriptionSearch.normalized([Double.infinity]) == nil, "nonfinite vectors are rejected")
+        expect(
+            EmojiDescriptionSearch.normalized([3, 4]) == [Float(0.6), Float(0.8)],
+            "vectors are normalized before comparison")
+        let semanticMatches = EmojiDescriptionSearch.matches([1, 0], candidates: [
+            .init(glyph: "🤔", vector: [0.8, 0.6]),
+            .init(glyph: "🤦", vector: [1, 0]),
+            .init(glyph: "🫣", vector: [0.8, 0.6]),
+            .init(glyph: "🚀", vector: [0, 1]),
+            .init(glyph: "❌", vector: [1])
+        ])
+        expect(
+            semanticMatches == ["🤦", "🤔", "🫣"],
+            "semantic ranking excludes weak and incompatible vectors and preserves ties")
+
         // Pins are authored order, not usage order: reloads retain it and imports sanitize it.
         let pinnedURL = directory.appendingPathComponent("pinned.json")
         try JSONEncoder().encode(["A", "", "A", "B"]).write(to: pinnedURL)
@@ -114,6 +135,24 @@ struct EmojiSearchTests {
         }
 
         let waving = index.search("hand waving", frequent: frequent)
+        for query in ["hand on face", "hand of face", "a hand on my face"] {
+            let glyphs = Set(index.search(query, frequent: frequent).prefix(20).map(\.glyph))
+            expect(
+                glyphs.isSuperset(of: ["🤦", "🤭", "🫣", "🤔"]),
+                "\(query) finds hand and face gestures")
+            expect(!glyphs.contains("👋"), "\(query) still requires a face match")
+        }
+        for (query, glyph) in [
+            ("hand on chin", "🤔"), ("hands covering eyes", "🫣"),
+            ("hands covering ears", "🙉"), ("a waving hand", "👋")
+        ] {
+            expect(
+                index.search(query, frequent: frequent).prefix(5).contains { $0.glyph == glyph },
+                "\(query) finds \(glyph) through local descriptions")
+        }
+        expect(
+            index.search("hand on face nonexistent", frequent: frequent).isEmpty,
+            "description matching does not discard unknown content words")
         expect(waving.contains { $0.glyph == "👋" }, "multiword terms can match in either order")
         expect(
             !index.search("and waving", frequent: frequent).contains { $0.glyph == "👋" },
@@ -132,6 +171,19 @@ struct EmojiSearchTests {
             "accent and width folding are preserved")
 
         let boundaries = EmojiIndex()
+        await boundaries.load("A|hand on face|sp|0|\nB|hand face|sp|0|\nC|on|sy|0|")
+        expect(
+            boundaries.search("hand on face", frequent: frequent).map(\.glyph) == ["A", "B"],
+            "full-query matches precede descriptions with filler words removed")
+        expect(
+            boundaries.search("hand of face", frequent: frequent).map(\.glyph) == ["B", "A"],
+            "the memo retains the original query when filler words differ")
+        expect(
+            boundaries.search("on", frequent: frequent).first?.glyph == "C",
+            "a filler word searched alone retains its literal meaning")
+        expect(
+            boundaries.search("of the", frequent: frequent).isEmpty,
+            "filler-only queries do not match the entire catalog")
         await boundaries.load("A|zebra|ob|0|red,blue\nB|ladybug bug|ob|0|red")
         expect(
             !boundaries.search("db", frequent: frequent).contains { $0.glyph == "A" },

@@ -70,6 +70,11 @@ final class DictationCapture {
         self.active = nil
         return await active.stop()
     }
+
+    func recentSamples() async -> [Float] {
+        guard let active else { return [] }
+        return await active.recentSamples()
+    }
 }
 
 // The coordinator waits for startup before stopping, so the capture graph has one caller at a time.
@@ -126,6 +131,8 @@ private struct CaptureSessionBox: @unchecked Sendable {
         output.setSampleBufferDelegate(nil, queue: nil)
         return collector.finish()
     }
+
+    @concurrent func recentSamples() async -> [Float] { collector.recentSamples() }
 }
 
 // Sample buffers and mutable state are confined to the delegate queue, including finish().
@@ -186,4 +193,8 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     }
 
     func finish() -> [Float] { queue.sync { samples } }
+
+    func recentSamples() -> [Float] {
+        queue.sync { Array(samples.suffix(DictationWire.sampleRate * 8)) }
+    }
 }

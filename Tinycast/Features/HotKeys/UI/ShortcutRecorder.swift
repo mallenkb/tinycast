@@ -83,23 +83,19 @@ struct ShortcutRecorder: View {
             }
             HStack(spacing: Theme.Spacing.xs) {
                 ForEach(Array(binding.recorderKeycaps.enumerated()), id: \.offset) { _, cap in
-                    KeyCapChip.Label(text: cap, prefix: binding.recorderPrefix)
+                    KeyCapChip.Label(text: cap == "🌐︎" ? "Fn" : cap, prefix: binding.recorderPrefix)
                         .font(Theme.Typography.keyCap)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, Theme.Spacing.xs)
-                        .frame(
-                            minWidth: Theme.Size.recorderKeyCap, minHeight: Theme.Size.recorderKeyCap
-                        )
+                        .frame(minWidth: Theme.Size.recorderKeyCap, minHeight: Theme.Size.recorderKeyCap)
                         .background(
-                            RoundedRectangle(
-                                cornerRadius: Theme.Radius.recorderKeyCap, style: .continuous
-                            )
-                            .fill(Color.primary.opacity(0.08))
-                        )
+                            RoundedRectangle(cornerRadius: Theme.Radius.recorderKeyCap, style: .continuous)
+                                .fill(Color.primary.opacity(0.08)))
                 }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(KeyCapChip.inlineText(binding.keycaps, separator: " "))
+            .accessibilityLabel(
+                KeyCapChip.inlineText(binding.keycaps.map { $0 == "🌐︎" ? "Fn" : $0 }, separator: " "))
         }
         .frame(maxWidth: .infinity)
         // Overlaid, not a row member, so it costs the caps no width.
@@ -112,6 +108,7 @@ struct ShortcutRecorder: View {
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Clear shortcut")
             .opacity(hovered ? 1 : 0)
             .allowsHitTesting(hovered)
         }

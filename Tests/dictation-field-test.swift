@@ -293,7 +293,7 @@ struct DictationFieldTest {
                 clipboardManager: ClipboardManager(), settings: settings, deliveryQueue: queue),
             confirmEnable: { false },
             showMessage: { [weak self] message, _ in self?.messages.append(message) },
-            recordTranscript: { [weak self] text, app in
+            recordTranscript: { [weak self] text, _, app in
                 self?.transcripts.append(text)
                 self?.pasteAppIDs.append(app?.processIdentifier)
             })
@@ -382,9 +382,14 @@ final class AppSettings {
     var dictationLanguage: String?
     var dictationAdaptsCapitalization = true
     var dictationRemovesFillerWords = false
+    var dictationCleanupMode: DictationCleanupMode = .off
     var dictationAutoLearnsWords = false
     var dictationPlaysSounds = true
     var dictationIndicatorStyle = DictationIndicatorStyle.compact
+    var dictationLivePreview = false
+    var dictationTwoLinePreview = false
+    var dictationAnimateTranscript = true
+    var dictationIdleIndicator = false
 }
 
 enum HotKeyAction { case dictationHold }
@@ -398,6 +403,7 @@ final class HotKeyManager {
 
 @MainActor
 final class DictationCapture {
+    func recentSamples() async -> [Float] { [] }
     static weak var latest: DictationCapture?
     var onLevels: (([Float]) -> Void)?
     var onLimit: (() -> Void)?
@@ -446,6 +452,7 @@ final class DictationModelStore {
 final class DictationPanelController {
     @MainActor
     final class State {
+        var animatesTranscript = true
         var levels: [Float] = []
     }
     static weak var latest: DictationPanelController?
@@ -456,6 +463,8 @@ final class DictationPanelController {
     init() { Self.latest = self }
     func showStarting(style: DictationIndicatorStyle) { isVisible = true }
     func showListening() {}
+    func showPreview(_ text: String) {}
+    func showIdle(style: DictationIndicatorStyle) { isVisible = true }
     func showTranscribing() {}
     func close() { isVisible = false }
 }

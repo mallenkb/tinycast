@@ -5,9 +5,10 @@ struct ModalActionButtonStyle: ButtonStyle {
 
     let role: Role
     var fillsWidth = true
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
-        ButtonBody(configuration: configuration, role: role, fillsWidth: fillsWidth)
+        ButtonBody(configuration: configuration, role: role, fillsWidth: fillsWidth, compact: compact)
     }
 
     private struct ButtonBody: View {
@@ -16,17 +17,21 @@ struct ModalActionButtonStyle: ButtonStyle {
         let configuration: ButtonStyleConfiguration
         let role: Role
         let fillsWidth: Bool
+        let compact: Bool
         @State private var hovered = false
 
         var body: some View {
-            configuration.label
-                .font(metrics.typography.rowTrailing)
+            let shape = RoundedRectangle(
+                cornerRadius: compact ? Theme.Radius.menu : metrics.size.dialogButtonHeight / 2,
+                style: .circular)
+            return configuration.label
+                .font(compact ? nil : metrics.typography.rowTrailing)
                 .foregroundStyle(labelColor)
-                .padding(.horizontal, metrics.spacing.xl)
+                .padding(.horizontal, compact ? Theme.Spacing.sm : metrics.spacing.xl)
                 .frame(maxWidth: fillsWidth ? .infinity : nil)
-                .frame(height: metrics.size.dialogButtonHeight)
-                .contentShape(Capsule())
-                .background(Capsule().fill(fill))
+                .frame(height: compact ? Theme.Size.settingsRowButton : metrics.size.dialogButtonHeight)
+                .contentShape(shape)
+                .background(shape.fill(fill))
                 .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
                 .opacity(isEnabled ? 1 : 0.45)
                 .onHover { hovered = $0 }
@@ -67,6 +72,10 @@ struct ModalActionButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == ModalActionButtonStyle {
+    static var dangerAction: ModalActionButtonStyle {
+        ModalActionButtonStyle(role: .destructive, fillsWidth: false, compact: true)
+    }
+
     static func modalAction(
         _ role: ModalActionButtonStyle.Role, fillsWidth: Bool = true
     ) -> ModalActionButtonStyle {

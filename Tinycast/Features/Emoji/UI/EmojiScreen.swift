@@ -29,10 +29,15 @@ struct EmojiScreen: PaletteScreen {
         isBrowsing && (vm.emojiCategoryFilter == .all || vm.emojiCategoryFilter == .pinned)
     }
 
+    private var descriptionRequest: EmojiIndex.DescriptionRequest {
+        EmojiIndex.DescriptionRequest(
+            query: vm.query, filter: vm.emojiCategoryFilter,
+            allowsSuggestions: core.aiSettings.isRouteEnabled(.appleIntelligence))
+    }
+
     private var sections: [EmojiGridSection] {
         EmojiGrid.sections(
-            query: vm.query, index: index, frequent: frequent, pinned: pinned,
-            filter: vm.emojiCategoryFilter, columns: columns)
+            request: descriptionRequest, index: index, frequent: frequent, pinned: pinned, columns: columns)
     }
 
     /// Flat grid order across sections — what the selection indexes.
@@ -125,7 +130,12 @@ struct EmojiScreen: PaletteScreen {
     }
 
     func body(selection: Int, scroll: ScrollIntent) -> AnyView {
-        AnyView(content(selection: selection, scroll: scroll))
+        let request = descriptionRequest
+        return AnyView(
+            content(selection: selection, scroll: scroll)
+                .task(id: index.isLoaded ? request : nil) {
+                    await index.matchDescription(request, frequent: frequent)
+                })
     }
 
     @ViewBuilder
@@ -134,7 +144,8 @@ struct EmojiScreen: PaletteScreen {
         if !index.isLoaded {
             EmptyResults(text: String(localized: "Loading emoji…"))
         } else if sections.isEmpty {
-            EmptyResults(text: String(localized: "No emoji found"))
+            EmptyResults(text: index.isSuggesting(for: descriptionRequest)
+                ? String(localized: "Searching…") : String(localized: "No emoji found"))
         } else {
             EmojiGridView(
                 sections: sections,

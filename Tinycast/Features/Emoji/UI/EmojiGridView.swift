@@ -13,8 +13,8 @@ enum EmojiGrid {
     /// Ranked results while searching, otherwise pinned, frequent and catalog sections in order.
     @MainActor
     static func sections(
-        query: String, index: EmojiIndex, frequent: FrequentEmojiStore,
-        pinned: PinnedEmojiStore, filter: EmojiCategoryFilter, columns: EmojiGridColumns
+        request: EmojiIndex.DescriptionRequest, index: EmojiIndex, frequent: FrequentEmojiStore,
+        pinned: PinnedEmojiStore, columns: EmojiGridColumns
     ) -> [EmojiGridSection] {
         var sections: [EmojiGridSection] = []
         var start = 0
@@ -24,7 +24,8 @@ enum EmojiGrid {
             start += entries.count
         }
 
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filter = request.filter
+        let trimmed = request.query.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             switch filter {
             case .all:
@@ -47,7 +48,7 @@ enum EmojiGrid {
                 }
             }
         } else {
-            let results = index.search(query, frequent: frequent)
+            let results = index.search(request.query, frequent: frequent)
             let filtered: [EmojiEntry]
             switch filter {
             case .all:
@@ -61,7 +62,11 @@ enum EmojiGrid {
             case .category(let category):
                 filtered = results.filter { $0.category == category }
             }
-            append(String(localized: "Results"), filtered)
+            if filtered.isEmpty {
+                append(String(localized: "AI Suggestions"), index.suggestedEntries(for: request))
+            } else {
+                append(String(localized: "Results"), filtered)
+            }
         }
         return sections
     }

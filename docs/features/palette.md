@@ -564,7 +564,8 @@ status, so an old callback cannot close a reopened menu.
 The panel is a second SwiftUI hierarchy, so it observes nothing of `RootPaletteView`'s `@State`:
 `syncMenuPanel` pushes a rebuilt tree on every `openMenu` or `menuSelection` change, and
 `paletteEnvironment` injects the same stores into both hierarchies so they cannot drift.
-`WindowReader` reports the palette's `NSWindow`, which the menu's frame is placed against.
+`WindowReader` reports the palette's `NSWindow`. Corner menus use the visible palette bounds
+inside its transparent margin. Input menus use the control's frame in window coordinates.
 
 `PaletteMenuContent` may supply its own host-layer clip path. `MenuPanel` is an `AnimatedPanel` on
 `.documentWindow`, so every menu opens and closes with AppKit's native window animation — none while

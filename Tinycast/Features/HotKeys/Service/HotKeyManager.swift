@@ -26,6 +26,7 @@ final class HotKeyManager {
     var onEnterRoom: ((UUID) -> Void)?
     var onRunCustomWindowSize: ((UUID) -> Void)?
     var onOpenQuicklink: ((UUID) -> Void)?
+    var onRunDictationTransform: ((UUID) -> Void)?
     var onRunQuickAction: ((UUID) -> Void)?
     var onRunAppleShortcut: ((UUID) -> Void)?
     var onExpandSnippet: ((StoredSnippet.ID) -> Void)?
@@ -78,6 +79,7 @@ final class HotKeyManager {
     private let boundPaneKey = "boundPaneBundleIDs"
     private let boundCustomCommandKey = "boundCustomCommandIDs"
     private let boundQuicklinkKey = "boundQuicklinkIDs"
+    private let boundDictationTransformKey = "boundDictationTransformIDs"
     private let boundQuickActionKey = "boundQuickActionIDs"
     private let boundWindowLayoutKey = "boundWindowLayoutIDs"
     private let boundWindowRoomKey = "boundWindowRoomIDs"
@@ -145,6 +147,8 @@ final class HotKeyManager {
     var boundWindowRoomIDs: [UUID] { boundIDs(key: boundWindowRoomKey) }
 
     var boundCustomWindowSizeIDs: [UUID] { boundIDs(key: boundCustomWindowSizeKey) }
+
+    var boundDictationTransformIDs: [UUID] { boundIDs(key: boundDictationTransformKey) }
 
     var boundQuickActionIDs: [UUID] { boundIDs(key: boundQuickActionKey) }
 
@@ -215,6 +219,8 @@ final class HotKeyManager {
             index(id, bound: binding != nil, key: boundCustomCommandKey)
         case .quicklink(let id):
             index(id, bound: binding != nil, key: boundQuicklinkKey)
+        case .dictationTransform(let id):
+            index(id, bound: binding != nil, key: boundDictationTransformKey)
         case .quickAction(let id):
             index(id, bound: binding != nil, key: boundQuickActionKey)
         case .windowLayout(let id):
@@ -229,7 +235,7 @@ final class HotKeyManager {
             index(id, bound: binding != nil, key: boundSnippetKey)
         case .extensionCommand(let entryID):
             index(entryID, bound: binding != nil, key: boundExtensionCommandKey)
-        case .togglePalette, .dictationHold, .dictationToggle, .command, .systemAction, .windowCommand:
+        case .togglePalette, .dictationHold, .dictationToggle, .dictationToggleAlternate, .command, .systemAction, .windowCommand:
             break
         }
         candidateActionsCache = nil
@@ -344,6 +350,7 @@ final class HotKeyManager {
         actions += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
         actions += boundCustomCommandIDs.map { .customCommand(id: $0) }
         actions += boundQuicklinkIDs.map { .quicklink(id: $0) }
+        actions += boundDictationTransformIDs.map { .dictationTransform(id: $0) }
         actions += boundQuickActionIDs.map { .quickAction(id: $0) }
         actions += boundWindowLayoutIDs.map { .windowLayout(id: $0) }
         actions += boundWindowRoomIDs.map { .windowRoom(id: $0) }
@@ -362,8 +369,8 @@ final class HotKeyManager {
         case .togglePalette:
             return String(localized: "App Launcher")
         case .dictationHold:
-            return String(localized: "Hold to talk")
-        case .dictationToggle:
+            return String(localized: "Push to talk")
+        case .dictationToggle, .dictationToggleAlternate:
             return String(localized: "Hands-free")
         case .command(let id):
             return id.name
@@ -383,6 +390,8 @@ final class HotKeyManager {
             return displayName?(action) ?? String(localized: "Custom Size")
         case .quicklink:
             return displayName?(action) ?? String(localized: "Quicklink")
+        case .dictationTransform:
+            return displayName?(action) ?? String(localized: "Transforms")
         case .quickAction:
             return displayName?(action) ?? String(localized: "Quick Action")
         case .appleShortcut:
@@ -417,6 +426,11 @@ final class HotKeyManager {
             }
             modifierTaps[binding] = action
         }
+        if dictationEnabled, let key = holdBinding?.holdKey,
+            modifierTaps[key.singleBinding] == .dictationHold
+        {
+            modifierTaps[key.doubleBinding] = .dictationToggle
+        }
         modifierTapMonitor.update(
             bound: Set(modifierTaps.keys),
             holdKey: holdBinding.flatMap { modifierTaps[$0] == .dictationHold ? $0.holdKey : nil })
@@ -428,7 +442,7 @@ final class HotKeyManager {
         switch action {
         case .togglePalette: onTogglePalette?()
         case .dictationHold: if dictationEnabled { onDictationHoldPressed?() }
-        case .dictationToggle: if dictationEnabled { onDictationTogglePressed?() }
+        case .dictationToggle, .dictationToggleAlternate: if dictationEnabled { onDictationTogglePressed?() }
         case .command(let id): onRunCommand?(id)
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)
         case .settingsPane(let bundleID): AppLauncher.openSettingsPane(bundleID: bundleID)
@@ -439,6 +453,7 @@ final class HotKeyManager {
         case .windowRoom(let id): onEnterRoom?(id)
         case .customWindowSize(let id): onRunCustomWindowSize?(id)
         case .quicklink(let id): onOpenQuicklink?(id)
+        case .dictationTransform(let id): if dictationEnabled { onRunDictationTransform?(id) }
         case .quickAction(let id): onRunQuickAction?(id)
         case .appleShortcut(let id): onRunAppleShortcut?(id)
         case .snippet(let id): onExpandSnippet?(id)

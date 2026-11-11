@@ -1,6 +1,5 @@
 import AppKit
 import AVFoundation
-import NaturalLanguage
 
 @MainActor
 @Observable
@@ -17,15 +16,23 @@ final class DictationCoordinator {
     private let injector: TextInjector
     private let showMessage: (String, DialogTone) -> Void
     private let confirmEnable: () async -> Bool
-    private let recordTranscript: (String, NSRunningApplication?) -> Void
+    private let setupModels: () async -> Void
+    var onRecordingStarted: (() -> Void)?
+    var onRecordingEnded: (() -> Void)?
+    var processTranscript: ((String, Bool?) async -> String)?
+    private let recordTranscript: (String, String?, NSRunningApplication?) -> Void
     @ObservationIgnored private var phase: Phase = .idle
     @ObservationIgnored private var token = UUID()
     @ObservationIgnored private var enableTask: Task<Void, Never>?
+    private(set) var isSettingUpModels = false
     @ObservationIgnored private var startTask: Task<Void, Never>?
     @ObservationIgnored private var transcriptionTask: Task<Void, Never>?
+    @ObservationIgnored private var previewTask: Task<Void, Never>?
+    @ObservationIgnored private var previewDelay: Task<Void, Error>?
+    @ObservationIgnored private var terminating = false
     @ObservationIgnored private var correctionTask: Task<Void, Never>?
     @ObservationIgnored private var applePreparation: Task<AppleDictationSession, Error>?
-    @ObservationIgnored private var removesFillerWords = false
+    @ObservationIgnored private var cleanupMode: DictationCleanupMode = .off
     @ObservationIgnored private var stopTask: Task<Void, Never>?
     @ObservationIgnored private var cueTask: Task<Void, Never>?
     @ObservationIgnored private var pendingStartCue: UUID?
@@ -40,8 +47,9 @@ final class DictationCoordinator {
         corrections: DictationCorrectionStore,
         injector: TextInjector,
         confirmEnable: @escaping () async -> Bool,
+        setupModels: @escaping () async -> Void = { _ = Permissions.ensureAccessibility() },
         showMessage: @escaping (String, DialogTone) -> Void,
-        recordTranscript: @escaping (String, NSRunningApplication?) -> Void
+        recordTranscript: @escaping (String, String?, NSRunningApplication?) -> Void
     ) {
         self.settings = settings
         self.hotKeys = hotKeys
@@ -49,10 +57,12 @@ final class DictationCoordinator {
         self.corrections = corrections
         self.injector = injector
         self.confirmEnable = confirmEnable
+        self.setupModels = setupModels
         self.showMessage = showMessage
         self.recordTranscript = recordTranscript
         panel.onAccept = { [weak self] in self?.finish() }
-        panel.onCancel = { [weak self] in self?.cancel() }
+        panel.onCancel = { [weak self] in self?.cancel(dismissIndicator: true) }
+        panel.onStart = { [weak self] in self?.pressed(.toggle) }
         capture.onLevels = { [weak self] in
             guard let self else { return }
             panel.state.levels = $0
@@ -83,9 +93,13 @@ final class DictationCoordinator {
                 return
             }
             settings.dictationEnabled = true
-            Permissions.ensureAccessibility()
+            isSettingUpModels = true
+            defer { isSettingUpModels = false }
+            await setupModels()
         }
     }
+
+    func cancelModelSetup() { enableTask?.cancel() }
 
     func downloadModel(_ model: DictationModel) async {
         do { try await models.download(model) } catch is CancellationError {
@@ -114,7 +128,7 @@ final class DictationCoordinator {
             if mode == .toggle, shortcutMode != .pushToTalk { finish() }
             return
         }
-        begin(target: InjectionTarget.current(), shortcutMode: mode)
+        begin(shortcutMode: mode)
     }
 
     var isEnabled: Bool { settings.dictationEnabled }
@@ -139,7 +153,7 @@ final class DictationCoordinator {
         }
     }
 
-    private func begin(target: InjectionTarget?, shortcutMode: DictationMode? = nil) {
+    private func begin(target: InjectionTarget? = nil, shortcutMode: DictationMode? = nil) {
         stopCorrectionLearning()
         guard hasModel else {
             field = nil
@@ -151,7 +165,7 @@ final class DictationCoordinator {
         phase = .starting
         self.shortcutMode = shortcutMode
         finishWhenStarted = false
-        removesFillerWords = settings.dictationRemovesFillerWords
+        cleanupMode = settings.dictationCleanupMode
         self.target = target
         pendingStartCue = settings.dictationPlaysSounds ? current : nil
         let microphoneID = settings.dictationMicrophone
@@ -162,6 +176,7 @@ final class DictationCoordinator {
                 guard token == current else { return }
                 guard settings.dictationEnabled else { cancel(); return }
                 phase = .listening
+                startPreview()
                 if finishWhenStarted {
                     accept()
                 } else {
@@ -179,7 +194,10 @@ final class DictationCoordinator {
         } else {
             models.beginRecording(settings.dictationModel)
         }
+        panel.state.animatesTranscript = settings.dictationAnimateTranscript
+        panel.state.twoLinePreview = settings.dictationTwoLinePreview
         panel.showStarting(style: settings.dictationIndicatorStyle)
+        onRecordingStarted?()
     }
 
     /// A Bluetooth headset's output resumes up to a quarter second after the first samples.
@@ -211,6 +229,7 @@ final class DictationCoordinator {
     func accept() {
         guard phase == .listening else { return }
         phase = .transcribing
+        previewDelay?.cancel()
         panel.showTranscribing()
         field?.isTranscribing = true
         if settings.dictationPlaysSounds { cues.play(.stop) }
@@ -222,6 +241,7 @@ final class DictationCoordinator {
             guard let self else { return }
             guard token == current else { return }
             let samples = await capture.stop()
+            await previewTask?.value
             guard token == current else { return }
             guard samples.count >= 1_600 else {
                 reset(cancelTranscription: false)
@@ -238,27 +258,48 @@ final class DictationCoordinator {
                     transcript = try await models.transcribe(samples, model: model, language: language)
                 }
                 guard token == current else { return }
+                let isEnglish = englishOverride(model: applePreparation == nil ? model : nil, language: language)
+                let cleaned = await DictationLocalCleanup.clean(transcript, mode: cleanupMode, isEnglish: isEnglish)
+                guard token == current, !Task.isCancelled else { return }
+                let corrected = DictationCorrection.applying(corrections.entries, to: cleaned)
+                let processed = await processTranscript?(corrected, isEnglish) ?? corrected
+                guard token == current, !Task.isCancelled else { return }
+                let followsFocus = shortcutMode != nil
+                if followsFocus, injector.isDelivering {
+                    await injector.drain()
+                    guard token == current, !Task.isCancelled else { return }
+                }
+                if settings.dictationEnabled && settings.dictationIdleIndicator && !terminating {
+                    panel.showIdle(style: settings.dictationIndicatorStyle)
+                } else {
+                    panel.close()
+                }
+                let destination = followsFocus ? InjectionTarget.current() : target
+                let original = processed == transcript ? nil : transcript
                 let formatted = DictationTextFormatter.format(
-                    cleanTranscript(transcript, model: applePreparation == nil ? model : nil, language: language),
-                    context: DictationInsertionContext.read(in: target),
+                    processed,
+                    context: DictationInsertionContext.read(in: destination),
                     adaptCapitalization: settings.dictationAdaptsCapitalization)
                 let text = DictationCorrection.applying(corrections.entries, to: formatted)
                 guard !text.isEmpty else { reset(cancelTranscription: false); return }
-                panel.close()
                 let probe = settings.dictationEnabled && settings.dictationAutoLearnsWords
-                    ? DictationInsertionContext.correctionProbe(in: target, inserted: text) : nil
+                    ? DictationInsertionContext.correctionProbe(in: destination, inserted: text) : nil
                 injector.deliver(
-                    InjectedText(text), target: target, expectedKeyword: nil,
-                    keywordLength: 0, automaticGeneration: nil,
-                    isValid: { [weak self] in self?.token == current },
+                    InjectedText(text), target: destination, expectedKeyword: nil,
+                    keywordLength: 0, automaticGeneration: nil, activateTarget: !followsFocus,
+                    isValid: { [weak self] in
+                        guard self?.token == current else { return false }
+                        guard followsFocus, let editor = destination?.ownEditor else { return true }
+                        return InjectionTarget.current()?.ownEditor === editor
+                    },
                     onDelivered: { [weak self] in
                         guard let self, token == current else { return }
-                        finishTranscript(text)
+                        finishTranscript(text, original: original, destination: destination)
                         if let probe { learnCorrection(using: probe, recognized: formatted) }
                     },
                     onFailed: { [weak self] in
                         guard let self, token == current else { return }
-                        finishTranscript(text, pasteFailed: true)
+                        finishTranscript(text, original: original, pasteFailed: true)
                     })
             } catch {
                 guard token == current else { return }
@@ -268,11 +309,13 @@ final class DictationCoordinator {
         }
     }
 
-    private func finishTranscript(_ transcript: String, pasteFailed: Bool = false) {
-        let app = target?.externalApp ?? (target?.ownEditor == nil ? nil : NSRunningApplication.current)
+    private func finishTranscript(
+        _ transcript: String, original: String?, destination: InjectionTarget? = nil, pasteFailed: Bool = false
+    ) {
+        let app = destination?.externalApp ?? (destination?.ownEditor == nil ? nil : NSRunningApplication.current)
         reset(cancelTranscription: false)
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !text.isEmpty { recordTranscript(text, pasteFailed ? nil : app) }
+        if !text.isEmpty { recordTranscript(text, original, pasteFailed ? nil : app) }
         if pasteFailed {
             showMessage(String(localized: "Couldn't paste dictation into this app"), .danger)
         }
@@ -284,7 +327,7 @@ final class DictationCoordinator {
         else { return }
         correctionTask = Task { [weak self] in
             defer { if !Task.isCancelled { self?.correctionTask = nil } }
-            let deadline = ContinuousClock.now + .seconds(12)
+            let deadline = ContinuousClock.now + .seconds(60)
             var previous = probe.inserted
             var lastChange = ContinuousClock.now
             while ContinuousClock.now < deadline {
@@ -330,15 +373,14 @@ final class DictationCoordinator {
         }
     }
 
-    private func cleanTranscript(_ transcript: String, model: DictationModel?, language: String?) -> String {
-        guard removesFillerWords else { return transcript }
-        let cleaned = DictationTextFormatter.removingFillerWords(transcript)
-        guard cleaned != transcript else { return transcript }
-        if model == .v2 || model == .phonon2 { return cleaned }
-        if model?.isQwen == true, let language {
-            return language == DictationLanguage.english.rawValue ? cleaned : transcript
+    private func englishOverride(model: DictationModel?, language: String?) -> Bool? {
+        if model == .v2 || model == .phonon2 {
+            true
+        } else if model?.isQwen == true, let language {
+            language == DictationLanguage.english.rawValue
+        } else {
+            nil
         }
-        return NLLanguageRecognizer.dominantLanguage(for: transcript) == .english ? cleaned : transcript
     }
 
     func cancel(in editor: any InjectableTextView) {
@@ -346,13 +388,14 @@ final class DictationCoordinator {
         cancel()
     }
 
-    func cancel() {
+    func cancel(dismissIndicator: Bool = false) {
         stopCorrectionLearning()
         guard phase != .stopping, phase != .idle || !settings.dictationEnabled else { return }
         let pendingStart = startTask
         let pendingTranscription = transcriptionTask
+        let pendingPreview = previewTask
         pendingStart?.cancel()
-        reset()
+        reset(showIdleIndicator: false)
         phase = .stopping
         let current = token
         stopTask = Task { [weak self] in
@@ -360,31 +403,95 @@ final class DictationCoordinator {
             await pendingStart?.value
             _ = await capture.stop()
             await pendingTranscription?.value
+            await pendingPreview?.value
             if !settings.dictationEnabled { await models.stop() }
-            if token == current { phase = .idle; stopTask = nil }
+            if token == current {
+                phase = .idle
+                stopTask = nil
+                if !dismissIndicator { applyIdleIndicator() }
+            }
         }
     }
 
     func prepareForTermination() {
+        terminating = true
         enableTask?.cancel()
         cancel()
         cueTask?.cancel()
         models.prepareForTermination()
     }
 
-    private func reset(cancelTranscription: Bool = true) {
+    private func reset(cancelTranscription: Bool = true, showIdleIndicator: Bool = true) {
         token = UUID()
+        previewTask?.cancel()
+        previewTask = nil
+        previewDelay?.cancel()
+        previewDelay = nil
         if cancelTranscription { transcriptionTask?.cancel() }
         applePreparation?.cancel()
         applePreparation = nil
         models.endRecording()
+        onRecordingEnded?()
         startTask = nil
         transcriptionTask = nil
         phase = .idle
         shortcutMode = nil
         target = nil
         field = nil
-        panel.close()
+        if showIdleIndicator {
+            applyIdleIndicator()
+        } else {
+            panel.close()
+        }
+    }
+
+    func applyIdleIndicator() {
+        guard phase == .idle else { return }
+        if settings.dictationEnabled, settings.dictationIdleIndicator, !terminating {
+            panel.showIdle(style: settings.dictationIndicatorStyle)
+        } else {
+            panel.close()
+        }
+    }
+
+    private func startPreview() {
+        guard settings.dictationLivePreview else { return }
+        let current = token
+        let model = settings.dictationModel
+        let language = settings.dictationLanguage
+        let usesApple = settings.dictationUsesApple
+        let vocabulary = Array(Set(corrections.entries.map(\.spelling)))
+        previewTask = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if token == current, phase == .listening { panel.showPreview("") }
+            }
+            do {
+                while token == current, phase == .listening, settings.dictationLivePreview {
+                    let delay = Task { try await Task.sleep(for: .milliseconds(1500)) }
+                    previewDelay = delay
+                    try await delay.value
+                    previewDelay = nil
+                    guard token == current, phase == .listening, settings.dictationLivePreview else { return }
+                    let samples = await capture.recentSamples()
+                    guard token == current, phase == .listening else { return }
+                    guard samples.count >= 8_000 else { continue }
+                    let text: String
+                    if usesApple {
+                        let session = try await AppleDictationSession.prepare(vocabulary: vocabulary)
+                        try Task.checkCancellation()
+                        text = try await session.transcribe(samples)
+                    } else {
+                        text = try await models.transcribe(samples, model: model, language: language)
+                    }
+                    guard token == current, phase == .listening, !Task.isCancelled else { return }
+                    panel.state.twoLinePreview = settings.dictationTwoLinePreview
+                    panel.showPreview(text)
+                }
+            } catch {
+                // The full recording remains available for the final transcription.
+            }
+        }
     }
 }
 

@@ -28,6 +28,7 @@ struct RootPaletteView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.metrics) private var metrics
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.displayScale) private var displayScale
     @Environment(\.openURL) private var openURL
     @FocusState private var searchFocused: Bool
     /// Kept apart from the search field's own focus. See docs/features/palette.md.
@@ -49,8 +50,12 @@ struct RootPaletteView: View {
 
     /// Compact vs. full; the source of truth is on `AppCore`, so the two can't disagree.
     private var isCollapsed: Bool { core.paletteCoordinator.paletteIsCollapsed }
+    private var showsWindowShadow: Bool { isCollapsed || colorScheme == .dark }
 
-    private var renderingOutset: CGFloat { isCollapsed ? Theme.Size.paletteGlassOutset : 0 }
+    private var renderingOutset: CGFloat {
+        if isCollapsed { return Theme.Size.paletteGlassOutset }
+        return colorScheme == .light ? Theme.Size.paletteLightShadowOutset : 0
+    }
 
     private var screen: any PaletteScreen {
         switch vm.mode {
@@ -361,6 +366,7 @@ struct RootPaletteView: View {
                 .background(
                     WindowReader {
                         hostWindow = $0
+                        $0?.hasShadow = showsWindowShadow
                         installHeaderArrowHandler(in: $0)
                     }
                 )
@@ -368,17 +374,30 @@ struct RootPaletteView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // Hidden rather than unmounted, so expanding never shows a frame without glass.
                 .background(
-                    GlassEffectView(
-                        cornerRadius: metrics.radius.panel,
-                        tint: colorScheme == .dark ? Theme.Colors.paletteGlassTint : nil)
-                        .mask {
-                            let shape = RoundedRectangle(
-                                cornerRadius: metrics.radius.panel, style: .continuous)
-                            ZStack {
-                                shape.fill(.white.opacity(Theme.Opacity.paletteBorder))
-                                shape.inset(by: 1).fill(.white)
-                            }
+                    Group {
+                        if colorScheme == .dark {
+                            GlassEffectView(cornerRadius: metrics.radius.panel, tint: Theme.Colors.paletteTint)
+                                .mask {
+                                    let shape = RoundedRectangle(
+                                        cornerRadius: metrics.radius.panel, style: .continuous)
+                                    ZStack {
+                                        shape.fill(.white.opacity(Theme.Opacity.paletteBorder))
+                                        shape.inset(by: 1).fill(.white)
+                                    }
+                                }
+                        } else {
+                            PaletteBackdrop(cornerRadius: metrics.radius.panel)
+                                .overlay(Theme.Colors.paletteTint)
+                                .clipShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous)
+                                        .strokeBorder(
+                                            Theme.Colors.paletteBorder,
+                                            lineWidth: Theme.Size.paletteLightBorderPixels / displayScale)
+                                }
                         }
+                    }
+                        .allowsHitTesting(false)
                         .opacity(isCollapsed ? 0 : 1))
                 .overlay {
                     Theme.Colors.dialogDimming
@@ -395,10 +414,18 @@ struct RootPaletteView: View {
                     RoundedRectangle(
                         cornerRadius: isCollapsed ? 0 : metrics.radius.panel, style: .continuous
                     )
-                    .inset(by: -renderingOutset))),
+                    .inset(by: isCollapsed ? -renderingOutset : 0))),
             selection: sel
         )
+        .shadow(
+            color: showsWindowShadow ? .clear : Theme.Colors.paletteLightShadow,
+            radius: Theme.Size.paletteLightShadowRadius, y: Theme.Size.paletteLightShadowOffset)
         .padding(renderingOutset)
+        .onChange(of: showsWindowShadow) { hostWindow?.hasShadow = showsWindowShadow }
+        .onChange(of: colorScheme) {
+            core.paletteCoordinator.syncPaletteSize()
+            if menuOpen { syncMenuPanel(presenting: false) }
+        }
     }
 
     /// The emoji grid's observers, split out so `stateObservers` stays within type-checker reach.
@@ -546,6 +573,7 @@ struct RootPaletteView: View {
             .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
                 resetCompactSelection()
                 core.paletteCoordinator.syncPaletteSize()
+                if menuOpen { syncMenuPanel(presenting: false) }
             }
     }
 
@@ -968,7 +996,7 @@ struct RootPaletteView: View {
         let font = metrics.typography.searchFieldNSFont
         let text = vm.query.isEmpty ? searchPrompt : vm.query
         let typed = (text as NSString).size(withAttributes: [.font: font]).width
-        let chrome = metrics.size.headerIconSlot + metrics.spacing.md * 3 + metrics.spacing.xl
+        let chrome = metrics.paletteQueryLeadingInset + metrics.spacing.md
         let room = metrics.size.panelWidth - accessory.width - chrome
         // +3pt so the caret sits after the last glyph rather than on top of it.
         return min(
@@ -1297,12 +1325,12 @@ struct RootPaletteView: View {
         let view = content.view(corner)
         if presenting, let hostWindow {
             menuPanel.show(
-                view, corner: corner, parent: hostWindow, core: core,
+                view, corner: corner, parent: hostWindow, parentOutset: renderingOutset, core: core,
                 clipPath: content.clipPath,
                 onKeyDown: handleMenuPanelKey, onDismiss: closeMenus)
         } else {
             menuPanel.update(
-                view, corner: corner, core: core, clipPath: content.clipPath)
+                view, corner: corner, parentOutset: renderingOutset, core: core, clipPath: content.clipPath)
         }
     }
 

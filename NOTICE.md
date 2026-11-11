@@ -18,9 +18,16 @@ https://www.flaticon.com/
 These third-party assets remain subject to their respective source licenses. The app's AGPL license
 does not grant a separate license to redistribute the original icon libraries as standalone assets.
 
+## Dictation text formatting
+
+Basic and Advanced cleanup bundle the rule-based formatter from
+[FluidInference text-processing-rs v0.3.3](https://github.com/FluidInference/text-processing-rs/tree/v0.3.3),
+a Rust port of NVIDIA NeMo Text Processing. It is distributed under the Apache License, Version 2.0.
+The upstream notices ship with the app.
+
 ## Dictation model resources
 
-Tinycast's dictation code uses Apple's frameworks only. No speech model is bundled with the app.
+Tinycast uses Apple frameworks for speech recognition. No speech model is bundled with the app.
 Optional downloads include NVIDIA Parakeet TDT V2 and V3, Moondream's Parakeet Ultra and Redux,
 Fermion Research's Phonon-2, and Qwen3-ASR (Apache 2.0). Moondream's models and Phonon-2 derive
 from NVIDIA Parakeet V3. Phonon-2 retrains and quantizes those weights for English. NVIDIA's models

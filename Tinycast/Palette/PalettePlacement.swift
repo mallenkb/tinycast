@@ -103,20 +103,21 @@ enum MenuPanelCorner: Equatable {
 
     func frame(
         contentSize: CGSize, parentFrame: CGRect, visibleFrame: CGRect,
-        inset: CGFloat, headerExtent: CGFloat
+        inset: CGFloat, headerExtent: CGFloat, parentOutset: CGFloat = 0
     ) -> CGRect {
+        let surface = parentFrame.insetBy(dx: parentOutset, dy: parentOutset)
         let origin: CGPoint =
             switch self {
             case .bottomLeading:
-                CGPoint(x: parentFrame.minX + inset, y: parentFrame.minY + inset)
+                CGPoint(x: surface.minX + inset, y: surface.minY + inset)
             case .bottomTrailing:
                 CGPoint(
-                    x: parentFrame.maxX - inset - contentSize.width,
-                    y: parentFrame.minY + inset)
+                    x: surface.maxX - inset - contentSize.width,
+                    y: surface.minY + inset)
             case .belowHeaderTrailing:
                 CGPoint(
-                    x: parentFrame.maxX - inset * 2 - contentSize.width,
-                    y: parentFrame.maxY - headerExtent - contentSize.height)
+                    x: surface.maxX - inset * 2 - contentSize.width,
+                    y: surface.maxY - headerExtent - contentSize.height)
             case .belowControl(let control, let trailing):
                 inputOrigin(
                     control: control, trailing: trailing, contentSize: contentSize,

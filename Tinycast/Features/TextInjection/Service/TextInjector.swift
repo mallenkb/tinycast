@@ -120,10 +120,10 @@ final class TextInjector {
 
     func drain() async { await deliveryQueue.drain() }
 
-    func prepareInteractiveExpansion(target: InjectionTarget?) -> Bool {
+    func prepareInteractiveExpansion(target: InjectionTarget?, restoreFocusOnFailure: Bool = true) -> Bool {
         if let editor = target?.ownEditor { return editor.isEditable }
         guard targetAcceptsInjection(target?.externalApp), Permissions.ensureAccessibility() else {
-            target?.restoreFocus()
+            if restoreFocusOnFailure { target?.restoreFocus() }
             return false
         }
         return true
@@ -281,16 +281,17 @@ final class TextInjector {
         expectedKeyword: String?,
         keywordLength: Int,
         automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool = true,
         isValid: @escaping @MainActor () -> Bool = { true },
         onDelivered: @escaping @MainActor () -> Void = {},
         onFailed: @escaping @MainActor () -> Void = {}
     ) {
         let targetApp = target?.externalApp
-        activate(targetApp)
+        if activateTarget { activate(targetApp) }
         if let automaticGeneration {
             guard expansionIsAllowed(generation: automaticGeneration, target: target) else { return }
         } else {
-            guard prepareInteractiveExpansion(target: target) else {
+            guard prepareInteractiveExpansion(target: target, restoreFocusOnFailure: activateTarget) else {
                 onFailed()
                 return
             }
@@ -317,6 +318,7 @@ final class TextInjector {
                 expectedKeyword: expectedKeyword,
                 keywordLength: keywordLength,
                 automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget,
                 completion: completion)
         }
     }
@@ -369,17 +371,19 @@ final class TextInjector {
         expectedKeyword: String?,
         keywordLength: Int,
         automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool,
         completion: DeliveryCompletion
     ) async {
         defer { completion.settle() }
-        guard finishPendingPasteboardOwnership(),
-            await activateAndWaitForTarget(
-                targetApp,
-                automaticGeneration: automaticGeneration),
-            deliveryIsAllowed(
-                automaticGeneration: automaticGeneration,
-                targetApp: targetApp,
-                promptForInteractiveAccessibility: true)
+        guard finishPendingPasteboardOwnership() else { return }
+        if activateTarget {
+            guard await activateAndWaitForTarget(targetApp, automaticGeneration: automaticGeneration)
+            else { return }
+        }
+        guard deliveryIsAllowed(
+            automaticGeneration: automaticGeneration,
+            targetApp: targetApp,
+            promptForInteractiveAccessibility: true)
         else { return }
 
         let accessibilityReplacement = await replaceUsingAccessibility(

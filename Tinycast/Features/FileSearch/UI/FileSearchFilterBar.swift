@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct FileSearchFilterBar: View {
+    @Environment(\.metrics) private var metrics
+    @Environment(\.locale) private var locale
     let session: FileSearchSession
     let settings: AppSettings
     let palette: PaletteState
@@ -8,41 +10,32 @@ struct FileSearchFilterBar: View {
     @State private var editing: SearchFileConstraints.Clause?
     @State private var adding = false
 
+    private var chipHeight: CGFloat { metrics.scaled(22) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        let clauses = session.filters?.clauses ?? []
+        VStack(alignment: .leading, spacing: metrics.spacing.sm) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    ForEach(session.filters?.clauses ?? []) { clause in
-                        HStack(spacing: Theme.Spacing.xs) {
-                            Button {
-                                editing = clause
-                            } label: {
-                                Text("\(title(clause.field)): \(detail(clause))")
-                                    .lineLimit(1)
-                            }
-                            .buttonStyle(.plain)
-                            Button {
-                                guard let filters = session.filters else { return }
-                                palette.query = filters.query(replacing: clause.id, with: nil)
-                            } label: {
-                                Image(systemName: "xmark")
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(Text("Remove \(title(clause.field)) filter"))
-                        }
-                        .padding(.horizontal, Theme.Spacing.sm)
-                        .padding(.vertical, Theme.Spacing.xs)
-                        .background(Theme.Colors.cardFill, in: Capsule())
+                HStack(spacing: metrics.spacing.sm) {
+                    ForEach(clauses) { clause in
+                        chip(clause)
                     }
-                    Button("Edit Filters…") { adding = true }
-                        .buttonStyle(.plain)
+                    Button {
+                        adding = true
+                    } label: {
+                        Text("Edit Filters…")
+                            .foregroundStyle(.secondary)
+                            .frame(height: chipHeight)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .font(.caption)
             }
+            .padding(.leading, clauses.isEmpty ? 0 : -metrics.spacing.sm)
             if let issue = session.queryIssue {
-                Text(issueMessage(issue)).font(.caption).foregroundStyle(.secondary)
+                Text(issueMessage(issue)).foregroundStyle(.secondary)
                 if case .ambiguousDate(let token, let choices) = issue {
-                    HStack {
+                    HStack(spacing: metrics.spacing.sm) {
                         ForEach(choices, id: \.self) { choice in
                             Button {
                                 palette.query = SearchFileQuery.resolvingDate(
@@ -57,15 +50,18 @@ struct FileSearchFilterBar: View {
             if let filters = session.filters, !filters.content.isEmpty {
                 if !settings.fileSearchDocumentContentEnabled {
                     Button("Enable Context Search") { coordinator.enableContextSearch() }
-                        .font(.caption)
+                        .buttonStyle(.link)
                 } else {
                     Text("Content results depend on Spotlight indexing and may be incomplete.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.sm)
+        .font(metrics.typography.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, metrics.paletteQueryLeadingInset)
+        .padding(.trailing, metrics.spacing.md * 2)
+        .padding(.vertical, metrics.spacing.xs)
         .task(id: editing?.id) {
             guard let editing, let filters = session.filters else { return }
             let query = palette.query
@@ -86,7 +82,52 @@ struct FileSearchFilterBar: View {
         }
     }
 
+    private func chip(_ clause: SearchFileConstraints.Clause) -> some View {
+        let field = title(clause.field)
+        let value = detail(clause)
+        return HStack(spacing: metrics.spacing.xs) {
+            Button {
+                editing = clause
+            } label: {
+                HStack(spacing: metrics.spacing.xs) {
+                    Text(field).foregroundStyle(.secondary)
+                    Text(verbatim: value).fontWeight(.medium)
+                }
+                .lineLimit(1)
+                .frame(height: chipHeight)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Button {
+                guard let filters = session.filters else { return }
+                palette.query = filters.query(replacing: clause.id, with: nil)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: metrics.scaled(8), weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: metrics.scaled(18), height: chipHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Remove \(field) filter"))
+        }
+        .padding(.leading, metrics.spacing.sm)
+        .padding(.trailing, metrics.spacing.xxs)
+        .background(Theme.Colors.cardFill, in: Capsule())
+    }
+
     private func detail(_ clause: SearchFileConstraints.Clause) -> String {
+        if let filters = session.filters {
+            switch clause.field {
+            case .format:
+                return filters.extensions.map { $0.uppercased() }.joined(separator: ", ")
+            case .modified: return dateDetail(filters.modified) ?? clause.detail
+            case .created: return dateDetail(filters.created) ?? clause.detail
+            case .downloaded: return dateDetail(filters.downloaded) ?? clause.detail
+            case .added: return dateDetail(filters.added) ?? clause.detail
+            default: break
+            }
+        }
         if clause.field == .category, let category = session.filters?.category {
             return category == .files
                 ? String(localized: "Files") : FileSearchFilter(category: category).title
@@ -104,6 +145,28 @@ struct FileSearchFilterBar: View {
             }
         }
         return clause.detail
+    }
+
+    private func dateDetail(_ bounds: SearchFileConstraints.Bounds?) -> String? {
+        guard let bounds else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let dateStyle = Date.FormatStyle(
+            date: .abbreviated, time: .omitted, locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+        switch (bounds.start, bounds.end) {
+        case let (start?, end?):
+            let last = end.addingTimeInterval(-1)
+            if calendar.isDate(start, inSameDayAs: last) { return start.formatted(dateStyle) }
+            let interval = Date.IntervalFormatStyle(
+                date: .abbreviated, time: .omitted, locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+            return interval.format(start..<last)
+        case let (nil, end?):
+            return "< " + end.formatted(dateStyle)
+        case let (start?, nil):
+            return "> " + start.addingTimeInterval(-1).formatted(dateStyle)
+        case (nil, nil):
+            return nil
+        }
     }
 
     private func title(_ field: SearchFileConstraints.Field) -> String {

@@ -26,6 +26,14 @@ is judged by what you touched.
 ./Scripts/run-tests.sh calc-test    # just one, while iterating
 ```
 
+`./Scripts/run-tests.sh dictation-advanced-test` checks 5,000 distinct input/output pairs for
+Advanced cleanup, plus edge cases and its deadline fallback. It reports formatter-only timings.
+Run the compiled harness with `--list` to export the 5,000 pairs as JSON Lines:
+
+```sh
+"${TMPDIR:-/tmp}/tinycast-harness/dictation-advanced-test" --list
+```
+
 `apple-intelligence-test` runs deterministic checks by default. Its real model generation is opt-in:
 
 ```sh

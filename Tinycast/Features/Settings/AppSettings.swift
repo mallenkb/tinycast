@@ -451,6 +451,39 @@ final class AppSettings {
         didSet { defaults.set(dictationRemovesFillerWords, forKey: Key.dictationRemovesFillerWords.rawValue) }
     }
 
+    var dictationCleanupEngine: String {
+        didSet { defaults.set(dictationCleanupEngine, forKey: Key.dictationCleanupEngine.rawValue) }
+    }
+
+    var dictationSmartCleanup: Bool {
+        didSet { defaults.set(dictationSmartCleanup, forKey: Key.dictationSmartCleanup.rawValue) }
+    }
+
+    var dictationAdvancedCleanup: Bool {
+        didSet { defaults.set(dictationAdvancedCleanup, forKey: Key.dictationAdvancedCleanup.rawValue) }
+    }
+
+    var dictationCleanupMode: DictationCleanupMode {
+        get {
+            if dictationSmartCleanup { return .smart }
+            if dictationAdvancedCleanup { return .advanced }
+            return dictationRemovesFillerWords ? .basic : .off
+        }
+        set {
+            dictationSmartCleanup = newValue == .smart
+            dictationAdvancedCleanup = newValue == .advanced
+            dictationRemovesFillerWords = newValue != .off
+        }
+    }
+
+    var dictationAutoTransform: Bool {
+        didSet { defaults.set(dictationAutoTransform, forKey: Key.dictationAutoTransform.rawValue) }
+    }
+
+    var dictationTransformID: String {
+        didSet { defaults.set(dictationTransformID, forKey: Key.dictationTransformID.rawValue) }
+    }
+
     var dictationAutoLearnsWords: Bool {
         didSet { defaults.set(dictationAutoLearnsWords, forKey: Key.dictationAutoLearnsWords.rawValue) }
     }
@@ -478,6 +511,22 @@ final class AppSettings {
 
     var dictationIndicatorStyle: DictationIndicatorStyle {
         didSet { defaults.set(dictationIndicatorStyle.rawValue, forKey: Key.dictationIndicatorStyle.rawValue) }
+    }
+
+    var dictationLivePreview: Bool {
+        didSet { defaults.set(dictationLivePreview, forKey: Key.dictationLivePreview.rawValue) }
+    }
+
+    var dictationTwoLinePreview: Bool {
+        didSet { defaults.set(dictationTwoLinePreview, forKey: Key.dictationTwoLinePreview.rawValue) }
+    }
+
+    var dictationAnimateTranscript: Bool {
+        didSet { defaults.set(dictationAnimateTranscript, forKey: Key.dictationAnimateTranscript.rawValue) }
+    }
+
+    var dictationIdleIndicator: Bool {
+        didSet { defaults.set(dictationIdleIndicator, forKey: Key.dictationIdleIndicator.rawValue) }
     }
 
     var dictationIdleRelease: DictationIdleRelease {
@@ -901,6 +950,12 @@ final class AppSettings {
             defaults.string(forKey: Key.dictationModel.rawValue)
             .flatMap(DictationModel.init) ?? DictationModel.Family.parakeet.defaultModel
         dictationRemovesFillerWords = defaults.object(forKey: Key.dictationRemovesFillerWords.rawValue) as? Bool ?? true
+        dictationCleanupEngine = defaults.string(forKey: Key.dictationCleanupEngine.rawValue) ?? "s1Mini"
+        dictationSmartCleanup = defaults.object(forKey: Key.dictationSmartCleanup.rawValue) as? Bool ?? false
+        dictationAdvancedCleanup = defaults.bool(forKey: Key.dictationAdvancedCleanup.rawValue)
+        dictationAutoTransform = defaults.object(forKey: Key.dictationAutoTransform.rawValue) as? Bool ?? false
+        dictationTransformID = defaults.string(forKey: Key.dictationTransformID.rawValue)
+            ?? "D1C70000-0000-4000-8000-000000000001"
         dictationAutoLearnsWords = defaults.object(forKey: Key.dictationAutoLearnsWords.rawValue) as? Bool ?? true
         dictationMicrophone = defaults.string(forKey: Key.dictationMicrophone.rawValue)
         dictationAdaptsCapitalization =
@@ -915,6 +970,11 @@ final class AppSettings {
         dictationIndicatorStyle =
             defaults.string(forKey: Key.dictationIndicatorStyle.rawValue)
             .flatMap(DictationIndicatorStyle.init(rawValue:)) ?? .compact
+        dictationLivePreview = defaults.bool(forKey: Key.dictationLivePreview.rawValue)
+        dictationTwoLinePreview = defaults.bool(forKey: Key.dictationTwoLinePreview.rawValue)
+        dictationAnimateTranscript = defaults.object(forKey: Key.dictationAnimateTranscript.rawValue) == nil
+            || defaults.bool(forKey: Key.dictationAnimateTranscript.rawValue)
+        dictationIdleIndicator = defaults.bool(forKey: Key.dictationIdleIndicator.rawValue)
         dictationIdleRelease =
             defaults.object(forKey: Key.dictationIdleRelease.rawValue)
             .flatMap { $0 as? Int }

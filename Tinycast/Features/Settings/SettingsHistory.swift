@@ -1,17 +1,17 @@
 /// Browser semantics: choosing a pane truncates what was ahead, and re-choosing it is not a move.
-struct SettingsHistory {
-    private(set) var current: SettingsTab
-    private var back: [SettingsTab] = []
-    private var forward: [SettingsTab] = []
+struct SettingsHistory<Destination: Equatable> {
+    private(set) var current: Destination
+    private var back: [Destination] = []
+    private var forward: [Destination] = []
 
-    init(current: SettingsTab) {
+    init(current: Destination) {
         self.current = current
     }
 
     var canGoBack: Bool { !back.isEmpty }
     var canGoForward: Bool { !forward.isEmpty }
 
-    mutating func select(_ tab: SettingsTab) {
+    mutating func select(_ tab: Destination) {
         guard tab != current else { return }
         back.append(current)
         forward.removeAll()
@@ -28,5 +28,11 @@ struct SettingsHistory {
         guard let next = forward.popLast() else { return }
         back.append(current)
         current = next
+    }
+
+    mutating func discardCurrent() {
+        guard let previous = back.popLast() else { return }
+        forward.removeAll()
+        current = previous
     }
 }

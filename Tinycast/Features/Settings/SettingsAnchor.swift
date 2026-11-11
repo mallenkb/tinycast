@@ -62,7 +62,9 @@ extension SettingsAnchor {
 
     static let dictationDictation = Self(tab: .dictation, title: "Dictation")
     static let dictationCommands = Self(tab: .dictation, title: "Commands")
-    static let dictationModel = Self(tab: .dictation, title: "Model")
+    static let dictationCleanup = Self(tab: .dictation, title: "Text cleanup")
+    static let dictationTransforms = Self(tab: .dictation, title: "Transforms")
+    static let dictationModel = Self(tab: .dictation, title: "Speech recognition")
     static let dictationMemory = Self(tab: .dictation, title: "Memory")
     static let dictationOutput = Self(tab: .dictation, title: "Output")
     static let dictationDictionary = Self(tab: .dictation, title: "Dictionary")
@@ -155,4 +157,5 @@ enum SettingsTarget: Hashable, Sendable {
 struct SettingsScrollRequest: Equatable, Sendable {
     let target: SettingsTarget
     let token: Int
+    let highlight: Bool
 }

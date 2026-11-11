@@ -114,14 +114,29 @@ enum SettingsFileSchema {
         case .notesFolder: return bind(settings, \.notesFolder, accept: folder)
         case .notesCommands: return launcher.commandsBinding(for: key, owner: .notes)
         case .dictationHoldShortcut:
-            return shortcuts.binding(for: key, action: .dictationHold, name: String(localized: "Hold to talk"))
+            return shortcuts.binding(for: key, action: .dictationHold, name: String(localized: "Push to talk"))
         case .dictationToggleShortcut:
             return shortcuts.binding(
                 for: key, action: .dictationToggle, name: String(localized: "Hands-free"))
+        case .dictationToggleAlternateShortcut:
+            return shortcuts.binding(
+                for: key, action: .dictationToggleAlternate, name: String(localized: "Hands-free"))
         case .dictationPlaysSounds: return bind(settings, \.dictationPlaysSounds)
         case .dictationIndicatorStyle: return bind(settings, \.dictationIndicatorStyle)
+        case .dictationLivePreview: return bind(settings, \.dictationLivePreview)
+        case .dictationTwoLinePreview: return bind(settings, \.dictationTwoLinePreview)
+        case .dictationAnimateTranscript: return bind(settings, \.dictationAnimateTranscript)
+        case .dictationIdleIndicator: return bind(settings, \.dictationIdleIndicator)
         case .dictationModel: return bind(settings, \.dictationModel)
         case .dictationUsesApple: return bind(settings, \.dictationUsesApple)
+        case .dictationCleanupEngine:
+            return bind(settings, \.dictationCleanupEngine) {
+                $0 == "appleIntelligence" || DictationCleanupModel.Variant(rawValue: $0) != nil ? $0 : nil
+            }
+        case .dictationSmartCleanup: return bind(settings, \.dictationSmartCleanup)
+        case .dictationAdvancedCleanup: return bind(settings, \.dictationAdvancedCleanup)
+        case .dictationAutoTransform: return bind(settings, \.dictationAutoTransform)
+        case .dictationTransformID: return bind(settings, \.dictationTransformID)
         case .dictationRemovesFillerWords: return bind(settings, \.dictationRemovesFillerWords)
         case .dictationMicrophone: return bind(settings, \.dictationMicrophone)
         case .dictationAdaptsCapitalization: return bind(settings, \.dictationAdaptsCapitalization)

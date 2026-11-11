@@ -34,7 +34,8 @@ enum DeepLinkConsentPolicy {
             requiresConsent(id)
         case .togglePalette, .settingsPane:
             false
-        case .dictationHold, .dictationToggle, .app, .customCommand, .systemAction, .windowCommand, .windowLayout,
+        case .dictationTransform, .dictationHold, .dictationToggle, .dictationToggleAlternate,
+            .app, .customCommand, .systemAction, .windowCommand, .windowLayout,
             .windowRoom, .customWindowSize, .quicklink, .quickAction, .appleShortcut, .snippet,
             .extensionCommand:
             true

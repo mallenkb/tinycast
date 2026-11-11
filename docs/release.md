@@ -21,6 +21,8 @@ Version 0.1.14 adds natural-language file search, Context Search results from Sp
 indicator while searches run, and lower idle memory use after closing the palette.
 Version 0.1.15 expands local dictation with additional models, history, correction learning,
 customizable indicators and shortcut options.
+Version 0.1.16 adds Advanced transcript formatting, S1-mini cleanup, dictation writing settings,
+improved settings navigation, and refinements to search and shortcuts.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

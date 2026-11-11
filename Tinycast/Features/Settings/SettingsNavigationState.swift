@@ -1,33 +1,62 @@
+import Foundation
 import Observation
 
 /// Not on `AppCore`: one window's session, released in `windowWillClose` so history never survives.
 @MainActor
 @Observable
 final class SettingsNavigationState {
-    private var history: SettingsHistory
+    enum Detail: Hashable {
+        case dictationTransform(UUID?)
+    }
+
+    private struct Destination: Equatable {
+        let tab: SettingsTab
+        let target: SettingsTarget?
+        var detail: Detail? = nil
+    }
+
+    private var history: SettingsHistory<Destination>
     private var requests = 0
 
     init(tab: SettingsTab) {
-        history = SettingsHistory(current: tab)
+        history = SettingsHistory(current: Destination(tab: tab, target: nil))
     }
 
-    var tab: SettingsTab { history.current }
+    var tab: SettingsTab { history.current.tab }
+    var target: SettingsTarget? { history.current.target }
+    var detail: Detail? { history.current.detail }
     var canGoBack: Bool { history.canGoBack }
     var canGoForward: Bool { history.canGoForward }
 
-    /// Set by a search result, consumed by the pane that scrolls to it.
+    /// Consumed by the pane that scrolls to the destination.
     private(set) var scrollRequest: SettingsScrollRequest?
     /// The section lit right now. One source for the whole window, so a pane swap can't lose it.
     private(set) var flashing: SettingsTarget?
 
     /// A search result navigates and asks the pane to reveal one section; a sidebar row just navigates.
-    func select(_ tab: SettingsTab, revealing target: SettingsTarget? = nil) {
-        history.select(tab)
-        // Any navigation puts the previous pulse out, so a stale light can't outlive its pane.
+    func select(_ tab: SettingsTab, revealing target: SettingsTarget? = nil, highlight: Bool = true) {
+        history.select(Destination(tab: tab, target: target))
+        revealCurrent(highlight: highlight)
+    }
+
+    func openDetail(_ detail: Detail) {
+        guard self.detail == nil else { return }
+        history.select(Destination(tab: tab, target: target, detail: detail))
+        revealCurrent(highlight: false)
+    }
+
+    func dismissDetail() {
+        guard detail != nil else { return }
+        history.discardCurrent()
+        revealCurrent(highlight: false)
+    }
+
+    private func revealCurrent(highlight: Bool) {
         flashing = nil
-        guard let target else { return }
+        scrollRequest = nil
+        guard detail == nil, let target = history.current.target else { return }
         requests += 1
-        scrollRequest = SettingsScrollRequest(target: target, token: requests)
+        scrollRequest = SettingsScrollRequest(target: target, token: requests, highlight: highlight)
     }
 
     func beginFlash(_ target: SettingsTarget) {
@@ -47,6 +76,14 @@ final class SettingsNavigationState {
         scrollRequest = nil
     }
 
-    func goBack() { history.goBack() }
-    func goForward() { history.goForward() }
+    func goBack() {
+        guard canGoBack else { return }
+        history.goBack()
+        revealCurrent(highlight: false)
+    }
+    func goForward() {
+        guard canGoForward else { return }
+        history.goForward()
+        revealCurrent(highlight: false)
+    }
 }

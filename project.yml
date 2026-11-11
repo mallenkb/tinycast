@@ -9,8 +9,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.15"
-    CURRENT_PROJECT_VERSION: "16"
+    MARKETING_VERSION: "0.1.16"
+    CURRENT_PROJECT_VERSION: "17"
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Manual
@@ -67,6 +67,13 @@ targets:
       # The MIT mark's licence asks the notice to travel with the binary, not just the repo.
       - path: NOTICE.md
         buildPhase: resources
+    preBuildScripts:
+      - name: Build local cleanup runtime
+        script: '"$SRCROOT/Scripts/build-cleanup-runtime.sh"'
+        basedOnDependencyAnalysis: false
+      - name: Build local dictation formatter
+        script: '/bin/bash "$SRCROOT/Scripts/build-dictation-formatting.sh"'
+        basedOnDependencyAnalysis: false
     dependencies:
       - target: DictationHelper
         link: false

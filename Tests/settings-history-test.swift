@@ -38,13 +38,13 @@ struct SettingsHistoryTests {
     }
 
     static func startsEmpty() {
-        let history = SettingsHistory(current: .general)
+        let history = SettingsHistory<SettingsTab>(current: .general)
         expect(!history.canGoBack, "and has nowhere to go back to")
         expect(!history.canGoForward, "or forward to")
     }
 
     static func selectingPushes() {
-        var history = SettingsHistory(current: .general)
+        var history = SettingsHistory<SettingsTab>(current: .general)
         history.select(.clipboard)
         expect(history.current == .clipboard, "selecting shows the new pane")
         expect(history.canGoBack, "and leaves the old one behind us")
@@ -53,7 +53,7 @@ struct SettingsHistoryTests {
 
     /// Reselecting must not stack entries, or Back walks the same pane repeatedly.
     static func reselectingIsNotANavigation() {
-        var history = SettingsHistory(current: .general)
+        var history = SettingsHistory<SettingsTab>(current: .general)
         history.select(.general)
         expect(!history.canGoBack, "re-selecting the current pane pushes nothing")
 
@@ -64,7 +64,7 @@ struct SettingsHistoryTests {
     }
 
     static func roundTrips() {
-        var history = SettingsHistory(current: .general)
+        var history = SettingsHistory<SettingsTab>(current: .general)
         history.select(.snippets)
         history.select(.emoji)
 
@@ -82,7 +82,7 @@ struct SettingsHistoryTests {
     }
 
     static func aNewBranchDiscardsTheOldOne() {
-        var history = SettingsHistory(current: .general)
+        var history = SettingsHistory<SettingsTab>(current: .general)
         history.select(.snippets)
         history.select(.emoji)
         history.goBack()
@@ -97,7 +97,7 @@ struct SettingsHistoryTests {
     }
 
     static func clampsAtBothEnds() {
-        var history = SettingsHistory(current: .general)
+        var history = SettingsHistory<SettingsTab>(current: .general)
         history.goBack()
         expect(history.current == .general, "Back at the start is a no-op")
         history.goForward()

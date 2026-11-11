@@ -275,6 +275,7 @@ run emoji-paste-test       Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
 run emoji-search-test      Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift \
                            Tinycast/Features/Emoji/Service/EmojiIndex.swift \
+                           Tinycast/Features/Emoji/Service/EmojiDescriptionSearch.swift \
                            Tinycast/Features/Emoji/Service/FrequentEmojiStore.swift \
                            Tinycast/Features/Emoji/Service/PinnedEmojiStore.swift \
                            Tinycast/Features/Launcher/Model/SearchRelevance.swift \
@@ -283,6 +284,7 @@ run index emoji-search-performance \
                            Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift \
                            Tinycast/Features/Emoji/Service/EmojiIndex.swift \
+                           Tinycast/Features/Emoji/Service/EmojiDescriptionSearch.swift \
                            Tinycast/Features/Emoji/Service/FrequentEmojiStore.swift \
                            Tinycast/Features/Launcher/Model/SearchRelevance.swift \
                            Tinycast/Platform/AppPaths.swift Tinycast/Platform/Memo.swift
@@ -424,6 +426,7 @@ run dictionary-pronunciation-session-test Tinycast/Features/Dictionary/Model/Dic
 run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.swift \
                            Tinycast/Features/Dictionary/Model/DictionaryMarkup.swift
 run dictation-test         Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationCorrection.swift
+run -O dictation-advanced-test Tinycast/Features/Dictation/Model/DictationTextFormatter.swift
 run dictation-cue-test     Tinycast/Features/Dictation/Service/DictationCueRunner.swift
 run dictation-destination-migration-test Tinycast/Migrations/Dictation{Shortcuts,Destination}Migration.swift \
                            Tinycast/Features/Settings/Model/SettingsFile{Format,Issue,JSON,Key}.swift
@@ -439,6 +442,7 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swif
                            Tinycast/Features/Dictation/Service/DictationCoordinator.swift \
                            Tinycast/Features/Dictation/Service/DictationCorrectionStore.swift \
                            Tinycast/Features/Dictation/Service/DictationInsertionContext.swift \
+                           Tinycast/Features/Dictation/Service/DictationLocalCleanup.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \
                            Tinycast/Features/AI/UI/ChatComposerTextView.swift \
                            Tinycast/Features/TextInjection/Service/*.swift \

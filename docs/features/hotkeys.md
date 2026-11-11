@@ -425,7 +425,8 @@ or terminating stops the retry.
 
 The settings recorder (`Features/HotKeys/UI/ShortcutRecorder.swift`) is deliberately **not** a focusable
 control: the active recorder is `HotKeyManager.recordingAction` state, and keys are captured by local
-NSEvent monitors while both engines are paused. It records combos and single or double modifier taps,
+NSEvent monitors while both engines are paused. The input labels the Globe key Fn and reveals a
+clear button on hover. It records combos and single or double modifier taps,
 including their reported side, by feeding its `.flagsChanged` / `.keyDown` monitors into the same pure detectors
 as the global monitor, so recording needs no event tap and no permission. Its `.keyUp` monitor only
 tracks the Hyper key's F18 release; see [Secure Input](#secure-input).
@@ -435,3 +436,7 @@ Setting `recordingAction` is what starts and stops the capture, so there is exac
 callout above the field render the live state from outside the row that opened it. The field itself
 only ever shows the binding; the prompt, the live preview and the conflict message all live in the
 callout. See [ui.md](../ui.md#the-shortcut-recorder-callout).
+
+Dictation transforms have independent, conflict-checked shortcut bindings keyed by transform UUID.
+They process the latest local dictation History entry and open History for review without pasting.
+Deleting a transform removes its shortcut; dictation must be enabled for its shortcut to run.

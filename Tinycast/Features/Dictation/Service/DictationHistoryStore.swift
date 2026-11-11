@@ -2,7 +2,8 @@ import AppKit
 
 struct DictationHistoryEntry: Identifiable, Codable, Sendable {
     let id: UUID
-    let text: String
+    var text: String
+    var originalText: String?
     let createdAt: Date
     let pastedAppBundleID: String?
     let pastedAppName: String?
@@ -26,14 +27,28 @@ final class DictationHistoryStore {
         }
     }
 
-    func record(_ text: String, pastedInto app: NSRunningApplication?) {
+    func record(_ text: String, originalText: String? = nil, pastedInto app: NSRunningApplication?) {
         let now = Date()
         entries.insert(
             DictationHistoryEntry(
-                id: UUID(), text: text, createdAt: now,
+                id: UUID(), text: text, originalText: originalText, createdAt: now,
                 pastedAppBundleID: app?.bundleIdentifier, pastedAppName: app?.localizedName),
             at: 0)
         _ = removeExpired(now: now)
+        persist()
+    }
+
+    func replace(id: UUID, text: String) {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        if entries[index].originalText == nil { entries[index].originalText = entries[index].text }
+        entries[index].text = text
+        persist()
+    }
+
+    func restore(id: UUID) {
+        guard let index = entries.firstIndex(where: { $0.id == id }), let original = entries[index].originalText else { return }
+        entries[index].text = original
+        entries[index].originalText = nil
         persist()
     }
 

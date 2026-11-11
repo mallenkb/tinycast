@@ -73,7 +73,7 @@ final class MenuPanelController {
     var isOpen: Bool { panel?.isVisible ?? false }
 
     func show(
-        _ content: AnyView, corner: MenuPanelCorner, parent: NSWindow, core: AppCore,
+        _ content: AnyView, corner: MenuPanelCorner, parent: NSWindow, parentOutset: CGFloat, core: AppCore,
         clipPath: @escaping MenuPanelClipPath,
         onKeyDown: @escaping (NSEvent) -> Bool, onDismiss: @escaping () -> Void
     ) {
@@ -87,7 +87,7 @@ final class MenuPanelController {
         // Open disarmed: a menu opened by click lands under the pointer, which chose no row of it.
         core.palette.disarmHoverHighlight(pointerAt: NSEvent.mouseLocation)
         layout(
-            corner: corner, parent: parent, metrics: core.settings.interfaceMetrics,
+            corner: corner, parent: parent, parentOutset: parentOutset, metrics: core.settings.interfaceMetrics,
             force: true)
         if panel.parent == nil { parent.addChildWindow(panel, ordered: .above) }
         panel.makeKey()
@@ -96,7 +96,7 @@ final class MenuPanelController {
 
     /// Rebuilds the hosted tree in place: the panel keeps its window, so nothing flickers.
     func update(
-        _ content: AnyView, corner: MenuPanelCorner, core: AppCore,
+        _ content: AnyView, corner: MenuPanelCorner, parentOutset: CGFloat, core: AppCore,
         clipPath: @escaping MenuPanelClipPath
     ) {
         guard let panel, panel.isVisible, let parent else { return }
@@ -104,7 +104,7 @@ final class MenuPanelController {
             AnyView(content.paletteEnvironment(core)),
             clipPath: clipPath, in: panel)
         layout(
-            corner: corner, parent: parent, metrics: core.settings.interfaceMetrics,
+            corner: corner, parent: parent, parentOutset: parentOutset, metrics: core.settings.interfaceMetrics,
             force: false)
     }
 
@@ -177,7 +177,7 @@ final class MenuPanelController {
     }
 
     private func layout(
-        corner: MenuPanelCorner, parent: NSWindow, metrics: InterfaceMetrics, force: Bool
+        corner: MenuPanelCorner, parent: NSWindow, parentOutset: CGFloat, metrics: InterfaceMetrics, force: Bool
     ) {
         guard let panel, let hosting else { return }
         let size = hosting.intrinsicContentSize
@@ -187,7 +187,7 @@ final class MenuPanelController {
         let frame = corner.frame(
             contentSize: size, parentFrame: parent.frame,
             visibleFrame: parent.screen?.visibleFrame ?? parent.frame, inset: inset,
-            headerExtent: metrics.size.headerPadding + metrics.size.headerHeight)
+            headerExtent: metrics.size.headerPadding + metrics.size.headerHeight, parentOutset: parentOutset)
         let next = Placement(frame: frame, corner: corner)
         guard force || next != placement else { return }
         placement = next

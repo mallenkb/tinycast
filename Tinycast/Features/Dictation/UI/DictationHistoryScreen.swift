@@ -38,7 +38,7 @@ struct DictationHistoryScreen: PaletteScreen {
 
     func actions(at selection: Int) -> PopoverMenuContent? {
         guard let item = item(at: selection), let text = item.text else { return nil }
-        let actions = ClipboardChord.allCases.compactMap { chord in
+        var actions = ClipboardChord.allCases.compactMap { chord in
             core.settings.clipboardDefaultAction.action(for: chord, on: item).map { action in
                 PopoverMenuItem(
                     title: action.title(pastingInto: vm.pasteTarget),
@@ -48,6 +48,31 @@ struct DictationHistoryScreen: PaletteScreen {
                     deliver(text, action: action)
                 }
             }
+        }
+        let entry = rows[selection]
+        if let original = entry.originalText {
+            actions += [
+                PopoverMenuItem(title: String(localized: "Copy original"), systemImage: "doc.on.doc") {
+                    Paster.copyPlainText(original)
+                },
+                PopoverMenuItem(title: String(localized: "Restore original"), systemImage: "arrow.uturn.backward") {
+                    core.dictationWriting.cancel()
+                    history.restore(id: entry.id)
+                }
+            ]
+        }
+        actions += core.dictationTransforms.transforms.map { transform in
+            PopoverMenuItem(
+                title: transform.name, systemImage: "sparkles",
+                isEnabled: core.dictationWriting.workingEntry == nil && core.dictationWriting.unavailableReason == nil
+            ) {
+                core.dictationWriting.apply(transform, to: entry)
+            }
+        }
+        if core.dictationWriting.workingEntry == entry.id {
+            actions.append(PopoverMenuItem(title: String(localized: "Cancel"), systemImage: "xmark") {
+                core.dictationWriting.cancel()
+            })
         }
         return PopoverMenuContent(items: actions + [
             PopoverMenuItem(
@@ -92,6 +117,9 @@ struct DictationHistoryScreen: PaletteScreen {
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(.vertical, metrics.spacing.lg)
+                        }
+                        if core.dictationWriting.workingEntry == entries[selection].id {
+                            ProgressView().controlSize(.small)
                         }
                         ClipboardInfoSection(
                             item: selected, imageURL: nil,

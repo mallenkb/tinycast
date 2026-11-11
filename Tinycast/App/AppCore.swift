@@ -155,6 +155,12 @@ final class AppCore {
         windowController: windowController, paletteCoordinator: paletteCoordinator,
         palette: palette,
         showMessage: { [unowned self] in self.showMessage($0, tone: $1) }, core: self)
+    @ObservationIgnored private(set) lazy var dictationCleanup = DictationCleanupModel()
+    @ObservationIgnored private(set) lazy var dictationTransforms = DictationTransformStore()
+    @ObservationIgnored private(set) lazy var dictationWriting = DictationWritingCoordinator(
+        store: dictationTransforms, cleanup: dictationCleanup, settings: settings, aiSettings: aiSettings,
+        history: dictationHistory, hotKeys: hotKeys,
+        report: { [unowned self] in self.showMessage($0, tone: $1) })
     @ObservationIgnored private(set) lazy var dictationCoordinator = DictationCoordinator(
         settings: settings, hotKeys: hotKeys, models: dictationModels,
         corrections: dictationCorrections, injector: textInjector,
@@ -170,8 +176,9 @@ final class AppCore {
                 symbol: "waveform", confirmTitle: String(localized: "Continue"), tone: .neutral,
                 confirmRole: .standard)
         },
+        setupModels: { [unowned self] in await self.setupDictationModels() },
         showMessage: { [unowned self] in self.showMessage($0, tone: $1) },
-        recordTranscript: { [unowned self] in self.dictationHistory.record($0, pastedInto: $1) })
+        recordTranscript: { [unowned self] in self.dictationHistory.record($0, originalText: $1, pastedInto: $2) })
     @ObservationIgnored private(set) lazy var quicklinkCoordinator = QuicklinkCoordinator(
         store: quicklinks, settings: settings,
         appIndex: appIndex, injector: textInjector, hotKeys: hotKeys, favorites: favorites,
@@ -473,11 +480,31 @@ final class AppCore {
 
             hotKeys.onTogglePalette = { [weak self] in self?.paletteCoordinator.togglePalette() }
             hotKeys.dictationEnabled = settings.dictationEnabled
+            dictationCoordinator.onRecordingStarted = { [weak self] in
+                self?.dictationWriting.beginRecording()
+            }
+            dictationCoordinator.onRecordingEnded = { [weak self] in
+                self?.dictationWriting.endRecording()
+            }
+            dictationCoordinator.processTranscript = { [weak self] text, isEnglish in
+                guard let self else { return text }
+                return await self.dictationWriting.process(text, isEnglish: isEnglish)
+            }
+            hotKeys.onRunDictationTransform = { [weak self] id in
+                guard let self, let transform = dictationTransforms.transforms.first(where: { $0.id == id }),
+                      let entry = dictationHistory.entries.first else { return }
+                dictationWriting.apply(transform, to: entry) { [weak self] in
+                    self?.launcherCoordinator.runCommand(.dictationHistory)
+                }
+            }
             hotKeys.onDictationHoldPressed = { [weak self] in self?.dictationCoordinator.pressed(.pushToTalk) }
             hotKeys.onDictationTogglePressed = { [weak self] in self?.dictationCoordinator.pressed(.toggle) }
             hotKeys.onDictationHoldReleased = { [weak self] in self?.dictationCoordinator.releasedHold() }
             hotKeys.onDictationHoldCancelled = { [weak self] in self?.dictationCoordinator.cancelHold() }
             hotKeys.onDictationCancelled = { [weak self] in self?.dictationCoordinator.cancel() }
+            if settings.dictationEnabled && settings.dictationIdleIndicator {
+                dictationCoordinator.applyIdleIndicator()
+            }
             hotKeys.onRunCommand = { [weak self] id in self?.launcherCoordinator.runCommand(id) }
             hotKeys.onRunCustomCommand = { [weak self] id in
                 self?.customCommandCoordinator.runCustomCommand(id: id)
@@ -647,7 +674,9 @@ final class AppCore {
             return snippetsStore.record(id: id)?.snippet.name
         case .extensionCommand(let entryID):
             return appIndex.apps.first { $0.kind == .extensionCommand && $0.id == entryID }?.name
-        case .togglePalette, .dictationHold, .dictationToggle, .command, .systemAction, .windowCommand:
+        case .dictationTransform(let id):
+            return dictationTransforms.transforms.first { $0.id == id }?.name
+        case .togglePalette, .dictationHold, .dictationToggle, .dictationToggleAlternate, .command, .systemAction, .windowCommand:
             return nil
         }
     }
@@ -657,6 +686,8 @@ final class AppCore {
     }
 
     func stopDictationForTermination() async {
+        dictationWriting.cancel()
+        dictationCleanup.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         await dictationModels.stop()
     }
@@ -700,6 +731,8 @@ final class AppCore {
         searchIntentCoordinator.cancel()
         emojiIndex.unload()
         memoryReclaimer.stop()
+        dictationWriting.cancel()
+        dictationCleanup.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         clipboardTextIndexer?.stop()
@@ -839,9 +872,14 @@ final class AppCore {
                 $0.dictationModels.setIdleRelease($0.settings.dictationIdleRelease)
             })
         track(
-            { _ = $0.dictationEnabled },
+            {
+                _ = $0.dictationEnabled
+                _ = $0.dictationIdleIndicator
+                _ = $0.dictationIndicatorStyle
+            },
             reproject: {
                 $0.hotKeys.dictationEnabled = $0.settings.dictationEnabled
+                $0.dictationCoordinator.applyIdleIndicator()
             })
         track(
             {
@@ -888,6 +926,18 @@ final class AppCore {
         track(
             { _ = $0.clipboardRetention },
             reproject: { $0.clipboardCoordinator.applyRetention($0.settings.clipboardRetention) })
+        track(
+            {
+                _ = $0.dictationEnabled
+                _ = $0.dictationCleanupEngine
+            }, reproject: {
+                if !$0.settings.dictationEnabled { $0.dictationWriting.cancel() }
+                if $0.settings.dictationEnabled {
+                    $0.dictationCleanup.stopIfModelChanged(to: $0.dictationWriting.selectedLocalModel)
+                } else {
+                    $0.dictationCleanup.stop()
+                }
+            })
         track(
             { _ = $0.dictationHistoryRetention },
             reproject: { $0.dictationHistory.setRetention($0.settings.dictationHistoryRetention) })
@@ -1092,6 +1142,56 @@ final class AppCore {
     {
         await dialogs.reportFailure(
             title: title, message: message, symbol: symbol, recovery: recovery)
+    }
+
+    private func setupDictationModels() async {
+        let speech = DictationModel.Family.parakeet.defaultModel
+        let cleanup = DictationCleanupModel.Variant.s1Mini
+        dictationModels.refreshInstalledModels()
+        let needsSpeech = !settings.dictationUsesApple && settings.dictationModel == speech
+            && !dictationModels.isInstalled(speech) && dictationModels.downloading == nil
+        let needsCleanup = settings.dictationCleanupEngine == cleanup.rawValue
+            && !dictationCleanup.isInstalled(cleanup) && dictationCleanup.downloading == nil
+        guard needsSpeech || needsCleanup else {
+            Permissions.ensureAccessibility()
+            return
+        }
+
+        var descriptions: [String] = []
+        if needsSpeech {
+            let size = (Int64(speech.approximateInstalledMegabytes) * 1_000_000).formatted(.byteCount(style: .file))
+            descriptions.append(String(
+                localized: "Parakeet Ultra transcribes speech in 25 languages and uses about \(size) on disk."))
+        }
+        if needsCleanup {
+            let size = cleanup.downloadBytes.formatted(.byteCount(style: .file))
+            descriptions.append(String(
+                localized: """
+                    S1-mini is an optional English model for Smart cleanup and transforms. The download is \(size).
+                    """))
+        }
+        let both = needsSpeech && needsCleanup
+        var options = [DialogAction(title: both ? String(localized: "Download Both") : String(localized: "Download"))]
+        if both { options.append(DialogAction(title: String(localized: "Download Ultra Only"))) }
+        options.append(DialogAction(title: String(localized: "Not Now"), role: .cancel))
+        let selection = await choose(
+            title: String(localized: "Set Up Dictation"), message: descriptions.joined(separator: "\n\n"),
+            symbol: "waveform", options: options, defaultIndex: 0)
+        guard !Task.isCancelled, settings.dictationEnabled else { return }
+        Permissions.ensureAccessibility()
+        guard selection < options.count - 1 else { return }
+
+        if needsSpeech {
+            do { try await dictationModels.download(speech) } catch is CancellationError {
+                return
+            } catch let error as URLError where error.code == .cancelled {
+                return
+            } catch { showMessage(error.localizedDescription, tone: .danger) }
+        }
+        guard needsCleanup, selection == 0, !Task.isCancelled else { return }
+        do { try await dictationCleanup.download(cleanup) } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
+        } catch { showMessage(error.localizedDescription, tone: .danger) }
     }
 
     /// The transient success/info pill, so `messageHUD` stays single-owned alongside `dialogs`.

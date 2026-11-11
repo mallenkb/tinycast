@@ -93,6 +93,11 @@ enum SettingsBackupCoverage {
         AppSettingsKey.dictationUsesApple.rawValue: "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationRemovesFillerWords.rawValue:
             "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationCleanupEngine.rawValue: "Dictation writing preferences stay local to this Mac.",
+        AppSettingsKey.dictationSmartCleanup.rawValue: "Dictation writing preferences stay local to this Mac.",
+        AppSettingsKey.dictationAdvancedCleanup.rawValue: "Dictation writing preferences stay local to this Mac.",
+        AppSettingsKey.dictationAutoTransform.rawValue: "Dictation writing preferences stay local to this Mac.",
+        AppSettingsKey.dictationTransformID.rawValue: "Dictation writing preferences stay local to this Mac.",
         AppSettingsKey.dictationAutoLearnsWords.rawValue:
             "Reading corrections in another app requires enabling Dictation on this Mac.",
         AppSettingsKey.dictationLanguage.rawValue:
@@ -106,6 +111,14 @@ enum SettingsBackupCoverage {
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationIndicatorStyle.rawValue:
             "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationLivePreview.rawValue:
+            "Live dictation processing stays a device-local preference.",
+        AppSettingsKey.dictationTwoLinePreview.rawValue:
+            "Dictation appearance preferences stay local.",
+        AppSettingsKey.dictationAnimateTranscript.rawValue:
+            "Dictation appearance preferences stay local.",
+        AppSettingsKey.dictationIdleIndicator.rawValue:
+            "Dictation indicator preferences stay local.",
         AppSettingsKey.dictationIdleRelease.rawValue:
             "Dictation memory use stays a device-local preference.",
         AppSettingsKey.clipboardTextSearchEnabled.rawValue:

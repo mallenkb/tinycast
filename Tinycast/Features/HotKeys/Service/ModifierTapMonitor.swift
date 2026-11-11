@@ -142,6 +142,8 @@ final class ModifierTapMonitor: HealthCheckable {
                 if holding {
                     holding = false
                     onHoldReleased?()
+                } else if doubleTap, !held, bound.contains(key.doubleBinding) {
+                    onTrigger?(key.doubleBinding)
                 }
                 return
             }

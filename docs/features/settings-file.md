@@ -160,10 +160,15 @@ Each pane that lists items writes the ones with something set, as records keyed 
 `applications.apps` and `systemSettings.panes` by bundle ID, `systemActions.actions` by action ID, and
 built-in commands under the pane that lists them, such as `clipboard.commands`, `dictation.commands`
 and `emoji.commands`. Commands without a feature pane use `commands.builtIn`. Each record uses the
-ID after `command:`. The recording shortcuts use `dictation.holdShortcut` and `dictation.toggleShortcut`.
+ID after `command:`. The recording shortcuts use `dictation.holdShortcut`, `dictation.toggleShortcut`, and
+`dictation.toggleAlternateShortcut`.
 The palette shortcut uses `general.launcherShortcut`.
-`dictation.indicatorStyle` accepts `compact` for Dark compact, `lightCompact`, `lightCapsule`,
-`darkCapsule`, `outlinedCapsule`, `lightRounded`, `darkRounded`, or `outlinedRounded`.
+`dictation.animateTranscript` controls word-reveal animation and defaults to true.
+`dictation.livePreview` and `dictation.idleIndicator` are opt-in booleans for the transcript preview
+and the idle bar. `dictation.twoLinePreview` wraps the live preview across two lines and defaults to false.
+`dictation.indicatorStyle` stores the shape and background selection. It accepts `compact`
+for dark compact, `lightCompact`, `grayCompact`, `lightGrayCompact`, `lightCapsule`, `darkCapsule`, `outlinedCapsule`,
+`lightOutlinedCapsule`, `lightRounded`, `darkRounded`, `outlinedRounded`, or `lightOutlinedRounded`.
 Setting `dictation.useApple` to `true` selects Apple Dictation. The `dictation.model` value remembers
 the Parakeet or Qwen model to use when Apple Dictation is off.
 
@@ -205,3 +210,9 @@ the Parakeet or Qwen model to use when Apple Dictation is off.
 A consent flag, content or machine state gets no key.
 
 `appearance.typography` accepts `system` or `interVariable`. The choice also travels in settings backups.
+
+Dictation writing preferences mirror `dictation.removesFillerWords`, `dictation.advancedCleanup`,
+`dictation.smartCleanup`, `dictation.cleanupEngine`, `dictation.autoTransform`, and
+`dictation.transformID`. Smart takes precedence when both cleanup flags are set.
+Saved transform instructions and their content-specific shortcut bindings stay local, outside the
+settings file. Importing these preferences does not enable microphone capture or download a model.

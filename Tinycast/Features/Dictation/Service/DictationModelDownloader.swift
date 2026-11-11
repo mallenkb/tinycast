@@ -120,7 +120,7 @@ enum DictationModelDownloader {
         }
     }
 
-    private static func downloadFile(
+    static func downloadFile(
         from url: URL, to destination: URL, using session: URLSession,
         onProgress: @escaping @Sendable (Int64) -> Void
     ) async throws -> URLResponse {

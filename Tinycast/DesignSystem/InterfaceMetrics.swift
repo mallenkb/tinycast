@@ -11,6 +11,7 @@ struct InterfaceMetrics: Equatable, Sendable {
     var radius: Radius { Radius(scale: scale) }
     var size: Size { Size(scale: scale) }
     var typography: Typography { Typography(scale: scale, style: typographyStyle) }
+    var paletteQueryLeadingInset: CGFloat { spacing.md * 2 + size.headerIconSlot + spacing.xl }
 
     /// For a tuned length a surface owns itself, where `Theme` states no token for it.
     func scaled(_ value: CGFloat) -> CGFloat { scaledPoints(value, scale) }
@@ -172,6 +173,7 @@ struct InterfaceMetrics: Equatable, Sendable {
 
         var rowTitle: Font { font(Theme.Typography.rowTitle, .body) }
         var rowTrailing: Font { font(Theme.Typography.rowTrailing, .callout) }
+        var caption: Font { font(.caption, .caption1) }
         var sectionHeader: Font { font(Theme.Typography.sectionHeader, .subheadline, .medium) }
         var panelTitle: Font { font(Theme.Typography.panelTitle, .headline) }
         var calcResult: Font { font(Theme.Typography.calcResult, .title1) }

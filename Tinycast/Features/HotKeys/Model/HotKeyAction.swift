@@ -5,6 +5,8 @@ enum HotKeyAction: Hashable, Sendable {
     case togglePalette
     case dictationHold
     case dictationToggle
+    case dictationTransform(id: UUID)
+    case dictationToggleAlternate
     /// Parameterised over the catalog, so a new built-in command is bindable with no case here.
     case command(CommandID)
     case app(bundleID: String)
@@ -28,6 +30,8 @@ enum HotKeyAction: Hashable, Sendable {
         case .togglePalette: "hotkey.togglePalette"
         case .dictationHold: "hotkey.dictationHold"
         case .dictationToggle: "hotkey.dictationToggle"
+        case .dictationTransform(let id): "hotkey.dictationTransform." + id.uuidString.lowercased()
+        case .dictationToggleAlternate: "hotkey.dictationToggleAlternate"
         case .command(let id): "hotkey." + id.rawValue
         case .app(let bundleID): "hotkey.app." + bundleID
         case .settingsPane(let bundleID): "hotkey.pane." + bundleID
@@ -46,8 +50,9 @@ enum HotKeyAction: Hashable, Sendable {
         }
     }
 
-    var isDictation: Bool { self == .dictationHold || self == .dictationToggle }
+    var isDictation: Bool { self == .dictationHold || self == .dictationToggle || self == .dictationToggleAlternate }
 
     static let builtInActions: [HotKeyAction] =
-        [.togglePalette, .dictationHold, .dictationToggle] + CommandID.allCases.compactMap(\.hotKeyAction)
+        [.togglePalette, .dictationHold, .dictationToggle, .dictationToggleAlternate]
+        + CommandID.allCases.compactMap(\.hotKeyAction)
 }

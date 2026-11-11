@@ -8,10 +8,10 @@ enum Theme {
 
     enum Spacing {
         static let xxs: CGFloat = 2
-        static let dictationWaveGap: CGFloat = 5.0625
+        static let dictationWaveGap: CGFloat = 5
         static let dictationLabelWaveGap: CGFloat = 3
         static let dictationWaveInset: CGFloat = 16
-        static let dictationPanelBottomInset: CGFloat = 32
+        static let dictationPanelBottomInset: CGFloat = 16
         static let xs: CGFloat = 4
         static let sm: CGFloat = 6
         static let md: CGFloat = 8
@@ -105,6 +105,9 @@ enum Theme {
         static let compactHeight: CGFloat = headerHeight + headerPadding * 2
         /// Native glass contours and interaction effects draw outside their layout bounds.
         static let paletteGlassOutset: CGFloat = 4
+        static let paletteLightShadowOutset: CGFloat = 24
+        static let paletteLightShadowRadius: CGFloat = 9
+        static let paletteLightShadowOffset: CGFloat = 3
         /// How close a dragged palette must be to the invisible vertical centre line.
         static let paletteSnapDistance: CGFloat = 8
         /// A restored position needs this much bar on a display to still be grabbable.
@@ -145,6 +148,7 @@ enum Theme {
         /// Hit target for a chat message footer glyph; its caption symbol floats inside it.
         static let chatMessageAction: CGFloat = 16
         static let hairline: CGFloat = 1
+        static let paletteLightBorderPixels: CGFloat = 1
         static let markdownListMarker: CGFloat = 20
         static let markdownQuoteBar: CGFloat = 2
         static let contextRingStroke: CGFloat = 2
@@ -204,6 +208,7 @@ enum Theme {
         static let settingsSidebar: CGFloat = 215
         /// The narrowest the pane column may get before a grouped row's control starts colliding.
         static let settingsDetailMinimum: CGFloat = 420
+        static let settingsPageWidth: CGFloat = 740
         static let settingsRowIcon: CGFloat = 20
         static let settingsRowButton: CGFloat = 24
         static let settingsSidebarIcon: CGFloat = 28
@@ -295,9 +300,13 @@ enum Theme {
         /// Transient volume HUD shown after any volume or mute command.
         static let hudWidth: CGFloat = 200
         static let hudHeight: CGFloat = 100
-        static let dictationWaveBar: CGFloat = 2.5
+        static let dictationWaveBar: CGFloat = 3
         static let dictationWaveBarCount = 7
         static let dictationIndicatorHeight: CGFloat = 30
+        static let dictationIdleWidth: CGFloat = 40
+        static let dictationIdleHeight: CGFloat = 7
+        static let dictationIdleHoverWidth: CGFloat = 60
+        static let dictationPreviewWidth: CGFloat = 360
         static let dictationOutlineWidth: CGFloat = 1
         static let dictationLabelWaveBarCount = 5
         static let dictationSpinnerDiameter: CGFloat = 14
@@ -318,6 +327,9 @@ enum Theme {
     }
 
     enum Duration {
+        static let dictationWordGroup: TimeInterval = 0.16
+        static let dictationWordFade: TimeInterval = 0.32
+        static let dictationIndicatorMorph: TimeInterval = 0.24
         static let dictationProcessingWord: TimeInterval = 2
         static let dictationTranscribingShimmer: TimeInterval = 1.8
         static let dictationSpinnerRotation: TimeInterval = 1
@@ -395,6 +407,8 @@ enum Theme {
         static let sectionHeader = Font.subheadline.weight(.medium)
         /// A borderless panel's own title, which names the surface rather than a section inside it.
         static let panelTitle = Font.headline
+        static let dictationTranscriptSize: CGFloat = 14
+        static let dictationTranscript = Font.system(size: dictationTranscriptSize)
         static let calcResult = Font.title
         static let keyCap = Font.caption
         /// Pair with the matching `Size` for `KeyCapChip.Scale`.
@@ -448,10 +462,15 @@ enum Theme {
         static let tooltipShadow = adaptive(
             dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
 
-        static let paletteGlassTint = adaptive(dark: .srgbInk(0, alpha: 0.55), light: .clear)
+        static let paletteTint = adaptive(
+            dark: .srgbInk(0, alpha: 0.55), light: .srgbInk(1, alpha: 0.40))
+        static let paletteBorder = ramp(dark: 0.10, light: 0.12)
+        static let paletteLightShadow = ramp(dark: 0, light: 0.12)
         static let dictationBackground = adaptive(dark: .black, light: .black)
-        static let dictationLightBackground = Color(white: 0.80)
-        static let dictationLightInk = Color(white: 0.09)
+        static let dictationLightBackground = Color.white
+        static let dictationIdleBar = Color(white: 0.5)
+        static let dictationLightInk = Color(white: 23.0 / 255)
+        static let dictationLightBorder = Color(white: 229.0 / 255)
         static let dictationDarkInk = Color.white
         static let dictationDarkBackground = Color(white: 0.14)
         static let dictationOutline = Color(white: 0.27)

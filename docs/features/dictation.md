@@ -4,8 +4,12 @@ Dictation is off by default. Either assigned global shortcut records from the ch
 transcribes locally and sends the result through `TextInjector`. Parakeet V3, Ultra and Redux
 support 25 languages. Parakeet V2 and Phonon-2 support English. Phonon-2 is a smaller model
 retrained from V3 for English. Qwen3-ASR 0.6B and 1.7B support 30 languages and 22 Chinese dialects.
-Settings lists Parakeet V3 first, marks it Recommended and selects it by default. Choose Download
+Settings marks Parakeet Ultra as Recommended and selects it by default. Choose Download
 to install the selected Parakeet or Qwen model. Apple Dictation uses speech assets managed by macOS.
+After microphone access is granted, enabling Dictation offers the missing recommended downloads for
+the selected engines. On the defaults, Ultra transcribes speech and S1-mini is optional for Smart
+cleanup and transforms. The setup lets you download both, download Ultra alone, or decide later.
+Progress appears on the main Dictation settings page.
 
 Parakeet and Qwen use Core ML and Accelerate. Each family has its own adapter inside the bundled
 helper, and variants share their family's implementation.
@@ -27,7 +31,7 @@ models use CPU/Neural Engine.
   a global recording shortcut.
 - Auto-learn words defaults to on when Dictation is enabled. An explicit Off choice is preserved
   when Dictation is turned off and on again. After a confirmed paste into a readable text field, Tinycast
-  can watch the inserted text for up to 12 seconds. It learns a single similar word replacement
+  can watch the inserted text for up to 60 seconds. It learns a single similar word replacement
   after the edit settles and stops watching when focus leaves the field or the surrounding text
   changes. Add a word or phrase under Dictation Settings > Dictionary to keep its preferred spelling.
   Enter a misspelling to replace the text Tinycast repeatedly hears. The dictionary stores up to 100
@@ -36,22 +40,26 @@ models use CPU/Neural Engine.
   Entries apply with learning off. Remove an entry in Dictation Settings to stop using it.
 - Microphone status appears in Permissions and the Dictation pane. Neither pane prompts on display;
   only a user action requests access, while revoked access is refreshed from macOS.
-- Hold to talk and Hands-free have separate global shortcuts and can both be assigned.
-  Both use the shared recorder and conflict handling. Hold to talk accepts a Carbon chord or a
+- Push to talk and Hands-free have separate global shortcuts and can both be assigned.
+  Hands-free shows one shortcut recorder alongside the automatic double-tap hint.
+  The alternate shortcut remains available through settings.json. Both bindings use conflict handling. Push to talk accepts a Carbon chord or a
   single physical modifier, including Fn/Globe. Hands-free starts and stops on successive
   activations and accepts double taps.
-  Modifier holds begin after 250 ms alone and reserve their key across single and double taps.
+  Double tapping the Push to talk modifier toggles Hands-free. Modifier holds begin after 250 ms
+  alone and reserve their key across other single and double taps.
   Another modifier, key or click cancels the hold without inserting text.
 - Carbon or the shared modifier monitor reports release to stop a held recording. A hold release
   or cancellation does not stop a recording started by the toggle shortcut or a composer mic.
-  Return finishes and Escape cancels. Opening a shortcut recorder cancels a held recording before
+  Return finishes dictation. Escape cancels even when another app has focus. It dismisses the
+  preview and indicator without restoring the idle bar. Opening a shortcut recorder cancels a held recording before
   pausing its shortcuts. A session token prevents stale transcription from inserting text later.
 - AI Chat's composer mic is always click-to-toggle into that field: `toggle(into:)` targets its
   `ComposerTextView` in process whatever has focus. `field` tells only that button it is running.
-  Switching chats or closing the composer cancels only the session targeting that editor, including
-  one started by a shortcut. The session token is checked again when queued insertion runs.
-- The nonactivating panel preserves the target app. It sits above app windows and can join other
-  apps across Spaces, full-screen windows and Stage Manager. Text insertion reuses `TextInjector`, including
+  Switching chats or closing the composer cancels that editor's mic session. The session token is
+  checked again when queued insertion runs.
+- Shortcut dictation uses the input focused when the transcript is ready to paste. The indicator
+  gives up keyboard focus first. The panel sits above app windows and can join other apps across
+  Spaces, full-screen windows and Stage Manager. Text insertion reuses `TextInjector`, including
   its temporary clipboard ownership, focus, secure-input and protected-target checks. Dictation History
   keeps completed transcripts on this Mac, including transcripts that could not be pasted.
   History keeps transcripts for three months by default. Choose how long to keep them in Dictation
@@ -60,12 +68,42 @@ models use CPU/Neural Engine.
   show an outline microphone at the standard menu symbol size. The history also offers full
   transcript previews and local search.
   The Information section shows the date and word count.
-  New entries also show the original app when the transcript was pasted successfully.
+  New entries also show the app where the transcript was pasted successfully.
   Dictation History and Dictation Settings are available even when recording is disabled.
-- The compact dictation indicators use seven bars in a light or dark capsule. The other styles use
-  a capsule or rounded rectangle in light, dark, or outlined finishes and include a status label.
+- The compact dictation indicators use seven bars. The other styles use a capsule or rounded
+  rectangle and include a status label. The style picker selects the shape. A Dark mode switch
+  chooses light or dark for every style. Gray is no longer offered in Settings.
+  The light transcript preview uses the light pill’s background and border.
   The pill appears when the shortcut or composer mic starts a recording and shows Starting…
   until microphone setup completes off the main thread.
+  It sits 16 points above a visible bottom Dock, or above the screen edge when the Dock is hidden,
+  on another edge or display, or the active app is full-screen with the Dock hidden.
+  Revealing a bottom Dock moves the indicator above it. It repositions when Spaces,
+  display configuration or system presentation changes and checks visible Dock bounds twice per second.
+  When the window list lacks the Dock's bounds, the indicator can use the Dock's accessibility
+  bounds to distinguish a hidden Dock from space macOS still reserves for it.
+  The indicator and transcript follow the frontmost app's frontmost visible standard window,
+  using the display containing the largest portion of that window. Without an app window, they
+  use the pointer's display. App activation updates placement immediately; window moves and
+  switches within the same app are picked up by the existing twice-per-second placement check.
+  The optional idle indicator shows a small bar while dictation is enabled without recording audio
+  or loading a model. It restores on launch when enabled. Hovering reveals a microphone button
+  at the same height as the recording pill. The button starts hands-free dictation. The indicator
+  expands into the selected pill when recording begins and contracts when
+  dictation finishes. The border follows the pill as it resizes. Live transcript preview is
+  separately opt-in and shows recent words above the pill. It transcribes up to eight seconds of
+  recent audio at a time, with a 1.5-second pause between requests. Preview requests are serialized
+  with the final transcription. The full recording is transcribed when recording stops.
+  Transcript animation defaults to on and follows global animations and Reduce Motion.
+  Its dedicated Settings toggle is removed; the stored preference remains accessible in settings.json. New words appear in groups of up to three,
+  and later recognition results can correct previously shown words. The preview grows to its
+  maximum width without shrinking during a recording. By default it scrolls along one line.
+  With Two-line live preview on, the bubble starts at one line and grows on the first wrap.
+  After that, completed lines scroll up as new words fill the bottom line.
+  New groups arrive 160 ms apart and fade in over 320 ms with eased opacity. Each word keeps its
+  fade progress across incoming updates; corrections update in place without replaying earlier words.
+  Text updates without an implicit crossfade inside the separately animated, clipped viewport.
+  Reduce Motion or turning the effect off displays updates immediately.
   Each indicator fits the current state. Settings previews both listening and processing for the
   selected style.
   The waveform blends neighboring
@@ -125,9 +163,9 @@ models use CPU/Neural Engine.
   prompts and supported language hints once, then retains only the tokenizer's decoding tables
   and prepared tokens, not the BPE encoding rules.
 - The `Model/` folder imports Foundation only. Context-sensitive spaces and capitalization are a
-  pure decision driven by text around the caret. Capitalization adapts by default and can be disabled
-  without disabling contextual spaces; if an app does not expose that context through
-  Accessibility, the plain transcript is inserted without guessing.
+  pure decision driven by text around the caret. Capitalization adapts by default.
+  The `dictation.adaptsCapitalization` override in `settings.json` leaves contextual spaces enabled.
+  If an app does not expose caret context through Accessibility, Tinycast inserts the plain transcript.
 - **Remove filler words** in the Model section is on by default. When enabled, Tinycast removes
   standalone English hesitations such as “um” and “uh” before inserting or copying text.
   It uses the selected language or identifies English locally for multilingual models in Auto.
@@ -167,3 +205,78 @@ Use the same audio, build configuration and otherwise idle machine for compariso
 
 Optional arguments select a helper `.app`, model directory and a single model by its raw identifier.
 This tool uses installed models and runs outside the deterministic suite and app targets.
+
+## Text cleanup and transforms
+
+Smart cleanup is opt-in. Its engine defaults to S1-mini by Superwhisper, with Apple Intelligence
+and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
+S1-mini by Superwhisper for dictation with paragraph breaks. Each Q4_K_M download has its own
+file in the channel's caches, pinned to a repository revision and checked against its SHA-256 digest. The app
+bundles a pinned, statically linked llama.cpp server under `Contents/Helpers/TinycastCleanup`.
+It binds only to authenticated loopback, disables its web UI and logs, and performs no remote
+inference. Downloads alone use the network. Both downloads are intended for English. Smart cleanup
+with either download preserves other languages. The local engine accepts up to 3,500 characters.
+For Smart cleanup, both models use their published settings and disable thinking. S1-mini uses
+semi-formal, lists, and general. S1-ASR-Cleanup uses semi-formal, prose, general, and layers 1 and 2.
+When a recording will use Smart cleanup or an automatic transform, Tinycast starts loading the
+selected cleanup engine at recording start. The local helper stays available through the recording
+and exits after one minute of inactivity. It also stops on request errors, disabling dictation,
+changing engines, or quitting. Tinycast releases its Apple Intelligence session after use.
+macOS manages the shared Apple Intelligence model's memory.
+
+Saved transforms live in `dictation-transforms.json` in this channel's application-support directory.
+Polish, Shorten, Make a list, and Prompt Engineer seed a new installation; users can edit, create, or delete entries.
+Transforms use the same engine selection as Smart cleanup, even in the Off, Basic, and Advanced
+modes. Local models receive the transform instructions directly. Apple Intelligence honors its
+availability and route switch. Auto-apply is off by default. Automatic processing occurs before
+insertion, with the original recording token checked again after processing. Smart cleanup failures
+use Advanced cleanup. If only an automatic transform was requested and it fails, Tinycast keeps
+the transcript it received. Cleanup and transforms run locally.
+
+History preserves original recognition text when the inserted text was processed. Its actions
+include saved transforms, Copy original, and Restore original. The preview shows only the current
+transcript; the original stays available through Actions without a second transcript section.
+The built-in Paragraphs transform is available in History and as an assignable shortcut. The
+selected engine chooses which sentences start a paragraph, and Tinycast inserts the breaks into the
+existing text. This preserves the words and punctuation and keeps the work out of automatic dictation.
+A transform shortcut processes the latest History entry and opens History for review; it never
+replaces arbitrary text in another app. Manual operations check cancellation, entry identity, and
+unchanged input before updating History. Restoring an original cancels a pending manual operation.
+The Text cleanup cards show fixed examples of the same dictation at each level. Below the cards,
+the preview sits beside the editable sample and updates when the sample or mode changes.
+The Examples menu fills the sample with currency, a date, a time, or a spoken paragraph command.
+Smart cleanup waits briefly for typing to pause. The transform editor has its own sample preview.
+
+Prompt Engineer uses a structured output template, preserves quoted examples, and leaves missing
+requirements as placeholders. It generates a prompt instead of executing the dictated task.
+
+## Settings organization
+
+The main Dictation page groups the Dictation History and Dictation Settings commands with Enable
+Dictation. Recording groups Push to talk, both Hands-free shortcuts, the microphone,
+Indicator & feedback, and Speech recognition. Writing groups Text cleanup, After dictation,
+Dictionary, and history retention. The Indicator & feedback row previews
+the current style alongside the preview on its detail page. Settings search opens the detail
+page containing its target. The window Back and Forward buttons include these detail pages
+in their history, including the transform editor, and restore the page visited before switching
+settings panes. Back from the editor returns to After dictation. The title-bar header
+uses native macOS path breadcrumbs beside Back and Forward, with space between the controls.
+Clicking Dictation returns to the overview; no second back row appears inside the page.
+
+Text cleanup offers Off, Basic, Advanced, and Smart. Basic and Advanced remove English fillers
+and format supported spoken values, including currency, dates, times, percentages, measurements,
+fractions, and certain contact details. Both use local rules and load the bundled FluidInference
+formatter when a supported phrase needs it. Advanced also handles stutters, clear weekday
+corrections, and spoken punctuation. It can format lists from explicit commands, ordered cues,
+headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps. See the
+[formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
+budget expires, Basic keeps its filler removal and Advanced keeps the original text. Smart runs the
+selected engine. The After dictation switch
+pauses automatic transforms without clearing the Default transform selection. Transform instructions,
+shortcuts and sample preview appear while editing that transform. Smart cleanup and transforms
+share the engine selected in Text cleanup. The Text cleanup page also manages its model downloads.
+Speech recognition manages the speech model. Sounds are under Indicator & feedback.
+
+The cleanup model download shows transferred bytes and percentage in a linear progress bar. At 100%,
+Finishing download remains visible while the model checksum is verified. Cancel stays available.
+The Smart cleanup preview shows the selected engine beside its result.

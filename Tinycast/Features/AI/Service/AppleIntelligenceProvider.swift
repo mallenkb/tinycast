@@ -5,9 +5,11 @@ import Foundation
 struct AppleIntelligenceProvider: AIProvider {
     /// The caller's, not a constant: the default filter refuses text the reader already wrote.
     let guardrails: SystemLanguageModel.Guardrails
+    private let prewarmedSession: LanguageModelSession?
 
-    init(guardrails: SystemLanguageModel.Guardrails = .default) {
+    init(guardrails: SystemLanguageModel.Guardrails = .default, prewarmedSession: LanguageModelSession? = nil) {
         self.guardrails = guardrails
+        self.prewarmedSession = prewarmedSession
     }
 
     static func status() -> AppleIntelligenceStatus {
@@ -32,7 +34,7 @@ struct AppleIntelligenceProvider: AIProvider {
                     guard let prompt = turn.prompt else {
                         throw AIProviderError.responseFailed(String(localized: "There was nothing to send."))
                     }
-                    let session = LanguageModelSession(
+                    let session = prewarmedSession ?? LanguageModelSession(
                         model: SystemLanguageModel(guardrails: guardrails),
                         transcript: turn.transcript)
                     let options = GenerationOptions(

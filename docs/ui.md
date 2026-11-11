@@ -10,25 +10,26 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 
 ## The look, in one paragraph
 
-Tinycast is a **command palette**: a borderless floating panel whose surface is native Liquid Glass,
-without an additional palette scrim. Dark uses a black tint on the native palette glass for a deeper
-background, with lower-opacity selection and hover fills. Light keeps untinted glass. Everything on
-that surface uses an appearance-aware ink ramp.
+Tinycast is a **command palette**: a borderless floating panel. Dark retains its original native
+Liquid Glass background, 55% black glass tint and softened glass edge. Light uses `PaletteBackdrop`,
+an active `NSVisualEffectView` HUD material with behind-window blending, a 40% white overlay and a
+subtle one-pixel border at 12% black. Everything on that surface uses an appearance-aware ink ramp.
+Both materials follow system accessibility settings.
 The header and bottom bar **float over the list as fully transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the bars, they
 **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the
 action pill, the menu circle, popover menus) are **Liquid Glass**.
 
-That paragraph describes **Dark**, which is the design. Light is the same design with the ink
-inverted: the same native glass, and a black-alpha ramp at matched stops. Nothing about
+Dark is the baseline design. Light uses a frosted background with the ink
+inverted and a black-alpha ramp at matched stops. Nothing about
 geometry, type, motion or state changes between them.
 
 Five load-bearing ideas, in priority order:
 
-1. **Surface = native glass in both palette modes.** No extra scrim or solid background. Depth comes from the desktop showing through.
+1. **Dark keeps native glass; Light uses frosted material.** Each appearance has its own backdrop treatment.
 2. **One alpha ramp, never grays.** Ink at fixed stops — white over the dark surface, black over the light one.
 3. **Floating bars, not chrome.** Header/footer are transparent overlays; the list fills the whole panel.
 4. **Edges dissolve, they don't clip.** Scroll-driven mask, no separators between list and bars.
-5. **Glass owns its contours.** The palette and floating controls use native glass without painted outlines.
+5. **Controls retain Liquid Glass.** Light has a subtle palette border; Dark and floating controls use native glass contours.
 
 ---
 
@@ -302,10 +303,10 @@ An extension's own surfaces live in `ExtensionColors` (`Features/Extensions/UI/`
 
 Source: `Palette/PalettePanel.swift`, `Palette/RootPaletteView.swift`.
 
-- **`PalettePanel`** is a borderless `NSPanel`: `isOpaque = false`, `backgroundColor = .clear`, `.palette` level (one above `.modalPanel`, so other apps' open panels never cover it), `hasShadow`, and an `AnimatedPanel`, so it opens with `.documentWindow`. It hosts SwiftUI via `NSHostingView`. `PaletteWindowController` centers it slightly above screen center (`+8%`) and dismisses it on `windowDidResignKey`.
+- **`PalettePanel`** is a borderless `NSPanel`: `isOpaque = false`, `backgroundColor = .clear`, `.palette` level (one above `.modalPanel`, so other apps' open panels never cover it), and an `AnimatedPanel`, so it opens with `.documentWindow`. It hosts SwiftUI via `NSHostingView`. `PaletteWindowController` centers it slightly above screen center (`+8%`) and dismisses it on `windowDidResignKey`.
 - **The results layer fills the whole panel.** The header and bottom bar attach via `.safeAreaInset(edge: .top/.bottom)` as transparent overlays that float _over_ the list. The list underlaps them and dissolves at the edges.
 - **Header** (`headerHeight 36`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Sub-screens (Clipboard, Calculator History) show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content, and the query with the row titles.
-- **Compact bar** (`compactHeight 56`, a full capsule; the expanded panel keeps `panel 26`): the window itself is bare and the shapes are glass. `CompactBar` draws them behind the header row: a native `.regular` glass `Capsule`, then one round button per enabled configured shortcut (zero to four) — Clipboard History, Emoji & Symbols, Search Files and Search Quicklinks by default — so the capsule takes whatever width they leave, and the row is narrowed to match. On every summon the capsule starts at full width and pulls back with an undershoot while each button, parked small inside its end, beads out a beat after the last; its glyph blurs in once the glass has formed. The compact bar adds no scrim or mask over the glass. Keyboard selection tints the existing glass circle and uses a white monochrome glyph; the system material draws the face and contour together, without an overlaid fill or stroke. Activation runs its command synchronously with animations disabled, so no shortcut shapes animate beneath the expanded panel. Leaving fades the bar whole; it parks again after the window has gone. The glass shapes share one `GlassEffectContainer`, and `Theme.CompactBarMotion` holds every value. With **Show animations** off the bar lands at rest: `motionScope()` strips its springs, and the park wait runs through `Motion.duration(_:)`. The glyphs sit above the container, never inside it, where a morph would smear them — and the header row sits outside it, because a container paints its merged glass over any loose content within. The window keeps its native shadow in both modes so the glass shapes remain distinct against light backgrounds.
+- **Compact bar** (`compactHeight 56`, a full capsule; the expanded panel keeps `panel 26`): the window itself is bare and the shapes are glass. `CompactBar` draws them behind the header row: a native `.regular` glass `Capsule`, then one round button per enabled configured shortcut (zero to four) — Clipboard History, Emoji & Symbols, Search Files and Search Quicklinks by default — so the capsule takes whatever width they leave, and the row is narrowed to match. On every summon the capsule starts at full width and pulls back with an undershoot while each button, parked small inside its end, beads out a beat after the last; its glyph blurs in once the glass has formed. The compact bar adds no scrim or mask over the glass. Keyboard selection tints the existing glass circle and uses a white monochrome glyph; the system material draws the face and contour together, without an overlaid fill or stroke. Activation runs its command synchronously with animations disabled, so no shortcut shapes animate beneath the expanded panel. Leaving fades the bar whole; it parks again after the window has gone. The glass shapes share one `GlassEffectContainer`, and `Theme.CompactBarMotion` holds every value. With **Show animations** off the bar lands at rest: `motionScope()` strips its springs, and the park wait runs through `Motion.duration(_:)`. The glyphs sit above the container, never inside it, where a morph would smear them — and the header row sits outside it, because a container paints its merged glass over any loose content within. The compact bar and expanded dark palette keep the native window shadow. The expanded light palette uses a thin border and a soft shadow drawn inside the transparent window margin.
 - **Compact keyboard entry:** pressing `↓` in the collapsed launcher expands the results and selects the first row without replacing or defocusing the shared search field.
 - **Bottom bar** (`bottomBarHeight 52`): a menu circle on the left, the action group on the right — both floating glass, no bar background. The action group is one glass `Capsule` holding the primary-action pill (label + `↵`) and the Actions toggle (`⌘K`).
 - **`BarButton`** is the shared bar control: bare label at rest, a `rowHover` capsule on hover, `barButtonHeight 28`. Set `isSelected` and it fills with `selection` instead, which beats hover; the Notes formatting bar lights its buttons this way. Set `isCompact` for `sm` padding instead of `md`: around a 16-point glyph frame that makes a 28-point square. It carries the footer's two buttons and the clipboard header's type filter, so those hover identically. Hover state lives inside it, so sweeping one never re-renders the palette body.
@@ -734,6 +735,7 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   is unaffected.
 - **`.settingsEnabled(_:)`, never a bare `.disabled(_:)`.** It dims as well as disables, so a
   switched-off row reads as unavailable rather than merely unresponsive.
+- **Inline buttons labeled Remove use the danger action style.** They keep their text and use a red fill.
 - **A segmented control that opens in a panel is a `SteadySegmentedPicker`.** The system control
   opens tight around its labels and widens the first time its selection changes, under the pointer,
   and its own idea of its width shifts a few points with it. The wrapper pins each segment to its
@@ -834,7 +836,8 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   it settles; `.settingsAnchor(_:)` on a `Section` supplies the `.id` and paints the wash, reading
   which anchor is lit from `\.settingsFlash` rather than having it threaded down.
   `SettingsScrollRequest` carries a token because picking the same result twice has to scroll again
-  rather than compare equal and do nothing.
+  rather than compare equal and do nothing. Opening a Dictation detail page or navigating with Back
+  and Forward scrolls to the destination without highlighting it.
 - **The pulse is a pill on the name, and nothing around it is touched.** A grouped `Form` applies a
   `.background` to a row's whole _content_ box, so lighting a section — or a row — paints ragged
   blocks at the width of every label, button and footer paragraph in it. (`.listRowBackground` is a

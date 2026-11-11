@@ -504,7 +504,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard let anchor = resolveAnchor() else { return }
         let size = metrics.size
         let height = collapsed ? size.compactHeight : size.panelHeight
-        renderingOutset = collapsed ? Theme.Size.paletteGlassOutset : 0
+        renderingOutset = collapsed ? Theme.Size.paletteGlassOutset
+            : panel.effectiveAppearance.isDark ? 0 : Theme.Size.paletteLightShadowOutset
         let frame = PalettePlacement.frame(
             at: anchor, size: CGSize(width: size.panelWidth, height: height), outset: renderingOutset)
         panel.setFrame(frame, display: true)

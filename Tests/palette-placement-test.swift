@@ -332,6 +332,19 @@ struct PalettePlacementTests {
             visibleFrame: CGRect(x: 0, y: 0, width: 1000, height: 800),
             inset: inset, headerExtent: headerExtent)
         expect(clamped.maxX, 1000 - inset, "a leading menu clears the display's right edge")
+
+        let outset = Theme.Size.paletteLightShadowOutset
+        let paddedParent = parent.insetBy(dx: -outset, dy: -outset)
+        let anchoredMenus: [(MenuPanelCorner, CGRect)] = [
+            (.bottomLeading, leading), (.bottomTrailing, trailing), (.belowHeaderTrailing, header),
+            (.belowControl(control.offsetBy(dx: outset, dy: outset)), input)
+        ]
+        for (corner, expected) in anchoredMenus {
+            let padded = corner.frame(
+                contentSize: content, parentFrame: paddedParent, visibleFrame: visible,
+                inset: inset, headerExtent: headerExtent, parentOutset: outset)
+            expect(padded == expected, "the light shadow margin does not shift \(corner)")
+        }
     }
 
     // MARK: - The tokens these rules depend on

@@ -21,10 +21,26 @@ final class EmojiIndex {
         let keywordList: [FuzzyMatch.Candidate]
 
         init(_ entry: EmojiEntry) {
+            let descriptions = Self.gestureDescriptions[entry.glyph] ?? ""
+            let searchKeywords = [entry.keywords, descriptions].filter { !$0.isEmpty }.joined(separator: ",")
             name = FuzzyMatch.Candidate(entry.name)
-            keywords = FuzzyMatch.Candidate(entry.keywords)
-            keywordList = entry.keywords.split(separator: ",").map { FuzzyMatch.Candidate(String($0)) }
+            keywords = FuzzyMatch.Candidate(searchKeywords)
+            keywordList = searchKeywords.split(separator: ",").map { FuzzyMatch.Candidate(String($0)) }
         }
+
+        private static let gestureDescriptions: [String: String] = [
+            "🤦": "hand on face,palm on forehead,covering face",
+            "🤦‍♂️": "hand on face,palm on forehead,covering face",
+            "🤦‍♀️": "hand on face,palm on forehead,covering face",
+            "🫣": "hands on face,hands covering eyes,looking through fingers",
+            "🤭": "hand on face,covering mouth,laughing behind hand",
+            "🫢": "hand on face,covering mouth",
+            "🤔": "hand on face,hand on chin",
+            "🫡": "hand on forehead",
+            "🙈": "hands covering eyes",
+            "🙉": "hands covering ears",
+            "🙊": "hands covering mouth"
+        ]
     }
 
     private struct SearchKey: Equatable {
@@ -35,12 +51,41 @@ final class EmojiIndex {
         let limit: Int
     }
 
+    struct DescriptionRequest: Equatable {
+        let query: String
+        let filter: EmojiCategoryFilter
+        let allowsSuggestions: Bool
+
+        var category: EmojiCategory? {
+            if case .category(let category) = filter { return category }
+            return nil
+        }
+
+        var canSuggest: Bool {
+            allowsSuggestions && (filter == .all || category != nil)
+        }
+
+        func includes(_ entry: EmojiEntry) -> Bool {
+            category.map { entry.category == $0 } ?? true
+        }
+    }
+
+    private struct Suggestions {
+        let request: DescriptionRequest
+        var glyphs: [String]?
+    }
+
     private var byGlyph: [String: EmojiEntry] = [:]
     /// Parallel to `entries`.
     private var foldedEntries: [FoldedEntry] = []
     @ObservationIgnored private var searchMemo = Memo<SearchKey, [EmojiEntry]>()
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var loadGeneration = 0
+    @ObservationIgnored private var descriptionCandidates: [EmojiDescriptionSearch.Candidate]?
+    private var descriptionQuery = ""
+    private var descriptionGlyphs: [String] = []
+    private var suggestions: Suggestions?
+    @ObservationIgnored private var descriptionGeneration = 0
     /// Bumped on each load, so the key above names the catalog it scored.
     private var revision = 0
 
@@ -68,6 +113,11 @@ final class EmojiIndex {
         categorySections = []
         byGlyph = [:]
         foldedEntries = []
+        descriptionCandidates = nil
+        descriptionQuery = ""
+        descriptionGlyphs = []
+        suggestions = nil
+        descriptionGeneration &+= 1
         searchMemo = Memo()
         revision &+= 1
         return hadContent
@@ -93,6 +143,11 @@ final class EmojiIndex {
         }
         guard !Task.isCancelled, loadGeneration == generation, let (parsed, folded) = result else { return }
         entries = parsed
+        descriptionCandidates = nil
+        descriptionQuery = ""
+        descriptionGlyphs = []
+        suggestions = nil
+        descriptionGeneration &+= 1
         foldedEntries = folded
         var grouped: [EmojiCategory: [EmojiEntry]] = [:]
         for entry in parsed { grouped[entry.category, default: []].append(entry) }
@@ -115,6 +170,54 @@ final class EmojiIndex {
 
     func entry(for glyph: String) -> EmojiEntry? { byGlyph[glyph] }
 
+    func suggestedEntries(for request: DescriptionRequest) -> [EmojiEntry] {
+        guard suggestions?.request == request else { return [] }
+        return suggestions?.glyphs?.compactMap(entry(for:)) ?? []
+    }
+
+    func isSuggesting(for request: DescriptionRequest) -> Bool {
+        suggestions?.request == request && suggestions?.glyphs == nil
+    }
+
+    func matchDescription(_ request: DescriptionRequest, frequent: FrequentEmojiStore) async {
+        guard !Task.isCancelled else { return }
+        descriptionGeneration &+= 1
+        let generation = descriptionGeneration
+        let catalogRevision = revision
+        let normalized = FuzzyMatch.normalized(request.query)
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        descriptionQuery = ""
+        descriptionGlyphs = []
+        suggestions = nil
+        guard isLoaded, EmojiDescriptionSearch.accepts(normalized), !Task.isCancelled else { return }
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+        } catch {
+            return
+        }
+        guard !Task.isCancelled, generation == descriptionGeneration, catalogRevision == revision else { return }
+        let canSuggest = request.canSuggest && EmojiDescriptionSearch.canSuggest
+            && !search(request.query, frequent: frequent).contains(where: request.includes)
+        if canSuggest { suggestions = Suggestions(request: request) }
+        let result = await EmojiDescriptionSearch.search(
+            normalized, entries: entries, candidates: descriptionCandidates,
+            suggestionCategory: request.category, includeShortlist: canSuggest)
+        guard !Task.isCancelled, generation == descriptionGeneration, catalogRevision == revision else { return }
+        if let result {
+            descriptionCandidates = result.candidates
+            descriptionQuery = normalized
+            descriptionGlyphs = result.glyphs
+        }
+        guard canSuggest, !search(request.query, frequent: frequent).contains(where: request.includes) else {
+            suggestions = nil
+            return
+        }
+        let glyphs = await EmojiDescriptionSearch.suggest(
+            normalized, entries: entries.filter(request.includes), nearby: result?.nearby ?? [])
+        guard !Task.isCancelled, generation == descriptionGeneration, catalogRevision == revision else { return }
+        suggestions = Suggestions(request: request, glyphs: glyphs)
+    }
+
     /// Ranked fuzzy matches over names and keywords; an empty query returns nothing.
     func search(_ query: String, frequent: FrequentEmojiStore, limit: Int = 320) -> [EmojiEntry] {
         let trimmed = FuzzyMatch.normalized(query).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -127,9 +230,13 @@ final class EmojiIndex {
         let key = SearchKey(
             query: q, revision: revision, frequentID: ObjectIdentifier(frequent),
             frequentRevision: frequent.revision, limit: limit)
-        return searchMemo.value(for: key) {
+        let directResults = searchMemo.value(for: key) {
             let query = FuzzyMatch.Query(q)
             let terms = words.count > 1 ? words : []
+            let descriptionWords = words.filter { !Self.descriptionFillers.contains($0) }
+            let descriptionQuery = words.count > 1 && !descriptionWords.isEmpty && descriptionWords != words
+                ? FuzzyMatch.Query(descriptionWords.joined(separator: " ")) : nil
+            let descriptionTerms = descriptionWords.count > 1 ? descriptionWords : []
             let frequentGlyphs = frequent.top(Self.frecencyLimit)
             let frecency = Dictionary(
                 frequentGlyphs.enumerated().map {
@@ -137,8 +244,13 @@ final class EmojiIndex {
                 }, uniquingKeysWith: max)
             var scored: [ScoredEntry] = []
             for (order, entry) in entries.enumerated() {
-                guard let textScore = Self.textScore(query, terms: terms, folded: foldedEntries[order])
-                else { continue }
+                let folded = foldedEntries[order]
+                let directScore = Self.textScore(query, terms: terms, folded: folded)
+                let fallbackScore = directScore == nil ? descriptionQuery.flatMap {
+                    Self.textScore($0, terms: descriptionTerms, folded: folded)
+                        .map { $0 - Self.descriptionPenalty }
+                } : nil
+                guard let textScore = directScore ?? fallbackScore else { continue }
                 let score = textScore + (frecency[entry.glyph] ?? 0)
                 scored.append(ScoredEntry(entry: entry, score: score, order: order))
             }
@@ -148,6 +260,10 @@ final class EmojiIndex {
                 .prefix(limit)
                 .map(\.entry)
         }
+        guard descriptionQuery == q, directResults.count < limit else { return directResults }
+        let directGlyphs = Set(directResults.map(\.glyph))
+        let related = descriptionGlyphs.filter { !directGlyphs.contains($0) }.compactMap(entry(for:))
+        return Array((directResults + related).prefix(limit))
     }
 
     /// Just under half a tier, so an equal-quality name match always wins.
@@ -158,6 +274,10 @@ final class EmojiIndex {
     /// Scattered query words rank below every literal phrase, name-only words first.
     private static let nameWordsScore = 60_000
     private static let mixedWordsScore = 50_000
+    private static let descriptionPenalty = 200_000
+    private static let descriptionFillers: Set<String> = [
+        "a", "an", "the", "on", "of", "with", "in", "at", "to", "my", "your", "its"
+    ]
 
     private static func textScore(
         _ query: FuzzyMatch.Query, terms: [String], folded: FoldedEntry
