@@ -290,6 +290,7 @@ struct DictationTranscriptView: View {
     let animates: Bool
     let twoLines: Bool
     let style: DictationIndicatorStyle
+    var maximumWidth = Theme.Size.dictationPreviewWidth
     @State private var words: [String] = []
     @State private var revealStarts: [Int: Date] = [:]
     @State private var revealing = false
@@ -304,7 +305,7 @@ struct DictationTranscriptView: View {
     private var transcriptFont: NSFont { .systemFont(ofSize: Theme.Typography.dictationTranscriptSize) }
 
     private var maximumTextWidth: CGFloat {
-        Theme.Size.dictationPreviewWidth - 2 * Theme.Spacing.xl
+        maximumWidth - 2 * Theme.Spacing.xl
     }
 
     private func measuredWidth(_ text: String) -> CGFloat {

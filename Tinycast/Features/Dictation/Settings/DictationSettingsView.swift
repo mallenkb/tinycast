@@ -576,8 +576,10 @@ struct DictationIndicatorPreviews: View {
             VStack(spacing: Theme.Spacing.md) {
                 if showsTranscript {
                     DictationTranscriptView(
-                        transcript: String(localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda."),
-                        animates: false, twoLines: twoLines, style: style)
+                        transcript: String(
+                            localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda."),
+                        animates: false, twoLines: twoLines, style: style,
+                        maximumWidth: Theme.Size.dictationSettingsPreviewWidth)
                 }
                 preview(.listening)
             }

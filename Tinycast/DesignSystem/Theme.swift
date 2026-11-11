@@ -307,6 +307,7 @@ enum Theme {
         static let dictationIdleHeight: CGFloat = 7
         static let dictationIdleHoverWidth: CGFloat = 60
         static let dictationPreviewWidth: CGFloat = 360
+        static let dictationSettingsPreviewWidth: CGFloat = 240
         static let dictationOutlineWidth: CGFloat = 1
         static let dictationLabelWaveBarCount = 5
         static let dictationSpinnerDiameter: CGFloat = 14
