@@ -15,13 +15,13 @@ fi
 architectures="${ARCHS:-arm64}"
 for architecture in $architectures; do
     build="$output-$architecture"
-    cpu_options=()
+    cpu_options=(-DGGML_NATIVE=OFF)
     if [[ "$architecture" == arm64 ]]; then
-        cpu_options=(-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16)
+        cpu_options+=(-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16)
     fi
     if [[ -x "$build/bin/llama-server" ]]; then continue; fi
     cmake -S "$source" -B "$build" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
-        -DGGML_NATIVE=OFF "${cpu_options[@]}" -DGGML_OPENMP=OFF -DGGML_CCACHE=OFF \
+        "${cpu_options[@]}" -DGGML_OPENMP=OFF -DGGML_CCACHE=OFF \
         -DLLAMA_USE_PREBUILT_UI=OFF -DLLAMA_BUILD_UI=OFF -DGGML_METAL_EMBED_LIBRARY=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
         -DLLAMA_BUILD_SERVER=ON -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF \
         -DCMAKE_OSX_ARCHITECTURES="$architecture" -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
