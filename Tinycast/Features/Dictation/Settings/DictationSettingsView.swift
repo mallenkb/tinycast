@@ -403,7 +403,7 @@ struct DictationSettingsView: View {
             }
         case .compact:
             filtered = listed.filter { ($0.model?.approximateInstalledMegabytes ?? .max) <= 650 }
-        case .live: filtered = []
+        case .live: filtered = listed.filter { $0.model == .unified }
         }
         return filtered.filter { $0 == recommendedChoice } + filtered.filter { $0 != recommendedChoice }
     }
@@ -436,9 +436,6 @@ struct DictationSettingsView: View {
                         modelBadge("In use")
                     }
                     if let model, ModelChoice.available(model) == recommendedChoice {
-                        modelBadge("Recommended")
-                    }
-                    if model == nil && modelFilter == .live {
                         modelBadge("Recommended")
                     }
                 }

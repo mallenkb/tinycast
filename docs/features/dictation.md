@@ -6,8 +6,9 @@ support 25 languages. Parakeet V2, Unified and Phonon-2 support English. Phonon-
 retrained from V3 for English. Qwen3-ASR 0.6B and 1.7B support 30 languages and 22 Chinese dialects.
 Settings marks Parakeet Ultra as Recommended and selects it by default. The speech recognition page
 shows selectable rows and filters for accuracy, speed, multilingual support, compact size and live
-streaming. Accuracy and speed are curated shortlists, compact means at most 650 MB on disk, and live
-currently includes Apple Dictation. Rows show language coverage and approximate disk size; published
+preview. Accuracy and speed are curated shortlists, compact means at most 650 MB on disk, and live
+includes Apple Dictation and Parakeet Unified. Unified uses rolling batch preview, not streaming.
+Rows show language coverage and approximate disk size; published
 benchmark figures are external measurements, with their sources in the row help. Hovering over language coverage shows the supported languages.
 Choose an installed model, download one from its row, or remove it after selecting another. Cohere Q8
 uses a separate Core ML encoder-decoder pipeline and 14 selectable languages, with English as its default.
