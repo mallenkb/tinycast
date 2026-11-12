@@ -369,7 +369,6 @@ final class AppCore {
     }
 
     func start(launchedByUser: Bool) {
-        DictationAutoLearnMigration.run(defaults: AppPaths.preferences)
         memoryReclaimer.start()
         clipboardStore.setTextSearchActive(false)
         clipboardStore.onSearchResultsChanged = { [weak self] query, previous, current in
