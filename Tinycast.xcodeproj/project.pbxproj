@@ -78,6 +78,7 @@
 		13D418FB2F8A1AE896234CAD /* SnippetEditorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B749BA5E790DCB1B8C9A7E99 /* SnippetEditorSession.swift */; };
 		14D056C9DA105D9D89A9691E /* HealthTicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB023D167225228757CC4B2 /* HealthTicker.swift */; };
 		15292937738B7CD3AE23EF73 /* VolumeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27FB790A72ACD75DFCDFDDF /* VolumeSlider.swift */; };
+		15295B0FAD315711C2727DED /* DictationCleanupChunks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C317C16625CB0035BE737CB2 /* DictationCleanupChunks.swift */; };
 		163C9DFF6B22C76F41CE9FD3 /* WindowManagementFileFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E8194DC4F75C103DA35F3D /* WindowManagementFileFormat.swift */; };
 		1686A2EE090927893D4BBFB6 /* CustomCommandEditorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD6FEDC16D215918AD2DA76D /* CustomCommandEditorScreen.swift */; };
 		16A8F14D5FC9C26CA6B616FB /* MCPServerConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B883E55507FA5BE11A31B54 /* MCPServerConnection.swift */; };
@@ -146,6 +147,7 @@
 		26BE7A3799B1FC931B43E737 /* SpotlightContentQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6D071FE0BC8D1CF9D42361C /* SpotlightContentQuery.swift */; };
 		26DB736F18280E1BE6C6B8BE /* SettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA61A2FAF4E49E466DA8F37 /* SettingsTab.swift */; };
 		272452259376D0FDFB25AC88 /* MathFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51D65B24A72F4217FEA70A18 /* MathFont.swift */; };
+		27689EEB705F074B247692E9 /* Emberon-2-NOTICE.txt in Resources */ = {isa = PBXBuildFile; fileRef = A84FB9268E2618F0AEB75353 /* Emberon-2-NOTICE.txt */; };
 		279F586CC34205EBA8ACA892 /* CalloutPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DFA4E0FDAC12379F2D38B5 /* CalloutPlacement.swift */; };
 		295AA3F6F9E005C57698201B /* ExtensionListPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6DDE1843D16C172AAA1002 /* ExtensionListPanel.swift */; };
 		29870FB46386E551FA345C7E /* SVGFileSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080F6E6BD33AC3E4B59C82CC /* SVGFileSurface.swift */; };
@@ -179,6 +181,7 @@
 		3155DE3A2195764DDEA97F26 /* ClipboardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201FCD08ACA933378876385B /* ClipboardStore.swift */; };
 		3162C31B1971F738F9CE05E9 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F29EE2711B96305EE10B8D8 /* ChatMessage.swift */; };
 		31E0E4E0782A79504CEB588D /* ScrollIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622E1F1C01B954DCA2199BCD /* ScrollIntent.swift */; };
+		31F692855E57539D8E487397 /* Unicode-CLDR-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4F52A6A8D985E494E5212C58 /* Unicode-CLDR-LICENSE.txt */; };
 		321461D5E9B08C43757A0C57 /* HyperKeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8CE803A775A511A3336F01 /* HyperKeyEngine.swift */; };
 		321B4E5AAA0A69F83403F408 /* ImageDerivative.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB3FE08E1D7AF4CBB87654CA /* ImageDerivative.swift */; };
 		32238C3CCA0310804D30506A /* ExtensionCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DDDF0D150C30D0D0FC0BFD /* ExtensionCatalog.swift */; };
@@ -602,6 +605,7 @@
 		9E7175A6E033FF40E633F2BE /* SpotlightContentRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281ACB218B79F4BF2A3DC5BA /* SpotlightContentRequest.swift */; };
 		9E9411C5BA21304B8A38D58B /* DictionaryPronunciationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689BCE88E88994874CB8CF13 /* DictionaryPronunciationProvider.swift */; };
 		9ECFA0114ED8A7C8B3C46B07 /* NoteLayoutFragmentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E9A5FCC71B2F8BB491FDF45 /* NoteLayoutFragmentProvider.swift */; };
+		9EE718C1289F3D4156D8431E /* DictationCurrencyData.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = E049533F648ACA50B2BEE3DE /* DictationCurrencyData.generated.swift */; };
 		9F50314FD939DE2B6C5434A1 /* HTTPAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096F955B26BAEE5AED65B559 /* HTTPAIProvider.swift */; };
 		9F5D52304D9DE3CE0CCBFDD3 /* SettingsFileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F0E8530B618C2613BDD0C2 /* SettingsFileRepository.swift */; };
 		9F82DA5A46BB39A6C6DD075D /* DialogRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D150930C930F1FB5E2A31B /* DialogRequest.swift */; };
@@ -761,6 +765,7 @@
 		CA9C4158D6102028733745F5 /* NoteMarkdownTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EF603B1761C0EF33EAA15E /* NoteMarkdownTypography.swift */; };
 		CAE4C44A9D2EC4AC51FD3150 /* UninstallTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EBAD0766FF9BFC6A4396474 /* UninstallTarget.swift */; };
 		CB35B7D87CB8FCFF26A7BED4 /* FileSystemWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 992A05290190AFEBA0C525CA /* FileSystemWatcher.swift */; };
+		CB7D3144AF30408DF785CE3C /* Emberon-2-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 77E40FC9285E0194761503D2 /* Emberon-2-LICENSE.txt */; };
 		CB95B0CBF0DFEDFCEA837053 /* ImageThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36C6775BBA0FC6F134296606 /* ImageThumbnail.swift */; };
 		CB9A463B71829D219F5AD477 /* InterfaceMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF8EEC4B5B30644A7EAA117 /* InterfaceMetrics.swift */; };
 		CBCE42950D06087AF726AFB2 /* FileSearchScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D1A69B721AA863AFFE176F /* FileSearchScope.swift */; };
@@ -1331,6 +1336,7 @@
 		4F06DCCE7735CAC9BC6BA9D8 /* ClipboardSVGImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSVGImage.swift; sourceTree = "<group>"; };
 		4F11288E491662948CB33FEC /* ProcessExit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessExit.swift; sourceTree = "<group>"; };
 		4F20B7BDED6FBF1331C50090 /* DictationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHelper.swift; sourceTree = "<group>"; };
+		4F52A6A8D985E494E5212C58 /* Unicode-CLDR-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Unicode-CLDR-LICENSE.txt"; sourceTree = "<group>"; };
 		4FAE24CC14F7DFECD1BD7FB1 /* PopoverMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverMenu.swift; sourceTree = "<group>"; };
 		4FBBC69BC9727C5E3FE77120 /* ExtensionSearchAccessory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionSearchAccessory.swift; sourceTree = "<group>"; };
 		4FBE70702D22F894C6B1A790 /* AITool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AITool.swift; sourceTree = "<group>"; };
@@ -1472,6 +1478,7 @@
 		77484C4FCED518882AC8FEC6 /* InstalledAIEnvironmentKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAIEnvironmentKeychain.swift; sourceTree = "<group>"; };
 		77A29ED24604BE67E562B07D /* WindowLayoutInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutInspector.swift; sourceTree = "<group>"; };
 		77BF823C2A041D9F5F03A854 /* DictationInsertionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationInsertionContext.swift; sourceTree = "<group>"; };
+		77E40FC9285E0194761503D2 /* Emberon-2-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Emberon-2-LICENSE.txt"; sourceTree = "<group>"; };
 		780B32AF98BA3A51D2F0E8B4 /* BackupBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupBundle.swift; sourceTree = "<group>"; };
 		7817B7A8760B36FDA43F48FC /* CalcEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcEngine.swift; sourceTree = "<group>"; };
 		787059DAE8AB67FFE684C0D9 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -1663,6 +1670,7 @@
 		A7C7C096F258D1EC8B42F818 /* ScreenTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTarget.swift; sourceTree = "<group>"; };
 		A7DDDF0D150C30D0D0FC0BFD /* ExtensionCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionCatalog.swift; sourceTree = "<group>"; };
 		A8247D97D304215156447FF3 /* ChatHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryView.swift; sourceTree = "<group>"; };
+		A84FB9268E2618F0AEB75353 /* Emberon-2-NOTICE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Emberon-2-NOTICE.txt"; sourceTree = "<group>"; };
 		A8AD14D51F74D1891D5532B0 /* NoteSwitcherInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSwitcherInteraction.swift; sourceTree = "<group>"; };
 		A8EF56BBD299EB7F0E699273 /* SpotlightContentHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightContentHelper.swift; sourceTree = "<group>"; };
 		A90559D7DB9F6F3874CAFCDE /* VolumeHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeHUDView.swift; sourceTree = "<group>"; };
@@ -1758,6 +1766,7 @@
 		C214E40D42F4812F141C16A8 /* ColorPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorPreview.swift; sourceTree = "<group>"; };
 		C2EAA357A9F0317320CFAADF /* TerminalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLogView.swift; sourceTree = "<group>"; };
 		C2F1667CBF7993A57E98D826 /* FileImageContentIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileImageContentIndexer.swift; sourceTree = "<group>"; };
+		C317C16625CB0035BE737CB2 /* DictationCleanupChunks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationCleanupChunks.swift; sourceTree = "<group>"; };
 		C3C83D437500107168E12647 /* QuickActionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionSettings.swift; sourceTree = "<group>"; };
 		C3CAC74EF89303B0B75D5466 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C3CF4E8977935994D80B7ACF /* FluidAudio-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "FluidAudio-LICENSE.txt"; sourceTree = "<group>"; };
@@ -1867,6 +1876,7 @@
 		DFE5D670CFC618B2EAFA0868 /* LauncherSuggestions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherSuggestions.swift; sourceTree = "<group>"; };
 		E01F745C8C21DF1290E2169C /* DictionaryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryEntry.swift; sourceTree = "<group>"; };
 		E03A52EBF08AD5C44953DBDC /* FilePreviewStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewStage.swift; sourceTree = "<group>"; };
+		E049533F648ACA50B2BEE3DE /* DictationCurrencyData.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationCurrencyData.generated.swift; sourceTree = "<group>"; };
 		E08F20B0B823443E176F1566 /* InstalledCLIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledCLIProvider.swift; sourceTree = "<group>"; };
 		E0BE684A650197A714D6858A /* CameraPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPanel.swift; sourceTree = "<group>"; };
 		E1FB153A0D53D42771F1CA99 /* WindowLayoutDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutDisplay.swift; sourceTree = "<group>"; };
@@ -2079,6 +2089,8 @@
 		0D0DB9023328A54AB6A84B9C /* Licenses */ = {
 			isa = PBXGroup;
 			children = (
+				77E40FC9285E0194761503D2 /* Emberon-2-LICENSE.txt */,
+				A84FB9268E2618F0AEB75353 /* Emberon-2-NOTICE.txt */,
 				C3CF4E8977935994D80B7ACF /* FluidAudio-LICENSE.txt */,
 				E66A6735F3B949EA59087C58 /* llama-cpp-httplib-LICENSE.txt */,
 				40C780BDBCBE6CECC0ED64DB /* llama-cpp-LICENSE.txt */,
@@ -2091,6 +2103,7 @@
 				6F35A82C27C0CEDDEF2CC1B5 /* S1-mini-NOTICE.txt */,
 				B8613BD6A28575755566AC60 /* TextProcessing-NOTICE.txt */,
 				089282B7B0FDBEC61EE0A4B6 /* TextProcessing-Third-Party-Licenses.txt */,
+				4F52A6A8D985E494E5212C58 /* Unicode-CLDR-LICENSE.txt */,
 			);
 			path = Licenses;
 			sourceTree = "<group>";
@@ -2657,8 +2670,10 @@
 			isa = PBXGroup;
 			children = (
 				3A97F816CB516A9203224A17 /* DictationAudioChunks.swift */,
+				C317C16625CB0035BE737CB2 /* DictationCleanupChunks.swift */,
 				F668AB856C95952584E005D9 /* DictationCorrection.swift */,
 				13A72274F0B2929061736D2D /* DictationCorrectionSession.swift */,
+				E049533F648ACA50B2BEE3DE /* DictationCurrencyData.generated.swift */,
 				EBDDDF18171E28F02608E82F /* DictationIdleRelease.swift */,
 				9D5F93E2190D9C8B80541BF9 /* DictationIndicatorStyle.swift */,
 				7DCE032DD72DFA1EA930B7EE /* DictationLanguage.swift */,
@@ -4461,6 +4476,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				9969E6858C4FDC5CCCDEB5D8 /* Assets.xcassets in Resources */,
+				CB7D3144AF30408DF785CE3C /* Emberon-2-LICENSE.txt in Resources */,
+				27689EEB705F074B247692E9 /* Emberon-2-NOTICE.txt in Resources */,
 				F7521FBF724C92F343F63A59 /* EmojiKeywords in Resources */,
 				64680A58401592016D9B4B55 /* FluidAudio-LICENSE.txt in Resources */,
 				D0CFFE55094A361EC414722A /* Fonts in Resources */,
@@ -4474,6 +4491,7 @@
 				0498C0A5D10D0839D0BDDC46 /* S1-mini-NOTICE.txt in Resources */,
 				6B12C29E7FA722A6C66BA880 /* TextProcessing-NOTICE.txt in Resources */,
 				4A8EF8B451434C561D445178 /* TextProcessing-Third-Party-Licenses.txt in Resources */,
+				31F692855E57539D8E487397 /* Unicode-CLDR-LICENSE.txt in Resources */,
 				CD0D4E15070451A4C1A0E68D /* llama-cpp-LICENSE.txt in Resources */,
 				D8D7DE83909BE070EFD10FFD /* llama-cpp-httplib-LICENSE.txt in Resources */,
 				9FAC852CB64AF5D186BF774B /* llama-nlohmann-NOTICE.txt in Resources */,
@@ -4828,12 +4846,14 @@
 				5C801A9043908577FB99A555 /* DialogView.swift in Sources */,
 				F1D23C09543B7C17A2907EE4 /* DictationAudioChunks.swift in Sources */,
 				3148283E270E8B8808D2A6FB /* DictationCapture.swift in Sources */,
+				15295B0FAD315711C2727DED /* DictationCleanupChunks.swift in Sources */,
 				2386057DF6029EF06842B6E4 /* DictationCleanupModel.swift in Sources */,
 				529FB7ED8BD12F0DA09E0CF7 /* DictationCoordinator.swift in Sources */,
 				FA4CD96259E1978A4F2E86B4 /* DictationCorrection.swift in Sources */,
 				1E67261278EA80E7DF5489FD /* DictationCorrectionSession.swift in Sources */,
 				F4E2FDC0E7ECF00769D1EB66 /* DictationCorrectionStore.swift in Sources */,
 				48BB85C5EBF0AFF7783C7CA4 /* DictationCueRunner.swift in Sources */,
+				9EE718C1289F3D4156D8431E /* DictationCurrencyData.generated.swift in Sources */,
 				5546FCE4E8549F66F07F7FD0 /* DictationHistoryScreen.swift in Sources */,
 				76A77E809C6D66C07DB8A29A /* DictationHistoryStore.swift in Sources */,
 				FED9738484D355CC9C0EEB63 /* DictationIdleRelease.swift in Sources */,
@@ -5678,7 +5698,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				DICTATION_EXECUTABLE_NAME = "Tinycast Dev Dictation";
@@ -5699,7 +5719,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.24;
+				MARKETING_VERSION = 0.1.25;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -5834,7 +5854,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
@@ -5852,7 +5872,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.24;
+				MARKETING_VERSION = 0.1.25;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

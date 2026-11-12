@@ -49,6 +49,9 @@ private struct DictationWaveform: View {
 struct DictationIndicatorView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var contentReady = false
+    @State private var processingIndex = 0
+    @State private var processingWidths: [String: CGFloat] = [:]
+
     enum Phase {
         case idle
         case starting
@@ -60,12 +63,16 @@ struct DictationIndicatorView: View {
             return false
         }
 
-        static func randomTranscribing(cycling: Bool = false) -> Self {
-            if cycling { return .transcribing(processingLabels.shuffled()) }
-            return .transcribing([processingLabels[Int.random(in: processingLabels.indices)]])
+        var isTranscribing: Bool {
+            if case .transcribing = self { return true }
+            return false
         }
 
-        private static let processingLabels = [
+        static func randomTranscribing() -> Self {
+            .transcribing(processingLabels.shuffled())
+        }
+
+        fileprivate static let processingLabels = [
             String(localized: "Unspooling"),
             String(localized: "Stitching"),
             String(localized: "Noodling"),
@@ -89,7 +96,13 @@ struct DictationIndicatorView: View {
         reduceMotion || !Motion.isEnabled ? nil : .easeInOut(duration: Theme.Duration.dictationIndicatorMorph)
     }
 
+    private var processingTitles: [String] {
+        guard case .transcribing(let titles) = phase, !style.isCompact else { return [] }
+        return titles
+    }
+
     var body: some View {
+        let titles = processingTitles
         HStack(spacing: Theme.Spacing.xl) {
             switch phase {
             case .idle:
@@ -110,9 +123,9 @@ struct DictationIndicatorView: View {
             case .listening:
                 DictationWaveform(levels: listeningLevels, compact: style.isCompact)
                 if !style.isCompact { Text("Listening") }
-            case .transcribing(let titles):
+            case .transcribing:
                 DictationProcessingRing(ink: ink)
-                if !style.isCompact { DictationTranscribingLabel(titles: titles, ink: ink) }
+                if !titles.isEmpty { processingLabel(titles) }
             }
         }
         .opacity(phase.isIdle || contentReady ? 1 : 0)
@@ -130,9 +143,12 @@ struct DictationIndicatorView: View {
         }
         .fixedSize()
         .animation(morphAnimation, value: phase.isIdle)
+        .animation(morphAnimation, value: phase.isTranscribing)
         .animation(morphAnimation, value: idleHovered)
+        .animation(morphAnimation, value: processingIndex)
         .contentShape(shape)
         .onTapGesture { if phase.isIdle { onStart() } }
+        .task(id: titles) { await cycleProcessingTitles(count: titles.count) }
         .task(id: phase.isIdle) {
             contentReady = false
             guard !phase.isIdle else { return }
@@ -147,6 +163,44 @@ struct DictationIndicatorView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityStatus)
         .accessibilityAddTraits(phase.isIdle ? .isButton : [])
+    }
+
+    private func processingLabel(_ titles: [String]) -> some View {
+        let title = titles[processingIndex % titles.count]
+        return DictationTranscribingLabel(title: title, ink: ink)
+            .fixedSize()
+            .contentTransition(.opacity)
+            .frame(width: processingWidths[title])
+            .clipped()
+            .background {
+                ZStack {
+                    ForEach(titles.indices, id: \.self) { index in
+                        let candidate = titles[index]
+                        Text(verbatim: candidate)
+                            .fixedSize()
+                            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
+                                processingWidths[candidate] = $0
+                            }
+                            .id(candidate)
+                    }
+                }
+                .hidden()
+                .accessibilityHidden(true)
+            }
+    }
+
+    private func cycleProcessingTitles(count: Int) async {
+        processingIndex = 0
+        guard count > 1 else { return }
+        do {
+            while !Task.isCancelled {
+                try await Task.sleep(for: .seconds(Theme.Duration.dictationProcessingWord))
+                try Task.checkCancellation()
+                processingIndex = (processingIndex + 1) % count
+            }
+        } catch {
+            return
+        }
     }
 
     private var accessibilityStatus: Text {
@@ -239,33 +293,11 @@ private struct DictationProcessingRing: View {
 
 private struct DictationTranscribingLabel: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var index = 0
-    let titles: [String]
+    let title: String
     let ink: Color
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            ForEach(titles.indices, id: \.self) { index in
-                Text(verbatim: titles[index]).hidden()
-            }
-            label
-        }
-        .task {
-            guard titles.count > 1 else { return }
-            do {
-                while !Task.isCancelled {
-                    try await Task.sleep(for: .seconds(Theme.Duration.dictationProcessingWord))
-                    try Task.checkCancellation()
-                    index = (index + 1) % titles.count
-                }
-            } catch {
-                return
-            }
-        }
-    }
-
-    @ViewBuilder private var label: some View {
-        let label = Text(verbatim: titles[index])
+        let label = Text(verbatim: title)
         if reduceMotion || !Motion.isEnabled {
             label
         } else {
@@ -281,6 +313,25 @@ private struct DictationTranscribingLabel: View {
                             endPoint: UnitPoint(x: center + 0.3, y: 0.5)))
             }
         }
+    }
+}
+
+struct DictationProcessingWidth: View {
+    var body: some View {
+        let titles = DictationIndicatorView.Phase.processingLabels
+        HStack(spacing: Theme.Spacing.xl) {
+            Color.clear.frame(width: Theme.Size.dictationSpinnerDiameter, height: 0)
+            ZStack {
+                ForEach(titles.indices, id: \.self) { index in
+                    Text(verbatim: titles[index])
+                }
+            }
+        }
+        .font(Theme.Typography.panelTitle)
+        .padding(.horizontal, Theme.Spacing.dictationWaveInset)
+        .fixedSize()
+        .hidden()
+        .accessibilityHidden(true)
     }
 }
 
@@ -530,8 +581,24 @@ private struct DictationPanelView: View {
     var onDragBegan: () -> Void = {}
     var onDragEnded: () -> Void = {}
     var onDragMoved: (CGPoint) -> CGPoint = { $0 }
+    var onProcessingWidthChanged: (CGFloat) -> Void = { _ in }
 
     var body: some View {
+        ZStack(alignment: .bottom) {
+            if !phase.isIdle && !style.isCompact {
+                DictationProcessingWidth()
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onProcessingWidthChanged($0) }
+                    .frame(width: phase.isTranscribing ? nil : 0, height: 0)
+            }
+            panelContents
+        }
+        .frame(
+            minWidth: state.transcript.isEmpty ? 0 : Theme.Size.dictationPreviewWidth,
+            minHeight: Theme.Size.dictationIndicatorHeight, alignment: .bottom)
+        .motionScope()
+    }
+
+    private var panelContents: some View {
         VStack(spacing: Theme.Spacing.md) {
             if !state.transcript.isEmpty {
                 DictationTranscriptView(
@@ -555,10 +622,6 @@ private struct DictationPanelView: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { state.indicatorWidth = $0 }
                 .offset(x: state.indicatorOffset)
         }
-        .frame(
-            minWidth: state.transcript.isEmpty ? 0 : Theme.Size.dictationPreviewWidth,
-            minHeight: Theme.Size.dictationIndicatorHeight, alignment: .bottom)
-        .motionScope()
     }
 }
 
@@ -576,6 +639,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     private var dragOwner: pid_t?
     private var dragSourceDisplay: String?
     private var chosenDisplay: String?
+    private var processingWidth: CGFloat = 0
     private var observers: [NotificationToken] = []
     private var presentationObservation: NSKeyValueObservation?
     private var placementTimer: Timer?
@@ -605,6 +669,11 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         host.rootView.onDragBegan = { [weak self] in self?.beginDrag() }
         host.rootView.onDragEnded = { [weak self] in self?.endDrag() }
         host.rootView.onDragMoved = { [weak self] point in self?.drag(to: point) ?? point }
+        host.rootView.onProcessingWidthChanged = { [weak self] width in
+            guard let self, processingWidth != width else { return }
+            processingWidth = width
+            reposition(refreshDock: false)
+        }
         followMotion()
         observePlacementChanges()
     }
@@ -625,9 +694,10 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         hasShadow = host.rootView.style.isDark && !phase.isIdle
         host.layoutSubtreeIfNeeded()
         let size = host.fittingSize
+        let width = phase.isTranscribing ? max(previous.width, size.width) : size.width
         let destination = NSRect(
-            x: previous.midX - size.width / 2, y: previous.minY,
-            width: size.width, height: size.height)
+            x: previous.midX - width / 2, y: previous.minY,
+            width: width, height: size.height)
         setFrame(destination, display: true)
         reposition()
     }
@@ -685,10 +755,18 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
 
     private func clampedCenter(_ center: CGFloat, on screen: NSScreen) -> CGFloat {
         let inset = Theme.Spacing.dictationPanelBottomInset
-        let half = min(max(host.rootView.state.indicatorWidth / 2, 1), frame.width / 2)
+        let half = placementWidth / 2
         let minimum = screen.frame.minX + inset + half
         let maximum = max(minimum, screen.frame.maxX - inset - half)
         return min(max(center, minimum), maximum)
+    }
+
+    private var placementWidth: CGFloat {
+        let root = host.rootView
+        let indicatorWidth = min(max(root.state.indicatorWidth, 2), frame.width)
+        guard !root.phase.isIdle, !root.style.isCompact, processingWidth > 0 else { return indicatorWidth }
+        if root.phase.isTranscribing { return min(processingWidth, frame.width) }
+        return max(indicatorWidth, processingWidth)
     }
 
     private func beginDrag() {
@@ -719,8 +797,8 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         let inset = Theme.Spacing.dictationPanelBottomInset
         let indicatorWidth = min(max(host.rootView.state.indicatorWidth, 1), frame.width)
         let center = clampedCenter(point.x + frame.width / 2 + dragStartOffset, on: screen)
-        let xs = [bounds.minX + inset + indicatorWidth / 2, bounds.midX,
-                  bounds.maxX - inset - indicatorWidth / 2]
+        let xs = [bounds.minX + inset + placementWidth / 2, bounds.midX,
+                  bounds.maxX - inset - placementWidth / 2]
         let ys = [bottom, bounds.midY - Theme.Size.dictationIndicatorHeight / 2,
                   bounds.maxY - frame.height - inset]
         let targetX = xs.min { abs($0 - center) < abs($1 - center) } ?? center
@@ -1100,7 +1178,7 @@ final class DictationPanelController {
     func showTranscribing() {
         previewPauseTask?.cancel()
         previewPauseTask = nil
-        panel?.show(.randomTranscribing(cycling: true))
+        panel?.show(.randomTranscribing())
     }
 
     private func watchForEscape() {

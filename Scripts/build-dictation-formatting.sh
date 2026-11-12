@@ -30,11 +30,15 @@ if [[ ! -f "$library" ]]; then
     mv "$work/runtime.dylib" "$library"
 fi
 
-if [[ -n "${TARGET_BUILD_DIR:-}" ]]; then
+if [[ -n "${TARGET_BUILD_DIR:-}" ]]; then (
     destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/TinycastTextFormatting.dylib"
     mkdir -p "$(dirname "$destination")"
-    cp "$library" "$destination"
+    staging="$(mktemp -d "$(dirname "$destination")/.formatting.XXXXXX")"
+    trap 'rm -rf "$staging"' EXIT
+    staged_library="$staging/TinycastTextFormatting.dylib"
+    cp "$library" "$staged_library"
     if [[ "${CODE_SIGNING_ALLOWED:-NO}" == YES ]]; then
-        codesign --force --options runtime --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$destination"
+        codesign --force --options runtime --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$staged_library"
     fi
-fi
+    mv -f "$staged_library" "$destination"
+); fi

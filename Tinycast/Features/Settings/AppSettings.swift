@@ -949,7 +949,8 @@ final class AppSettings {
             defaults.string(forKey: Key.dictationModel.rawValue)
             .flatMap(DictationModel.init) ?? DictationModel.Family.parakeet.defaultModel
         dictationRemovesFillerWords = defaults.object(forKey: Key.dictationRemovesFillerWords.rawValue) as? Bool ?? true
-        dictationCleanupEngine = defaults.string(forKey: Key.dictationCleanupEngine.rawValue) ?? "s1Mini"
+        dictationCleanupEngine = defaults.string(forKey: Key.dictationCleanupEngine.rawValue)
+            ?? DictationCleanupModel.Variant.defaultSmart.rawValue
         dictationSmartCleanup = defaults.object(forKey: Key.dictationSmartCleanup.rawValue) as? Bool ?? false
         dictationAdvancedCleanup = defaults.bool(forKey: Key.dictationAdvancedCleanup.rawValue)
         dictationAutoTransform = defaults.object(forKey: Key.dictationAutoTransform.rawValue) as? Bool ?? false

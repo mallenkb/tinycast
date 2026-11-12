@@ -489,6 +489,9 @@ final class AppCore {
             dictationCoordinator.onRecordingStarted = { [weak self] in
                 self?.dictationWriting.beginRecording()
             }
+            dictationCoordinator.onStableTranscript = { [weak self] text, isEnglish in
+                self?.dictationWriting.prepareStableTranscript(text, isEnglish: isEnglish)
+            }
             dictationCoordinator.onRecordingEnded = { [weak self] in
                 self?.dictationWriting.endRecording()
                 self?.memoryReclaimer.schedule()
@@ -1175,7 +1178,7 @@ final class AppCore {
 
     private func setupDictationModels() async {
         let speech = DictationModel.Family.parakeet.defaultModel
-        let cleanup = DictationCleanupModel.Variant.s1Mini
+        let cleanup = DictationCleanupModel.Variant.defaultSmart
         dictationModels.refreshInstalledModels()
         let needsSpeech = !settings.dictationUsesApple && settings.dictationModel == speech
             && !dictationModels.isInstalled(speech) && dictationModels.downloading == nil
@@ -1196,7 +1199,7 @@ final class AppCore {
             let size = cleanup.downloadBytes.formatted(.byteCount(style: .file))
             descriptions.append(String(
                 localized: """
-                    S1-mini is an optional English model for Smart cleanup and transforms. The download is \(size).
+                    Emberon-2 is an optional English model for Smart cleanup. The download is \(size).
                     """))
         }
         let both = needsSpeech && needsCleanup

@@ -17,6 +17,15 @@ struct DictationTest {
         check(DictationTextFormatter.removingFillerWords("Let's go. Um."), "Let's go.")
         check(DictationTextFormatter.removingFillerWords("Um, uh."), "")
         check(DictationTextFormatter.removingFillerWords("She said “um” on the album."), "She said “um” on the album.")
+        let cleanupStart = ContinuousClock.now
+        var cleanupClockReads = 0
+        check(
+            DictationTextFormatter.basicCleanup(
+                "The cost is 20 Ghana Sadis and 75 passe was. Call at nine thirty AM.", normalize: { $0 }, now: {
+                    cleanupClockReads += 1
+                    return cleanupClockReads < 3 ? cleanupStart : cleanupStart + .milliseconds(30)
+                }),
+            "The cost is GHS 20.75. Call at nine thirty AM.")
         check(DictationTextFormatter.format("  Hello. \n", context: nil), "Hello.")
         check(DictationTextFormatter.format("hello", context: Context(before: "", after: "")), "Hello")
         check(DictationTextFormatter.format("World", context: Context(before: "Hello", after: "")), " world")

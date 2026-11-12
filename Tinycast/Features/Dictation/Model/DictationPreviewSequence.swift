@@ -1,6 +1,15 @@
 import Foundation
 
 enum DictationPreviewSequence {
+    struct CleanupBlock: Equatable, Sendable {
+        let text: String
+        let isLine: Bool
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.isLine == rhs.isLine && lhs.text.utf8.elementsEqual(rhs.text.utf8)
+        }
+    }
+
     private struct Cell {
         var score = 0
         var matches = 0
@@ -44,18 +53,40 @@ enum DictationPreviewSequence {
         return bounded(Array(old.prefix(overlap.start)) + new)
     }
 
-    static func stableCleanupInput(previous: String, incoming: String) -> String? {
-        guard !previous.isEmpty, !incoming.isEmpty, incoming.utf8.prefix(16_385).count <= 16_384 else { return nil }
-        if previous == incoming { return incoming }
-        let count = zip(previous, incoming).prefix { $0.0 == $0.1 }.count
-        let stable = incoming.prefix(count)
-        let boundaries = ".!?。！？"
-        guard let end = stable.indices.last(where: { index in
-            guard boundaries.contains(stable[index]) else { return false }
-            let next = stable.index(after: index)
-            return next < stable.endIndex && stable[next].isWhitespace
-        }) else { return nil }
-        return String(stable[...end])
+    static func cleanupBlocks(in text: String) -> [CleanupBlock] {
+        let recent = text.utf8.suffix(4_096).drop { (0x80...0xBF).contains($0) }
+        guard let window = String(bytes: recent, encoding: .utf8) else { return [] }
+        var lineStart = recent.startIndex == text.utf8.startIndex ? window.startIndex : nil
+        var sentenceStart = lineStart
+        var blocks: [CleanupBlock] = []
+        var sentences: [CleanupBlock] = []
+        for index in window.indices {
+            let next = window.index(after: index)
+            let character = window[index]
+            if character == "\n" {
+                if let start = lineStart, let line = cleanupBlock(window[start..<index], isLine: true) {
+                    blocks.append(line)
+                } else {
+                    blocks.append(contentsOf: sentences)
+                }
+                sentences.removeAll(keepingCapacity: true)
+                lineStart = next
+                sentenceStart = next
+            } else if ".!?。！？".contains(character), next < window.endIndex, window[next].isWhitespace {
+                if let start = sentenceStart,
+                   let sentence = cleanupBlock(window[start..<next], isLine: false) {
+                    sentences.append(sentence)
+                }
+                sentenceStart = next
+            }
+        }
+        return Array((blocks + sentences).suffix(32))
+    }
+
+    private static func cleanupBlock(_ text: Substring, isLine: Bool) -> CleanupBlock? {
+        guard text.utf8.count <= 1_024, text.contains(where: { !$0.isWhitespace }) else { return nil }
+        return CleanupBlock(
+            text: isLine ? String(text) : text.trimmingCharacters(in: .whitespacesAndNewlines), isLine: isLine)
     }
 
     static func revealStart(previous: String, incoming: String, limit: Int) -> Int {

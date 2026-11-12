@@ -7,6 +7,13 @@ import OSLog
 final class DictationCoordinator {
     private enum Phase { case idle, starting, listening, transcribing, stopping }
 
+    private struct RecognizedPrefix: Sendable {
+        let end: Int
+        let text: String
+        let model: DictationModel
+        let language: String?
+    }
+
     private let settings: AppSettings
     private let hotKeys: HotKeyManager
     let models: DictationModelStore
@@ -21,6 +28,7 @@ final class DictationCoordinator {
     private let setupModels: () async -> Void
     var onRecordingStarted: (() -> Void)?
     var onRecordingEnded: (() -> Void)?
+    var onStableTranscript: ((String, Bool?) -> Void)?
     var processTranscript: ((String, Bool?) async -> String)?
     private let recordTranscript: (String, String?, NSRunningApplication?) -> Void
     @ObservationIgnored private var phase: Phase = .idle
@@ -29,11 +37,12 @@ final class DictationCoordinator {
     private(set) var isSettingUpModels = false
     @ObservationIgnored private var startTask: Task<Void, Never>?
     @ObservationIgnored private var transcriptionTask: Task<Void, Never>?
-    @ObservationIgnored private var previewTask: Task<Void, Never>?
+    @ObservationIgnored private var recognitionTask: Task<RecognizedPrefix?, Never>?
     @ObservationIgnored private var previewDelay: Task<Void, Error>?
     @ObservationIgnored private var previewCleanupTask: Task<Void, Never>?
-    @ObservationIgnored private var previousPreview = ""
-    @ObservationIgnored private var preparedCleanup: (source: String, result: String)?
+    @ObservationIgnored private var previousCleanupBlocks: [DictationPreviewSequence.CleanupBlock] = []
+    @ObservationIgnored private var attemptedCleanupBlocks: [DictationPreviewSequence.CleanupBlock] = []
+    @ObservationIgnored private var preparedCleanup: [DictationLocalCleanup.PreparedBlock] = []
     @ObservationIgnored private var terminating = false
     @ObservationIgnored private var correctionTask: Task<Void, Never>?
     @ObservationIgnored private var correctionSession: DictationCorrectionSession?
@@ -184,6 +193,8 @@ final class DictationCoordinator {
         pendingStartCue = settings.dictationPlaysSounds ? current : nil
         let microphoneID = settings.dictationMicrophone
         let usesApple = settings.dictationUsesApple
+        let model = settings.dictationModel
+        let language = settings.dictationLanguage
         let progressive = usesApple && settings.dictationLivePreview
         let audio = progressive ? AsyncStream<[Float]>.makeStream() : nil
         if usesApple {
@@ -196,14 +207,19 @@ final class DictationCoordinator {
                 appleStreaming = Task(priority: .userInitiated) { [weak self] in
                     let session = try await preparation.value
                     try Task.checkCancellation()
-                    return try await session.transcribe(audio.stream) { [weak self] text in
-                        guard let self, token == current, phase == .listening else { return }
-                        receivePreview(text, cumulative: true, isEnglish: nil)
+                    do {
+                        return try await session.transcribe(audio.stream) { [weak self] text in
+                            guard let self, token == current, phase == .listening else { return }
+                            receivePreview(text, cumulative: true, isEnglish: nil)
+                        }
+                    } catch {
+                        if let self, token == current { resetPreviewCleanup() }
+                        throw error
                     }
                 }
             }
         } else {
-            models.beginRecording(settings.dictationModel)
+            models.beginRecording(model)
         }
         startTask = Task(priority: .userInitiated) { [weak self] in
             guard let self else { return }
@@ -212,7 +228,7 @@ final class DictationCoordinator {
                 guard token == current else { return }
                 guard settings.dictationEnabled else { cancel(); return }
                 phase = .listening
-                if !usesApple { startPreview() }
+                if !usesApple { startRecognition(model: model, language: language) }
                 if finishWhenStarted {
                     accept()
                 } else {
@@ -260,6 +276,10 @@ final class DictationCoordinator {
         guard phase == .listening else { return }
         phase = .transcribing
         previewDelay?.cancel()
+        previewCleanupTask?.cancel()
+        previousCleanupBlocks.removeAll()
+        attemptedCleanupBlocks.removeAll()
+        if !settings.dictationLivePreview { preparedCleanup.removeAll() }
         panel.showTranscribing()
         field?.isTranscribing = true
         if settings.dictationPlaysSounds { cues.play(.stop) }
@@ -272,7 +292,7 @@ final class DictationCoordinator {
             guard let self else { return }
             guard token == current else { return }
             var samples = await capture.stop()
-            await previewTask?.value
+            let prefix = await recognitionTask?.value
             guard token == current else { return }
             guard samples.count >= 1_600 else {
                 reset(cancelTranscription: false)
@@ -299,18 +319,13 @@ final class DictationCoordinator {
                     try Task.checkCancellation()
                     transcript = try await session.transcribe(samples)
                 } else {
-                    transcript = try await models.transcribe(samples, model: model, language: language)
+                    transcript = try await transcribe(samples, prefix: prefix, model: model, language: language)
                 }
                 guard token == current else { return }
                 samples.removeAll(keepingCapacity: false)
                 models.endRecording()
                 let isEnglish = englishOverride(model: applePreparation == nil ? model : nil, language: language)
-                let cleaned: String
-                if let preparedCleanup, preparedCleanup.source == transcript {
-                    cleaned = preparedCleanup.result
-                } else {
-                    cleaned = await DictationLocalCleanup.clean(transcript, mode: cleanupMode, isEnglish: isEnglish)
-                }
+                let cleaned = await cleanTranscript(transcript, isEnglish: isEnglish)
                 guard token == current, !Task.isCancelled else { return }
                 let processed = await processTranscript?(cleaned, isEnglish) ?? cleaned
                 guard token == current, !Task.isCancelled else { return }
@@ -475,7 +490,7 @@ final class DictationCoordinator {
         guard phase != .stopping, phase != .idle || !settings.dictationEnabled else { return }
         let pendingStart = startTask
         let pendingTranscription = transcriptionTask
-        let pendingPreview = previewTask
+        let pendingRecognition = recognitionTask
         pendingStart?.cancel()
         reset(showIdleIndicator: false)
         phase = .stopping
@@ -485,7 +500,7 @@ final class DictationCoordinator {
             await pendingStart?.value
             _ = await capture.stop()
             await pendingTranscription?.value
-            await pendingPreview?.value
+            _ = await pendingRecognition?.value
             if !settings.dictationEnabled { await models.stop() }
             if token == current {
                 phase = .idle
@@ -505,14 +520,11 @@ final class DictationCoordinator {
 
     private func reset(cancelTranscription: Bool = true, showIdleIndicator: Bool = true) {
         token = UUID()
-        previewTask?.cancel()
-        previewTask = nil
+        recognitionTask?.cancel()
+        recognitionTask = nil
         previewDelay?.cancel()
         previewDelay = nil
-        previewCleanupTask?.cancel()
-        previewCleanupTask = nil
-        previousPreview = ""
-        preparedCleanup = nil
+        resetPreviewCleanup()
         if cancelTranscription { transcriptionTask?.cancel() }
         applePreparation?.cancel()
         applePreparation = nil
@@ -542,71 +554,165 @@ final class DictationCoordinator {
         }
     }
 
-    private func startPreview() {
-        guard settings.dictationLivePreview, !settings.dictationModel.isCohere else { return }
+    private func startRecognition(model: DictationModel, language: String?) {
+        guard !model.isCohere else { return }
         let current = token
-        let model = settings.dictationModel
-        let language = settings.dictationLanguage
         let isEnglish = englishOverride(model: model, language: language)
         let cadence = Duration.milliseconds(model.isQwen ? 500 : 350)
-        previewTask = Task { [weak self] in
-            guard let self else { return }
-            defer {
-                if token == current, phase == .listening, !settings.dictationLivePreview {
-                    panel.hidePreview()
-                }
-            }
+        recognitionTask = Task { [weak self] in
+            guard let self else { return nil }
+            var prefix: RecognizedPrefix?
+            var canRecognizeSegments = true
+            var hadPreview = settings.dictationLivePreview
             var failures = 0
             var nextRequest = ContinuousClock.now + .milliseconds(350)
-            while token == current, phase == .listening, settings.dictationLivePreview {
+            while token == current, phase == .listening, !Task.isCancelled {
+                let deadline = nextRequest
+                let delay = Task { try await Task.sleep(until: deadline, clock: .continuous) }
+                previewDelay = delay
+                do { try await delay.value } catch { break }
+                previewDelay = nil
+                guard token == current, phase == .listening, !Task.isCancelled else { break }
+                let hasPreview = settings.dictationLivePreview
+                if hadPreview && !hasPreview {
+                    panel.hidePreview()
+                    resetPreviewCleanup()
+                }
+                hadPreview = hasPreview
+                let wantsPreview = hasPreview && failures < 3
+                nextRequest = .now + (wantsPreview ? cadence : .milliseconds(500))
+                if canRecognizeSegments, let segment = await capture.nextSegment(after: prefix?.end ?? 0) {
+                    guard token == current, phase == .listening, !Task.isCancelled else { break }
+                    do {
+                        let text = try await models.transcribe(segment.samples, model: model, language: language)
+                        guard token == current, !Task.isCancelled else { return nil }
+                        guard !text.isEmpty else { throw DictationWire.Failure.unavailable }
+                        if let prefix, Self.continuesAmount(text, after: prefix.text) {
+                            throw DictationWire.Failure.unavailable
+                        }
+                        guard !Self.endsAtUnfinishedPhrase(text) else { continue }
+                        let cumulative = prefix.map { $0.text + " " + text } ?? text
+                        prefix = RecognizedPrefix(end: segment.end, text: cumulative, model: model, language: language)
+                        if phase == .listening { onStableTranscript?(cumulative, isEnglish) }
+                    } catch {
+                        guard token == current, !Task.isCancelled else { return nil }
+                        prefix = nil
+                        canRecognizeSegments = false
+                    }
+                    continue
+                }
+                guard token == current, phase == .listening, !Task.isCancelled else { break }
+                guard wantsPreview, settings.dictationLivePreview else { continue }
                 do {
-                    let deadline = nextRequest
-                    let delay = Task { try await Task.sleep(until: deadline, clock: .continuous) }
-                    previewDelay = delay
-                    try await delay.value
-                    previewDelay = nil
-                    guard token == current, phase == .listening, settings.dictationLivePreview else { return }
-                    nextRequest = .now + cadence
                     let samples = await capture.recentSamples(seconds: 5)
-                    guard token == current, phase == .listening else { return }
+                    guard token == current, phase == .listening else { break }
                     guard samples.count >= DictationWire.sampleRate / 4 else { continue }
                     let text = try await models.transcribe(samples, model: model, language: language)
-                    guard token == current, phase == .listening, settings.dictationLivePreview, !Task.isCancelled
-                    else { return }
+                    guard token == current, phase == .listening, !Task.isCancelled else { break }
+                    guard settings.dictationLivePreview else { continue }
                     failures = 0
                     receivePreview(text, cumulative: false, isEnglish: isEnglish)
                 } catch {
-                    guard token == current, phase == .listening, !Task.isCancelled else { return }
+                    guard token == current, phase == .listening, !Task.isCancelled else { break }
                     panel.hidePreview()
+                    resetPreviewCleanup()
                     failures += 1
                     nextRequest = .now + .milliseconds(1500)
                     Logger(subsystem: "com.tinycast.app", category: "DictationPreview")
                         .error("Live preview failed: \(error.localizedDescription, privacy: .public)")
-                    guard failures < 3 else { return }
                 }
             }
+            return prefix
         }
+    }
+
+    private func transcribe(
+        _ samples: [Float], prefix: RecognizedPrefix?, model: DictationModel, language: String?
+    ) async throws -> String {
+        if let prefix, prefix.model == model, prefix.language == language,
+            (DictationWire.sampleRate / 4...DictationCapture.maximumSegmentSamples).contains(samples.count - prefix.end)
+        {
+            do {
+                let tail = try await models.transcribe(Array(samples[prefix.end...]), model: model, language: language)
+                if !tail.isEmpty, !Self.continuesAmount(tail, after: prefix.text) {
+                    return prefix.text + " " + tail
+                }
+            } catch {
+                try Task.checkCancellation()
+            }
+        }
+        return try await models.transcribe(samples, model: model, language: language)
+    }
+
+    private static let amountWords: Set<String> = [
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
+        "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+        "hundred", "thousand", "million", "billion", "trillion", "quadrillion", "half", "quarter"
+    ]
+
+    private static func endsAtUnfinishedPhrase(_ text: String) -> Bool {
+        guard let last = boundaryWords(text.suffix(80)).last else { return true }
+        return isAmountWord(last) || ["and", "or", "point", "dot", "minus", "negative", "to"].contains(last)
+    }
+
+    private static func continuesAmount(_ text: String, after preceding: String) -> Bool {
+        let leading = boundaryWords(text.prefix(80)).prefix(3)
+        guard let first = leading.first,
+            isAmountWord(first) || (first == "and" && leading.dropFirst().contains(where: isAmountWord))
+        else { return false }
+        return boundaryWords(preceding.suffix(80)).suffix(4).contains(where: isAmountWord)
+    }
+
+    private static func boundaryWords(_ text: Substring) -> [Substring] {
+        text.lowercased().split { !$0.isLetter && !$0.isNumber }
+    }
+
+    private static func isAmountWord(_ word: Substring) -> Bool {
+        word.contains(where: \.isNumber) || amountWords.contains(String(word))
     }
 
     private func receivePreview(_ text: String, cumulative: Bool, isEnglish: Bool?) {
         guard settings.dictationLivePreview else {
             panel.hidePreview()
+            resetPreviewCleanup()
             return
         }
         panel.showPreview(text, twoLines: settings.dictationTwoLinePreview, cumulative: cumulative)
-        guard cleanupMode != .off else { return }
-        let snapshot = cumulative ? text : panel.state.transcript
-        let stable = DictationPreviewSequence.stableCleanupInput(previous: previousPreview, incoming: snapshot)
-        previousPreview = snapshot
-        guard let stable, stable != preparedCleanup?.source, previewCleanupTask == nil else { return }
+        guard isEnglish != false, cleanupMode == .basic || cleanupMode == .advanced else { return }
+        let blocks = DictationPreviewSequence.cleanupBlocks(in: text)
+        let previous = previousCleanupBlocks
+        previousCleanupBlocks = blocks
+        guard previewCleanupTask == nil, let block = blocks.reversed().first(where: { block in
+            previous.contains(block) && !attemptedCleanupBlocks.contains(block)
+        }) else { return }
         let mode = cleanupMode
         let current = token
-        previewCleanupTask = Task(priority: .utility) { [weak self] in
-            let cleaned = await DictationLocalCleanup.clean(stable, mode: mode, isEnglish: isEnglish)
-            guard let self, token == current, !Task.isCancelled else { return }
-            preparedCleanup = (stable, cleaned)
+        previewCleanupTask = Task(priority: .background) { [weak self] in
+            let prepared = await DictationLocalCleanup.prepare(block, mode: mode)
+            guard let self else { return }
             previewCleanupTask = nil
+            guard token == current, phase == .listening, !Task.isCancelled else { return }
+            if attemptedCleanupBlocks.count == 32 { attemptedCleanupBlocks.removeFirst() }
+            attemptedCleanupBlocks.append(block)
+            if prepared.isUseful {
+                if preparedCleanup.count == 16 { preparedCleanup.removeFirst() }
+                preparedCleanup.append(prepared)
+            }
         }
+    }
+
+    private func cleanTranscript(_ transcript: String, isEnglish: Bool?) async -> String {
+        let prepared = preparedCleanup
+        preparedCleanup.removeAll()
+        return await DictationLocalCleanup.clean(transcript, mode: cleanupMode, isEnglish: isEnglish, prepared: prepared)
+    }
+
+    private func resetPreviewCleanup() {
+        previewCleanupTask?.cancel()
+        previousCleanupBlocks.removeAll()
+        attemptedCleanupBlocks.removeAll()
+        preparedCleanup.removeAll()
     }
 }
 

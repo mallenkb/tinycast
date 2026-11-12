@@ -25,6 +25,10 @@ Basic and Advanced cleanup bundle the rule-based formatter from
 a Rust port of NVIDIA NeMo Text Processing. It is distributed under the Apache License, Version 2.0.
 The upstream notices ship with the app.
 
+The dictation currency registry uses [Unicode CLDR 49](https://github.com/unicode-org/cldr/tree/96e54b273d2da4ec6fbad350ba19ff23fa24a588)
+currency codes, fraction digits, and English names. Unicode License V3 ships with the app in
+`Unicode-CLDR-LICENSE.txt`.
+
 ## Dictation model resources
 
 Tinycast uses Apple frameworks for speech recognition. No speech model is bundled with the app.

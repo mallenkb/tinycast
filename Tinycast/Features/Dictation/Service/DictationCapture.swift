@@ -4,6 +4,8 @@ import CoreMedia
 
 @MainActor
 final class DictationCapture {
+    nonisolated static let maximumSegmentSamples = 30 * DictationWire.sampleRate
+
     enum Failure: LocalizedError {
         case microphoneUnavailable
         case microphoneDenied
@@ -75,6 +77,11 @@ final class DictationCapture {
         guard let active else { return [] }
         return await active.recentSamples(seconds: seconds)
     }
+
+    func nextSegment(after start: Int) async -> (end: Int, samples: [Float])? {
+        guard let active else { return nil }
+        return await active.nextSegment(after: start)
+    }
 }
 
 // The coordinator waits for startup before stopping, so the capture graph has one caller at a time.
@@ -134,6 +141,10 @@ private struct CaptureSessionBox: @unchecked Sendable {
     }
 
     @concurrent func recentSamples(seconds: Int) async -> [Float] { collector.recentSamples(seconds: seconds) }
+
+    @concurrent func nextSegment(after start: Int) async -> (end: Int, samples: [Float])? {
+        collector.nextSegment(after: start)
+    }
 }
 
 // Sample buffers and mutable state are confined to the delegate queue, including finish().
@@ -143,6 +154,9 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     let queue = DispatchQueue(label: "com.tinycast.dictation.audio")
     private var samples: [Float] = []
     private var streamedSamples = 0
+    private var segmentScanStart: Int?
+    private var segmentScanEnd = 0
+    private var quietFrames = 0
     private let stream: AsyncStream<[Float]>.Continuation?
     private var displayedLevels: [Float]
     private let spectrum: DictationSpectrum
@@ -215,5 +229,39 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
 
     func recentSamples(seconds: Int) -> [Float] {
         queue.sync { Array(samples.suffix(DictationWire.sampleRate * seconds)) }
+    }
+
+    func nextSegment(after start: Int) -> (end: Int, samples: [Float])? {
+        queue.sync {
+            let frameSize = DictationWire.sampleRate / 50
+            let minimumQuietFrames = 30
+            let minimumSamples = 10 * DictationWire.sampleRate
+            let scanLimit = min(samples.count, start + DictationCapture.maximumSegmentSamples)
+            if segmentScanStart != start {
+                segmentScanStart = start
+                segmentScanEnd = start + minimumSamples
+                quietFrames = 0
+            }
+            while segmentScanEnd + frameSize <= scanLimit {
+                let frameStart = segmentScanEnd
+                segmentScanEnd += frameSize
+                let frame = samples[frameStart..<segmentScanEnd]
+                let energy = frame.reduce(Float.zero) { $0 + $1 * $1 }
+                let quiet = energy < Float(frameSize) * 0.003 * 0.003
+                    && !frame.contains { abs($0) > 0.01 }
+                if quiet {
+                    quietFrames += 1
+                } else {
+                    let run = quietFrames
+                    quietFrames = 0
+                    // Wait for audio to resume so a trailing pause stays available for final recognition.
+                    if run >= minimumQuietFrames {
+                        let end = frameStart - run * frameSize / 2
+                        return (end, Array(samples[start..<end]))
+                    }
+                }
+            }
+            return nil
+        }
     }
 }

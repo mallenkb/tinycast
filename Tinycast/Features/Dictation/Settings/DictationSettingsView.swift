@@ -801,7 +801,10 @@ struct DictationIndicatorPreviews: View {
                 }
                 preview(.listening)
             }
-            preview(transcribing)
+            ZStack {
+                if !style.isCompact { DictationProcessingWidth() }
+                preview(transcribing)
+            }
         }
     }
 

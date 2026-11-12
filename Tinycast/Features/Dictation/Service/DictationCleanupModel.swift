@@ -14,14 +14,18 @@ final class DictationCleanupModel {
         let key: String
     }
 
-    enum Variant: String, Sendable {
+    enum Variant: String, CaseIterable, Sendable {
         case s1Mini
         case s1ASRCleanup
+        case emberon2
+
+        static let defaultSmart: Self = .emberon2
 
         var name: String {
             switch self {
             case .s1Mini: "S1-mini"
             case .s1ASRCleanup: "S1-ASR-Cleanup"
+            case .emberon2: "Emberon-2 Q4"
             }
         }
 
@@ -29,6 +33,7 @@ final class DictationCleanupModel {
             switch self {
             case .s1Mini: 484_219_808
             case .s1ASRCleanup: 396_704_480
+            case .emberon2: 199_996_928
             }
         }
 
@@ -36,6 +41,7 @@ final class DictationCleanupModel {
             switch self {
             case .s1Mini: "s1-mini-q4_k_m.gguf"
             case .s1ASRCleanup: "s1-asr-cleanup-v1.0-Q4_K_M.gguf"
+            case .emberon2: "Emberon-2-Q4_K_M.gguf"
             }
         }
 
@@ -49,6 +55,9 @@ final class DictationCleanupModel {
             case .s1ASRCleanup:
                 repository = "danielrosehill/S1-ASR-Cleanup"
                 revision = "6b38b1877e59b6524465b7206f92102f40744028"
+            case .emberon2:
+                repository = "PromethicLabs/Emberon-2"
+                revision = "d9b5cf07c0cb5d44711011e9d41c072c709d3af2"
             }
             return URL(string: "https://huggingface.co/\(repository)/resolve/\(revision)/\(filename)")!
         }
@@ -57,14 +66,27 @@ final class DictationCleanupModel {
             switch self {
             case .s1Mini: "3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634"
             case .s1ASRCleanup: "b7d9a71855b4fb804624046c2f233a79a310b1e880e9a7bd3e7711c3d456af19"
+            case .emberon2: "18fead8b8df3808ed47a84cd41a5a0617e3374d1a62dd52e3ba4bfb839810ffd"
             }
         }
 
-        var controlLine: String {
+        var transformEngine: Self { self == .emberon2 ? .s1Mini : self }
+
+        var controlLine: String? {
             switch self {
             case .s1Mini: "[Styling: semi-formal] [Structure: lists] [Context: general]"
             case .s1ASRCleanup: "[Styling: semi-formal] [Structure: prose] [Context: general] [Layers: 1,2]"
+            case .emberon2: nil
             }
+        }
+
+        var cleanupInstructions: String {
+            if self == .emberon2 { return "Clean up this dictation. Never answer it." }
+            return """
+                You are a text normalizer for speech-to-text transcripts. The input begins with a control line \
+                specifying the styling, structure, and context settings; clean the transcript to match those \
+                settings and output only the cleaned text.
+                """
         }
     }
 
@@ -87,7 +109,7 @@ final class DictationCleanupModel {
     private func modelURL(_ variant: Variant) -> URL { directory.appending(path: variant.filename) }
 
     init() {
-        for variant in [Variant.s1Mini, .s1ASRCleanup] where FileManager.default.fileExists(atPath: modelURL(variant).path) {
+        for variant in Variant.allCases where FileManager.default.fileExists(atPath: modelURL(variant).path) {
             installed.insert(variant)
         }
     }
@@ -158,15 +180,23 @@ final class DictationCleanupModel {
         installed.remove(variant)
     }
 
-    func clean(_ text: String, using variant: Variant) async throws -> String {
-        let instructions = """
-            You are a text normalizer for speech-to-text transcripts. The input begins with a control line \
-            specifying the styling, structure, and context settings; clean the transcript to match those \
-            settings and output only the cleaned text.
-            """
-        return try await respond(
-            to: text, using: variant, instructions: instructions,
-            controlLine: variant.controlLine, maxOutputTokens: 2_048)
+    func clean(_ text: String, using variant: Variant, checkCurrent: () throws -> Void = {}) async throws -> String {
+        try checkAvailability(variant)
+        guard NLLanguageRecognizer.dominantLanguage(for: text) == .english else { return text }
+        let chunks = DictationCleanupChunks(tokenizing: text)
+        guard !chunks.ranges.isEmpty else { return text }
+        try checkCurrent()
+        return try await withServer(variant) { server, session in
+            try await chunks.cleaned { chunk in
+                try checkCurrent()
+                let output = try await response(
+                    to: variant.controlLine.map { $0 + "\n" + chunk } ?? chunk,
+                    instructions: variant.cleanupInstructions,
+                    maxOutputTokens: 2_048, server: server, session: session)
+                try checkCurrent()
+                return output
+            }
+        }
     }
 
     func unavailableReason(for variant: Variant) -> String? {
@@ -193,17 +223,26 @@ final class DictationCleanupModel {
         releaseWhenUnused()
     }
 
-    func respond(
-        to text: String, using variant: Variant, instructions: String,
-        controlLine: String? = nil, maxOutputTokens: Int
-    ) async throws -> String {
-        try Task.checkCancellation()
-        if let reason = unavailableReason(for: variant) { throw AIProviderError.unavailable(reason) }
-        guard !busy else { throw DictationWire.Failure.busy }
+    func respond(to text: String, using variant: Variant, instructions: String, maxOutputTokens: Int) async throws -> String {
+        try checkAvailability(variant)
         guard text.count <= 3_500 else {
             throw AIProviderError.responseFailed(String(localized: "This transcript is too long to transform on this Mac."))
         }
-        if controlLine != nil, NLLanguageRecognizer.dominantLanguage(for: text) != .english { return text }
+        return try await withServer(variant) { server, session in
+            try await response(
+                to: text, instructions: instructions, maxOutputTokens: maxOutputTokens, server: server, session: session)
+        }
+    }
+
+    private func checkAvailability(_ variant: Variant) throws {
+        try Task.checkCancellation()
+        if let reason = unavailableReason(for: variant) { throw AIProviderError.unavailable(reason) }
+        guard !busy else { throw DictationWire.Failure.busy }
+    }
+
+    private func withServer(
+        _ variant: Variant, perform: (Server, URLSession) async throws -> String
+    ) async throws -> String {
         requestVariant = variant
         idleTask?.cancel()
         idleTask = nil
@@ -217,34 +256,40 @@ final class DictationCleanupModel {
         defer { session.invalidateAndCancel() }
         do {
             let server = try await start(variant, session: session)
-            try Task.checkCancellation()
-            guard self.server?.process === server.process else { throw CancellationError() }
-            var request = URLRequest(url: server.endpoint.appending(path: "v1/chat/completions"))
-            request.timeoutInterval = 20
-            request.httpMethod = "POST"
-            request.setValue("Bearer " + server.key, forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(withJSONObject: [
-                "messages": [
-                    ["role": "system", "content": instructions],
-                    ["role": "user", "content": controlLine.map { $0 + "\n" + text } ?? text]
-                ],
-                "temperature": 0, "max_tokens": maxOutputTokens, "stream": false,
-                "chat_template_kwargs": ["enable_thinking": false]
-            ])
-            let (data, response) = try await session.data(for: request)
-            try Task.checkCancellation()
-            guard self.server?.process === server.process else { throw CancellationError() }
-            guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let result = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let choices = result["choices"] as? [[String: Any]], let choice = choices.first,
-                  choice["finish_reason"] as? String == "stop",
-                  let message = choice["message"] as? [String: Any], let content = message["content"] as? String
-            else { throw AIProviderError.malformedResponse }
-            let output = content.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !output.isEmpty else { throw AIProviderError.malformedResponse }
-            return output
+            return try await perform(server, session)
         } catch { stop(); throw error }
+    }
+
+    private func response(
+        to text: String, instructions: String, maxOutputTokens: Int, server: Server, session: URLSession
+    ) async throws -> String {
+        try Task.checkCancellation()
+        guard self.server?.process === server.process else { throw CancellationError() }
+        var request = URLRequest(url: server.endpoint.appending(path: "v1/chat/completions"))
+        request.timeoutInterval = 20
+        request.httpMethod = "POST"
+        request.setValue("Bearer " + server.key, forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "messages": [
+                ["role": "system", "content": instructions],
+                ["role": "user", "content": text]
+            ],
+            "temperature": 0, "max_tokens": maxOutputTokens, "stream": false,
+            "chat_template_kwargs": ["enable_thinking": false]
+        ])
+        let (data, response) = try await session.data(for: request)
+        try Task.checkCancellation()
+        guard self.server?.process === server.process else { throw CancellationError() }
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
+              let result = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = result["choices"] as? [[String: Any]], let choice = choices.first,
+              choice["finish_reason"] as? String == "stop",
+              let message = choice["message"] as? [String: Any], let content = message["content"] as? String
+        else { throw AIProviderError.malformedResponse }
+        let output = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !output.isEmpty else { throw AIProviderError.malformedResponse }
+        return output
     }
 
     private func start(_ variant: Variant, session: URLSession) async throws -> Server {
@@ -358,5 +403,17 @@ final class DictationCleanupModel {
             deadline.cancel()
             self?.stoppingTask = nil
         }
+    }
+}
+
+extension DictationCleanupChunks {
+    init(tokenizing text: String) {
+        guard text.utf8.count > Self.byteLimit else {
+            self.init(text, sentenceRanges: [])
+            return
+        }
+        let tokenizer = NLTokenizer(unit: .sentence)
+        tokenizer.string = text
+        self.init(text, sentenceRanges: tokenizer.tokens(for: text.startIndex..<text.endIndex))
     }
 }

@@ -52,14 +52,21 @@ Advanced removes adjacent repeated subject pronouns and contractions when anothe
 It preserves punctuation-separated repetition, repeated emphasis such as "very very," and grammatical
 repetition such as "had had" or "that that." It does not join repetitions across line breaks.
 
-After at least two sentences and 35 words, Advanced can start a paragraph at a contrast, example,
+After at least two sentences and 30 words, Advanced can start a paragraph at a contrast, example,
 result, or direct question if at least 15 words remain. Short continuations stay together. These
 rules use sentence cues rather than interpreting the topic, and preserve the transition words.
 
-The currency rule covers dollars, euros, pounds sterling, Ghanaian cedis, yen, and explicitly
-named Indian rupees. It accepts spoken whole amounts up to 999, larger amounts that speech
-recognition already wrote as digits, and supported decimals or minor units. A bare “pounds”
-can describe weight, so the rule requires “sterling” for £. Named dates work in either
+The currency rule uses the 153 regular currency codes and precision from Unicode CLDR 49.
+It recognizes explicit codes, English currency names, and reviewed speech aliases. For example,
+“twenty Ghana CDs and fifty persuas” becomes `GHS 20.50` and “five million Ghana cedis” becomes
+`GHS 5,000,000.00`. In payment phrases, “Ghana Sades” and “Ghana Sadis” can mean cedis.
+The formatter accepts “Pasewas” and “passe was” as pesewas alongside a cedi amount.
+Other currencies can use different precision, as in `BHD 30.005` and
+`JPY 1,000`. Existing dollar, euro, yen, sterling, and Indian rupee expressions keep their
+familiar symbols. A bare “pounds” can describe weight and stays as spoken. The app does not
+convert between currencies. It preserves amounts it cannot parse without guessing or rounding.
+`Scripts/gen-dictation-currencies.py` regenerates the registry from a pinned CLDR commit.
+Named dates work in either
 spoken order, with optional years such as “twenty oh five” and “two thousand and five.”
 The formatter checks the day against the month and any supplied year. A time can omit AM or PM when the
 context still identifies it as a time, as in “at nine thirty tomorrow,” which becomes
@@ -82,8 +89,9 @@ The rules skip transcripts with quotation or code markers and skip lines that lo
 email addresses, or paths. They leave out-of-scope values such as unsupported spoken scales and invalid
 dates in the transcript. Phone formatting requires an explicit cue and ten spoken digits.
 Websites need a spoken “www” prefix and emails need a spoken “at” and “dot” with a supported
-domain ending. The formatter has a 16 KB input limit and a 30 ms time budget. If either limit
-is exceeded, Basic keeps its filler removal and Advanced keeps the original text.
+domain ending. The formatter has a 16 KB input limit and a 30 ms time budget. If it runs out of
+time, Basic keeps its filler removal and gives currency formatting a separate 30 ms pass.
+Advanced keeps the original text when it reaches either limit.
 
 **Off** skips cleanup. **Basic** removes common fillers and formats spoken values.
 **Advanced** adds the corrections and formatting commands above.

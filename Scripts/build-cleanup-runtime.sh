@@ -27,19 +27,23 @@ for architecture in $architectures; do
         -DCMAKE_OSX_ARCHITECTURES="$architecture" -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
     cmake --build "$build" --target llama-server -j 4
 done
-if [[ -n "${TARGET_BUILD_DIR:-}" ]]; then
+if [[ -n "${TARGET_BUILD_DIR:-}" ]]; then (
     destination="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/TinycastCleanup"
     mkdir -p "$(dirname "$destination")"
+    staging="$(mktemp -d "$(dirname "$destination")/.cleanup.XXXXXX")"
+    trap 'rm -rf "$staging"' EXIT
+    executable="$staging/TinycastCleanup"
     binaries=()
     for architecture in $architectures; do
         binaries+=("$output-$architecture/bin/llama-server")
     done
     if (( ${#binaries[@]} == 1 )); then
-        cp "${binaries[0]}" "$destination"
+        cp "${binaries[0]}" "$executable"
     else
-        lipo -create "${binaries[@]}" -output "$destination"
+        lipo -create "${binaries[@]}" -output "$executable"
     fi
     if [[ "${CODE_SIGNING_ALLOWED:-NO}" == YES ]]; then
-        codesign --force --options runtime --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$destination"
+        codesign --force --options runtime --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$executable"
     fi
-fi
+    mv -f "$executable" "$destination"
+); fi

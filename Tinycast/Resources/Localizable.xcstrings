@@ -51604,6 +51604,162 @@
         }
       }
     },
+    "Emberon-2 Q4 (Default)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4 (Standard)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4 (Predeterminado)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4 (Par défaut)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4（デフォルト）"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4(기본값)"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4 (Padrão)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4 (по умолчанию)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 Q4（默认）"
+          }
+        }
+      }
+    },
+    "Emberon-2 handles Smart cleanup. After dictation uses S1-mini." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 übernimmt die intelligente Bereinigung. Nach dem Diktat wird S1-mini verwendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 se encarga de la limpieza inteligente. Después del dictado se usa S1-mini."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 assure le nettoyage intelligent. Après la dictée, S1-mini prend le relais."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スマートクリーンアップには Emberon-2 を使用します。音声入力後の処理には S1-mini を使用します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스마트 정리에는 Emberon-2를 사용합니다. 받아쓰기 후 처리에는 S1-mini를 사용합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Emberon-2 faz a limpeza inteligente. Depois do ditado, é usado o S1-mini."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 выполняет умную очистку. После диктовки используется S1-mini."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 负责智能清理。听写后处理使用 S1-mini。"
+          }
+        }
+      }
+    },
+    "Emberon-2 is an optional English model for Smart cleanup. The download is %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 ist ein optionales englisches Modell für die intelligente Bereinigung. Der Download umfasst %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 es un modelo opcional en inglés para la limpieza inteligente. La descarga ocupa %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 est un modèle anglais facultatif pour le nettoyage intelligent. Le téléchargement fait %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 はスマート整形に使うオプションの英語モデルです。ダウンロードサイズは %@ です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2는 스마트 정리에 사용하는 선택 사항인 영어 모델입니다. 다운로드 크기는 %@입니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Emberon-2 é um modelo opcional em inglês para limpeza inteligente. O download tem %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 — необязательная модель для умной правки английского текста. Размер загрузки — %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emberon-2 是用于智能清理的可选英语模型，下载大小为 %@。"
+          }
+        }
+      }
+    },
     "Emoji" : {
       "comment" : "Noun used in “Pin %@” / “Unpin %@”",
       "localizations" : {
@@ -107819,110 +107975,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在这台 Mac 上运行，数据不会离开本机。"
-          }
-        }
-      }
-    },
-    "S1-mini (Default)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini (Standard)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini (Predeterminado)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini (Par défaut)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini（デフォルト）"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini(기본값)"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini (Padrão)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini (по умолчанию)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini（默认）"
-          }
-        }
-      }
-    },
-    "S1-mini is an optional English model for Smart cleanup and transforms. The download is %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini ist ein optionales englisches Modell für intelligente Bereinigung und Textumwandlungen. Der Download umfasst %@."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini es un modelo opcional en inglés para la limpieza inteligente y las transformaciones. La descarga ocupa %@."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini est un modèle anglais facultatif pour le nettoyage intelligent et les transformations. Le téléchargement fait %@."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini はスマート整形と変換に使うオプションの英語モデルです。ダウンロードサイズは %@ です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini는 스마트 정리와 변환에 사용하는 선택 사항인 영어 모델입니다. 다운로드 크기는 %@입니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O S1-mini é um modelo opcional em inglês para limpeza inteligente e transformações. O download tem %@."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini — необязательная модель для умной правки и преобразования английского текста. Размер загрузки — %@."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "S1-mini 是用于智能清理和转换的可选英语模型，下载大小为 %@。"
           }
         }
       }

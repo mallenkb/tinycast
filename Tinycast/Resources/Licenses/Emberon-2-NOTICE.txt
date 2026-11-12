@@ -1,0 +1,37 @@
+Emberon-2
+=========
+
+Emberon-2 is a fine-tune (LoRA, fused; two training runs averaged) of:
+
+    LiquidAI/LFM2.5-350M
+    Copyright © Liquid AI
+    Licensed under the LFM Open License v1.0 (see LICENSE; https://www.liquid.ai/lfm-license)
+
+This product includes a MODIFIED version of LFM2.5-350M. The model weights were adapted by
+Promethic Labs to perform dictation cleanup (rewriting raw voice transcripts into clean text
+without answering or executing them), and the 4-bit file's vocabulary was trimmed to the tokens
+English dictation uses. The base architecture and pretrained weights are the work of Liquid AI;
+the modification is the work of Promethic Labs.
+
+    Modifications © 2026 Promethic Labs (https://wispercode.com)
+
+In accordance with Section 4 of the LFM Open License v1.0:
+  - a copy of the License is included (see LICENSE);
+  - the original attribution/copyright notices are retained (above);
+  - this NOTICE states that the files were changed from the original.
+
+ATTRIBUTION
+-----------
+REQUIRED (redistribution & derivatives): If you redistribute these weights, or release a
+fine-tune, merge, quantization, or other derivative of Emberon-2, you must retain this NOTICE
+and the copyright notices above (BOTH Liquid AI and Promethic Labs), state that you modified
+the model, and include the LICENSE.
+
+REQUESTED (use in products, services, or research): Please credit Promethic Labs. Suggested
+credit line:
+
+    Powered by Emberon-2 by Promethic Labs (https://promethic.xyz): a dictation-cleanup
+    fine-tune of LiquidAI/LFM2.5-350M.
+
+Trademarks: "Liquid AI" and "LFM" are trademarks of Liquid AI. "Promethic Labs", "Emberon",
+and "WisperCode" are trademarks of Promethic Labs. Use of a name does not imply endorsement.

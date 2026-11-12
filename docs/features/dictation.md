@@ -16,8 +16,8 @@ Its fixed 35-second batch encoder does not provide live preview. Cohere Q4 requi
 speech runtime and remains unavailable.
 Qwen models remain available. Apple Dictation uses speech assets managed by macOS.
 After microphone access is granted, enabling Dictation offers the missing recommended downloads for
-the selected engines. On the defaults, Ultra transcribes speech and S1-mini is optional for Smart
-cleanup and transforms. The setup lets you download both, download Ultra alone, or decide later.
+the selected engines. On the defaults, Ultra transcribes speech and Emberon-2 is optional for Smart
+cleanup. The setup lets you download both, download Ultra alone, or decide later.
 Model downloads show progress and cancellation within their row; onboarding also shows progress on
 the main Dictation settings page.
 
@@ -121,7 +121,11 @@ models use CPU/Neural Engine.
   audio and finalizes that session. If the stream fails, the full recording is still available for
   a fresh Apple Dictation pass. Parakeet and Qwen use overlapping five-second audio windows and aim
   to start requests at least 350 ms and 500 ms apart, respectively. One request runs at a time.
-  Stopping lets an in-flight request finish before the full recording is transcribed.
+  For Parakeet and Qwen, the recognition loop also looks for a pause of at least 600 milliseconds
+  within each 10 to 30 second audio window. It transcribes completed audio at those pauses, even
+  with the preview off. On stop it transcribes the remaining audio and joins the results in order.
+  It retries the full recording if a segment fails, the tail cannot be reused, or an amount may
+  cross a segment boundary. The app retains the bounded capture until this check finishes.
   A preview error hides stale text and retries after 1.5 seconds. Three consecutive failures end
   the preview loop; the full recording remains available for final transcription.
   After four seconds without new preview text, the card fades out while the recording pill stays visible.
@@ -139,10 +143,19 @@ models use CPU/Neural Engine.
   Preview history is limited to 100 words. Text updates without an implicit crossfade inside the
   separately animated, clipped viewport. Reduce Motion or turning the effect off displays updates
   immediately.
-  While the live preview is active, the local cleanup pass can work on a stable transcript
-  snapshot off the main actor. It never writes back to the preview. The result is reused if the
-  final recognition matches its source exactly. Smart rewriting and automatic transforms still
-  use the complete transcript after recording so they have the full context.
+  While live preview is active, Basic and Advanced prepare completed blocks that remain unchanged
+  across two recognition updates. One background task runs at a time and never writes to the preview.
+  Final cleanup reuses complete lines only on an exact source match. Within a revised line it can
+  reuse validated spoken-value conversions after matching those phrases again in the final context.
+  Language, literal-text, size, correction and formatting checks still apply to the final transcript.
+  Preparation reads a bounded recent preview and keeps a bounded cache for the current recording.
+  Stopping cancels pending preparation without waiting for it; completed entries are consumed by
+  final cleanup. Cancellation, preview failures and session reset discard the cached text.
+  When Smart cleanup uses a downloaded engine and no automatic transform, one background worker
+  can clean completed transcript sections as recognition continues. It waits for at least 100
+  words and a sentence boundary, leaving recent words for the next section. On stop, Tinycast
+  reuses the prepared sections only while they match the final source text exactly. The final
+  tail goes through cleanup in order. Automatic transforms still use the complete transcript.
   Each indicator fits the current state. Settings previews both listening and processing for the
   selected style.
   The waveform blends neighboring
@@ -151,6 +164,11 @@ models use CPU/Neural Engine.
   The bars grow around a fixed centerline and ease between readings when Reduce Motion is off.
   A spinning ring replaces the bars during final transcription and cleanup. Labeled styles cycle
   through the same shuffled list of ten processing words every two seconds across both stages.
+  The visible capsule fits the current word with equal horizontal padding and resizes around its
+  center. The ring and word stay centered together. The containing window reserves room for the
+  longest word so cycling does not clip the capsule or shift its position. Active labeled edge snaps
+  reserve the same room; idle edge placement stays unchanged. Settings uses the same
+  cycling preview. Reduce Motion and disabled animations make width changes immediate.
   The ring and the text shimmer pause when Reduce Motion is on.
   Closing the panel releases its hosting view.
 - Recording leaves the system output volume alone.
@@ -253,16 +271,28 @@ This tool uses installed models and runs outside the deterministic suite and app
 
 ## Text cleanup and transforms
 
-Smart cleanup is opt-in. Its engine defaults to S1-mini by Superwhisper, with Apple Intelligence
-and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
+Smart cleanup is opt-in. Its engine defaults to Emberon-2 Q4, with Apple Intelligence,
+S1-mini by Superwhisper, and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
 S1-mini by Superwhisper for dictation with paragraph breaks. Each Q4_K_M download has its own
 file in the shared caches, pinned to a repository revision and checked against its SHA-256 digest. The app
 bundles a pinned, statically linked llama.cpp server under `Contents/Helpers/TinycastCleanup`.
 It binds only to authenticated loopback, disables its web UI and logs, and performs no remote
-inference. Downloads alone use the network. Both downloads are intended for English. Smart cleanup
-with either download preserves other languages. The local engine accepts up to 3,500 characters.
-For Smart cleanup, both models use their published settings and disable thinking. S1-mini uses
+inference. Downloads alone use the network. The local models are intended for English. Smart cleanup
+with a local model preserves other languages. Smart cleanup processes long recordings in sections
+of up to 1,800 UTF-8 bytes, preferring line and sentence breaks and retaining the original whitespace
+between sections. Text without a safe break within that limit stays as dictated. For local cleanup,
+one helper serves sections sequentially. Sentences with recognized numbers, currency, and literal
+text use local rules. If a model response loses too many source words or adds a protected value,
+the source section stays in the transcript. If a model request fails, completed sections are kept
+and Advanced cleanup handles the remaining sections. Saved transforms still process the whole
+transcript in one request.
+Local transforms accept up to 3,500 characters; Apple Intelligence transforms accept up to 8,000
+characters, subject to the model's limits. Apple Intelligence combines Smart cleanup with an
+automatic transform in that same whole-transcript request when both are enabled.
+For Smart cleanup, the S1 models use their published settings and disable thinking. S1-mini uses
 semi-formal, lists, and general. S1-ASR-Cleanup uses semi-formal, prose, general, and layers 1 and 2.
+Emberon-2 uses Promethic Labs' cleanup prompt and the transcript without an S1 control line.
+When Emberon-2 is selected, After dictation and manual transforms use S1-mini.
 When a recording will use Smart cleanup or an automatic transform, Tinycast starts loading the
 selected cleanup engine at recording start. The local helper stays available through the recording
 and exits when the recording and its cleanup or transform finish. Cancelling a recording releases
@@ -272,7 +302,7 @@ Tinycast releases its Apple Intelligence session after use.
 macOS manages the shared Apple Intelligence model's memory.
 
 Raw recording buffers are released as soon as recognition returns, before cleanup and insertion.
-Cleanup downloads and requests create their own ephemeral network sessions and invalidate them
+Each cleanup operation and model download creates its own ephemeral network session and invalidates it
 when finished; an idle cleanup store retains no network session.
 
 Saved transforms live in `dictation-transforms.json` in the shared application-support directory.
@@ -324,7 +354,8 @@ corrections, and spoken punctuation. It can format lists from explicit commands,
 headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps,
 or at transitions and questions after a substantial passage. See the
 [formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
-budget expires, Basic keeps its filler removal and Advanced keeps the original text. Smart runs the
+budget expires, Basic keeps its filler removal and tries currency formatting on its own. Advanced
+keeps the original text if its budget expires. Smart runs the
 selected engine. The After dictation switch
 pauses automatic transforms without clearing the Default transform selection. Transform instructions,
 shortcuts and sample preview appear while editing that transform. Smart cleanup and transforms

@@ -27,8 +27,11 @@ struct DictationWritingSettingsView: View {
                 Section {
                     DictationCleanupCard(sample: $sample, mode: $settings.dictationCleanupMode)
                     Picker(selection: $settings.dictationCleanupEngine) {
-                        Text("S1-mini (Default)").tag("s1Mini")
-                        Text(verbatim: "S1-ASR-Cleanup").tag(DictationCleanupModel.Variant.s1ASRCleanup.rawValue)
+                        let recommended = DictationCleanupModel.Variant.defaultSmart
+                        Text("Emberon-2 Q4 (Default)").tag(recommended.rawValue)
+                        ForEach(DictationCleanupModel.Variant.allCases.filter { $0 != recommended }, id: \.rawValue) { model in
+                            Text(verbatim: model.name).tag(model.rawValue)
+                        }
                         Text("Apple Intelligence").tag("appleIntelligence")
                     } label: {
                         SettingsRowTitle(.dictationCleanup, "Cleanup engine")
@@ -36,9 +39,13 @@ struct DictationWritingSettingsView: View {
                     .settingsEnabled(writing.cleanup.downloading == nil)
                     if let model = writing.cleanup.downloading ?? writing.selectedLocalModel {
                         let size = model.downloadBytes.formatted(.byteCount(style: .file))
+                        let title = switch model {
+                        case .s1Mini: "S1-mini by Superwhisper"
+                        case .s1ASRCleanup: "S1-ASR-Cleanup (S1-mini by Superwhisper)"
+                        case .emberon2: model.name
+                        }
                         SettingsRow(
-                            title: model == .s1Mini
-                                ? "S1-mini by Superwhisper" : "S1-ASR-Cleanup (S1-mini by Superwhisper)",
+                            title: title,
                             subtitle: String(localized: "English only. \(size) download.")
                         ) {
                             if writing.cleanup.downloading == model {
@@ -92,7 +99,11 @@ struct DictationWritingSettingsView: View {
                         Text(reason).foregroundStyle(.secondary)
                     }
                 } footer: {
-                    Text("Smart cleanup and After dictation share this engine.")
+                    if writing.selectedLocalModel == .emberon2 {
+                        Text("Emberon-2 handles Smart cleanup. After dictation uses S1-mini.")
+                    } else {
+                        Text("Smart cleanup and After dictation share this engine.")
+                    }
                 }
                 .settingsAnchor(.dictationCleanup)
             }

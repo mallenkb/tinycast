@@ -251,7 +251,7 @@ breaks in the meantime, since an unquoted code just reports "no exchange rate".
 
 ### Local text-cleanup runtime
 
-The S1-mini and S1-ASR-Cleanup options share a native llama.cpp runtime built by `Scripts/build-cleanup-runtime.sh`
+S1-mini, S1-ASR-Cleanup, and Emberon-2 Q4 share a native llama.cpp runtime built by `Scripts/build-cleanup-runtime.sh`
 from a pinned source archive with a checked SHA-256 digest. CMake is required (`brew install cmake`).
 The first build needs network access for the source archive; subsequent builds reuse the compiled
 runtime under `build/cleanup-runtime`. The app build copies and signs the static ARM64 server into
@@ -262,3 +262,5 @@ Basic and Advanced use `Scripts/build-dictation-formatting.sh` to bundle a signe
 from FluidInference's pinned `text-processing-rs` release. The first build verifies the release
 archive against its SHA-256 digest. Later builds reuse the library under `build/dictation-formatting`.
 The app loads the library on its first eligible formatting request. Building does not require Rust.
+Both build scripts stage and sign their binaries before replacing the bundled files. A rebuild
+therefore leaves the old file intact for any running process that has it mapped.

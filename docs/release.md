@@ -33,6 +33,8 @@ Version 0.1.21 includes Parakeet Unified in the Live model filter.
 Version 0.1.22 reduces idle memory use and improves automatic dictation correction learning.
 Version 0.1.23 learns multiple dictation corrections and applies them to later transcripts.
 Version 0.1.24 adds draggable dictation indicator positioning and alignment guides.
+Version 0.1.25 adds dictation processing during pauses, defaults Smart cleanup to Emberon-2, and
+improves currency formatting, including Ghanaian cedis and pesewas.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

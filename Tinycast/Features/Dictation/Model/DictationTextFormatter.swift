@@ -1,6 +1,6 @@
 import Foundation
 
-enum DictationCleanupMode: Hashable {
+enum DictationCleanupMode: Hashable, Sendable {
     case off, basic, advanced, smart
 }
 
@@ -41,33 +41,35 @@ enum DictationTextFormatter {
     }
 
     static func basicCleanup(
-        _ transcript: String, normalize: (String) -> String, now: () -> ContinuousClock.Instant
+        _ transcript: String, normalize: (String) -> String, preparedLine: (Substring) -> String? = { _ in nil },
+        now: () -> ContinuousClock.Instant
     ) -> String {
         let cleaned = removingFillerWords(transcript)
         return cleanLines(cleaned, now: now) { line in
-            preservesLiteral(line) ? String(line) : formatSpokenValues(String(line), normalize: normalize)
-        }
+            preparedLine(line) ?? cleanBasicLine(line, normalize: normalize)
+        } ?? currencyCleanup(cleaned, now: now)
     }
 
     static func advancedCleanup(
-        _ transcript: String, normalize: (String) -> String = { $0 }, now: () -> ContinuousClock.Instant
+        _ transcript: String, normalize: (String) -> String = { $0 }, preparedLine: (Substring) -> String? = { _ in nil },
+        now: () -> ContinuousClock.Instant
     ) -> String {
-        cleanLines(transcript, now: now) { cleanAdvancedLine($0, normalize: normalize) }
+        cleanLines(transcript, now: now) { preparedLine($0) ?? cleanAdvancedLine($0, normalize: normalize) } ?? transcript
     }
 
     private static func cleanLines(
         _ transcript: String, now: () -> ContinuousClock.Instant, clean: (Substring) -> String
-    ) -> String {
+    ) -> String? {
         let deadline = now() + .milliseconds(30)
         guard transcript.utf8.prefix(16_385).count <= 16_384 else { return transcript }
         guard transcript.firstMatch(of: /[\x22“”‘\x60]|(?:^|[^\p{L}])['’]\p{L}/) == nil else { return transcript }
         var lines: [String] = []
         for line in transcript.split(separator: "\n", omittingEmptySubsequences: false) {
-            guard now() < deadline else { return transcript }
+            guard now() < deadline else { return nil }
             lines.append(clean(line))
         }
         let result = lines.joined(separator: "\n")
-        return now() < deadline ? result : transcript
+        return now() < deadline ? result : nil
     }
 
     private static func preservesLiteral(_ line: Substring) -> Bool {
@@ -75,7 +77,11 @@ enum DictationTextFormatter {
         return literalCheck.firstMatch(of: /[@\/\\<>]|(?i:\b(?:https?:|www\.))|(?:\w\.\p{L}|\p{L}\.\w)/) != nil
     }
 
-    private static func cleanAdvancedLine(_ line: Substring, normalize: (String) -> String) -> String {
+    static func cleanBasicLine(_ line: Substring, normalize: (String) -> String) -> String {
+        preservesLiteral(line) ? String(line) : formatSpokenValues(String(line), normalize: normalize)
+    }
+
+    static func cleanAdvancedLine(_ line: Substring, normalize: (String) -> String) -> String {
         guard !preservesLiteral(line) else { return String(line) }
         guard let first = line.firstIndex(where: { !$0.isWhitespace }),
               let last = line.lastIndex(where: { !$0.isWhitespace })
@@ -88,16 +94,7 @@ enum DictationTextFormatter {
         text = text.replacing(/(?i:\b(?:erm+|umm+|uhh+)\b)/, with: "um")
         text = removingFillerWords(text)
         text = text.replacing(/(?i:\b(the|a|an|to|in|of|for|from|with)(?:[ \t]+\1\b)+)/) { String($0.1) }
-        text = text.replacing(
-            #/
-            (?ix:
-                (^|[^\w'’])
-                ((?:I|you|he|she|it|we|they)(?:['’](?:m|re|s|ve|ll|d))?)
-                (?:[\x20\t]+\2\b)+(?!['’])
-                (?=[\x20\t]+\p{L})
-            )
-            /#
-        ) { String($0.1) + String($0.2) }
+        text = removingRepeatedPronouns(text)
         if text.firstMatch(of: /(?i:\b(?:not|never|except|unless|without|only)\b|n['’]t\b)/) == nil {
             text = text.replacing(
                 #/
@@ -120,6 +117,32 @@ enum DictationTextFormatter {
         text = insertSpokenPunctuation(text)
         text = formatSpokenValues(text, normalize: normalize)
         return leading + formatSpokenStructure(text) + trailing
+    }
+
+    private static func removingRepeatedPronouns(_ text: String) -> String {
+        text.replacing(
+            #/
+            (?ix:
+                (^|[^\w'’])
+                (
+                    (?:i|you|he|she|it|we|they)(?:['’](?:m|re|s|ve|ll|d))?\b(?!['’])
+                    (?:[\x20\t]+(?:i|you|he|she|it|we|they)(?:['’](?:m|re|s|ve|ll|d))?\b(?!['’]))+
+                )
+                (?=[\x20\t]+\p{L})
+            )
+            /#
+        ) { match in
+            var result = String(match.1)
+            var end = match.2.startIndex
+            var previous = ""
+            for word in match.2.split(whereSeparator: \.isWhitespace) {
+                let normalized = word.lowercased()
+                if normalized != previous { result += match.2[end..<word.endIndex] }
+                previous = normalized
+                end = word.endIndex
+            }
+            return result
+        }
     }
 
     private static func formatSpokenValues(_ input: String, normalize: (String) -> String) -> String {
@@ -238,7 +261,7 @@ enum DictationTextFormatter {
     ]
 
     private struct ListHeading {
-        let end: String.Index
+        let range: Range<String.Index>
         let text: String
         let count: Int?
         let numbered: Bool
@@ -271,7 +294,7 @@ enum DictationTextFormatter {
         let before = text[..<match.title.startIndex].trimmingCharacters(in: .whitespaces)
         let title = (before.isEmpty ? "" : before + "\n\n") + match.title + ":"
         return ListHeading(
-            end: match.range.upperBound,
+            range: match.title.startIndex..<match.range.upperBound,
             text: title,
             count: count,
             numbered: match.kind?.lowercased().hasSuffix("steps") == true,
@@ -305,23 +328,23 @@ enum DictationTextFormatter {
             (?ix: \b (?:
                 (?<kind>bullet|item|step|number)[\x20\t]+
                 (?<label>point|one|two|three|four|five|six|seven|eight|nine|ten|10|[1-9])\b
-                (?=[,.: \t])
+                (?=[,.:\x20\t])
                 | (?<join>and[\x20\t]+)?
                   (?<ordinal>first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|
-                    next|then|finally)\b(?=[,.: \t])
+                    next|then|finally)\b(?=[,.:\x20\t])
             ) (?<delimiter>[,.:])?[\x20\t]+ )
             /#)
         let explicit = markers.filter { marker in
             marker.kind?.lowercased() == "bullet" || (marker.kind != nil && marker.delimiter != nil)
         }
         let candidates = explicit.isEmpty ? markers.filter { marker in
-            guard marker.ordinal != nil else { return false }
+            guard marker.ordinal != nil, heading?.range.contains(marker.range.lowerBound) != true else { return false }
             let before = text[..<marker.range.lowerBound].last { !$0.isWhitespace }
             return (before.map { ",;:.!?".contains($0) } ?? true) || marker.join != nil
         } : explicit
         guard let first = candidates.first, candidates.count >= 2 else { return nil }
         let prefix = text[..<first.range.lowerBound].trimmingCharacters(in: .whitespaces)
-        let matchedHeading = heading.flatMap { $0.end == first.range.lowerBound ? $0 : nil }
+        let matchedHeading = heading.flatMap { $0.range.upperBound == first.range.lowerBound ? $0 : nil }
         let family = first.kind?.lowercased()
         let titled = matchedHeading != nil || prefix.last == ":"
         guard titled || prefix.isEmpty || (family != nil && prefix.last.map { ".!?".contains($0) } == true)
@@ -401,7 +424,7 @@ enum DictationTextFormatter {
     }
 
     private static func formatIntroducedList(_ text: Substring, heading: ListHeading) -> String? {
-        let body = text[heading.end...]
+        let body = text[heading.range.upperBound...]
         guard body.firstMatch(of: #/
             (?ix: ^(?:first|second|third|finally)[,.:]|
                 ^(?:bullet|item|number|step)[\x20\t]+(?:point|one|two|three|[0-9]+)\b)
@@ -510,7 +533,7 @@ enum DictationTextFormatter {
                 /#) != nil
             let end = text.index(after: boundary.lowerBound)
             let developedPassage = sentenceCount >= 2
-                && text[start..<end].split(maxSplits: 34, whereSeparator: \.isWhitespace).count == 35
+                && text[start..<end].split(maxSplits: 29, whereSeparator: \.isWhitespace).count == 30
                 && remainder.split(maxSplits: 14, whereSeparator: \.isWhitespace).count == 15
             guard explicitTransition || (developedPassage && startsParagraphTransition(remainder))
             else { continue }
@@ -660,87 +683,311 @@ enum DictationTextFormatter {
         return "\(month) \(day)" + (value.map { ", \($0)" } ?? "")
     }
 
+    private static let currencyNames: [String: String] = {
+        var names = DictationCurrencyData.englishNames
+        let aliases = [
+            "cedi": "GHS", "cedis": "GHS", "ghana cedi": "GHS", "ghana cedis": "GHS",
+            "ghana cd": "GHS", "ghana cds": "GHS", "ghana c d's": "GHS", "ghana c d’s": "GHS",
+            "ghana cities": "GHS", "ghana sades": "GHS", "ghana sadis": "GHS", "ghs": "GHS", "g h s": "GHS",
+            "dollar": "USD", "dollars": "USD", "american dollar": "USD", "american dollars": "USD",
+            "euro": "EUR", "euros": "EUR", "yen": "JPY",
+            "pound sterling": "GBP", "pounds sterling": "GBP", "naira": "NGN",
+            "yuan": "CNY", "renminbi": "CNY", "reais": "BRL",
+            "uae dirham": "AED", "uae dirhams": "AED"
+        ]
+        names.merge(aliases) { _, alias in alias }
+        return names
+    }()
+
+    private static let legacyCurrencySymbols = [
+        "dollar": "$", "dollars": "$", "euro": "€", "euros": "€", "yen": "¥",
+        "pound sterling": "£", "pounds sterling": "£", "indian rupee": "₹", "indian rupees": "₹"
+    ]
+    private static let currencyCodeWords: Set<String> = ["ALL", "BAM", "BOB", "CUP", "GEL", "MAD", "PEN", "TOP", "TRY"]
+
+    private static let minorUnits: [String: [String: Int]] = {
+        let cents = ["cent": 2, "cents": 2]
+        var units = Dictionary(uniqueKeysWithValues: [
+            "USD", "EUR", "CAD", "AUD", "NZD", "SGD", "HKD", "ZAR", "BMD", "XCD", "FJD", "JMD"
+        ].map { ($0, cents) })
+        units["GHS"] = cents.merging([
+            "pesewa": 2, "pesewas": 2, "peswa": 2, "peswas": 2,
+            "persua": 2, "persuas": 2, "pesuer": 2, "pasewas": 2, "passe was": 2
+        ]) { first, _ in first }
+        units["GBP"] = ["penny": 2, "pence": 2, "pennies": 2]
+        units["INR"] = ["paisa": 2, "paise": 2]
+        units["NGN"] = ["kobo": 2]
+        units["CHF"] = ["centime": 2, "centimes": 2, "rappen": 2]
+        units["BRL"] = ["centavo": 2, "centavos": 2]
+        units["MXN"] = units["BRL"]
+        units["ARS"] = units["BRL"]
+        units["AED"] = ["fils": 2]
+        units["BHD"] = ["fils": 3]
+        units["KWD"] = ["fils": 3]
+        units["JOD"] = ["fils": 3]
+        units["OMR"] = ["baisa": 3, "baisas": 3]
+        units["TND"] = ["millime": 3, "millimes": 3]
+        units["CNY"] = ["jiao": 1, "fen": 2]
+        return units
+    }()
+
+    private static let currencyScales: [Substring: Int] = [
+        "thousand": 3, "lakh": 5, "lakhs": 5, "million": 6, "crore": 7, "crores": 7,
+        "billion": 9, "trillion": 12, "quadrillion": 15, "quintillion": 18
+    ]
+
+    private static let currencyPattern: NSRegularExpression? = {
+        let whitespace = #"[\t ]"#
+        func alternatives(_ phrases: some Sequence<String>) -> String {
+            phrases.sorted { $0.count == $1.count ? $0 < $1 : $0.count > $1.count }.map { phrase in
+                NSRegularExpression.escapedPattern(for: phrase).replacingOccurrences(of: " ", with: whitespace + "+")
+            }.joined(separator: "|")
+        }
+        let codes = alternatives(DictationCurrencyData.digits.keys)
+        let word = "(?i:" + alternatives(units + tens + ["a", "an", "hundred", "point", "oh"]
+            + currencyScales.keys.map { String($0) }) + ")"
+        let digits = #"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"#
+        let number = "(?:\(digits)|\(word))"
+        let scaleConjunction = (["hundred"] + currencyScales.keys.map { String($0) }).sorted()
+            .map { "(?<=\($0))" }.joined(separator: "|")
+        let amount = #"(?:[+−-][\t ]*|(?i:plus|positive|minus|negative)[\t ]+)?"#
+            + number + "(?:(?:(?i:\(scaleConjunction))\(whitespace)+(?i:and)\(whitespace)+|[\\t -]+)\(number)){0,30}"
+        let aliases = alternatives(currencyNames.keys)
+        let marker = "(?:\(codes)|(?i:\(aliases))|GH[₵¢])"
+        let prefix = "(?:\(codes)|(?i:GHS|G[\\t ]+H[\\t ]+S|GH[₵¢])|₵)"
+        let bound = #"(?![\p{L}\p{N}_]|['’]\p{L})"#
+        let unitsPattern = alternatives(Set(minorUnits.values.flatMap(\.keys)))
+        func minor(_ valueName: String, _ unitName: String) -> String {
+            "(?:\(whitespace)+(?:(?i:and)\(whitespace)+)?(?<\(valueName)>\(amount))"
+                + "\(whitespace)+(?<\(unitName)>(?i:\(unitsPattern)))\(bound))?"
+        }
+        let standalone = alternatives(["pesewa", "pesewas", "peswa", "peswas"])
+        let range = "(?:(?<rangeStart>(?i:between|from)\(whitespace)+)(?<first>\(amount))"
+            + "(?<rangeJoin>\(whitespace)+(?i:and|to)\(whitespace)+))?"
+        let suffixForm = "\(range)(?<value>\(amount))\(whitespace)+(?<unit>\(marker))\(bound)"
+            + minor("minor", "subunit")
+        let prefixForm = "(?<codeSign>[+−-])?(?<code>\(prefix))(?:\(whitespace)+|(?<=[₵¢]))(?<prefixed>\(amount))\(bound)"
+            + #"(?![.,:][0-9])"# + "(?:\(whitespace)+(?<followingUnit>\(marker))\(bound))?"
+            + minor("prefixMinor", "prefixSubunit")
+        let minorForm = "(?<standaloneValue>\(amount))\(whitespace)+(?<standaloneUnit>(?i:\(standalone)))\(bound)"
+        return try? NSRegularExpression(
+            pattern: "(?<![\\p{L}\\p{N}_])(?:\(suffixForm)|\(prefixForm)|\(minorForm))"
+        )
+    }()
+
+    static func currencyCleanup(_ transcript: String, now: () -> ContinuousClock.Instant = { .now }) -> String {
+        cleanLines(transcript, now: now) { line in
+            preservesLiteral(line) ? String(line) : normalizeSpokenCurrency(String(line))
+        } ?? transcript
+    }
+
     private static func normalizeSpokenCurrency(_ text: String) -> String {
-        text.replacing(
-            #/
-            (?ix: \b
-                (?<amount>(?:(?:minus|negative)[\x20\t]+)?
-                    (?:[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|
-                        twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|
-                        forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|point)
-                    (?:[\x20\t-]+(?:[0-9]+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|
-                        twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|
-                        forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|point|and)){0,20})
-                [\x20\t]+(?<unit>(?:US[\x20\t]+)?dollars?|euros?|pounds?[\x20\t]+sterling|cedis?|
-                    yen|Indian[\x20\t]+rupees?)\b
-                (?:[\x20\t]+and[\x20\t]+(?<fraction>[0-9]+|[a-z]+(?:[-\x20\t]+[a-z]+)?)
-                    [\x20\t]+(?<minorUnit>cents?|pence|penn(?:y|ies)|pesewas?|paise)\b)?
-            )
-            /#
-        ) { match in
-            let preceding = text[..<match.range.lowerBound].suffix(32)
-            if preceding.firstMatch(of: /(?:[0-9][.,]|[+\-−])$/) != nil { return String(match.output.0) }
-            let priorWord = preceding.split(whereSeparator: \.isWhitespace).last?.lowercased() ?? ""
-            if Int(priorWord) != nil || units.contains(priorWord) || tens.contains(priorWord)
-                || ["hundred", "thousand", "million", "billion", "trillion", "minus", "negative", "point"].contains(priorWord) {
-                return String(match.output.0)
-            }
-            guard let currency = currencyFormat(match.unit.lowercased()),
-                  var amount = currencyAmount(match.amount)
-            else { return String(match.output.0) }
-            if match.fraction == nil,
-               text[match.range.upperBound...].firstMatch(of: #/(?i:^[\x20\t]+and[\x20\t]+[a-z0-9.\x20\t-]+[\x20\t]+(?:cents?|pence|penn(?:y|ies)|pesewas?|paise)\b)/#) != nil {
-                return String(match.output.0)
-            }
-            if let fraction = match.fraction, let minorUnit = match.minorUnit {
-                guard !amount.contains("."), currency.minorUnits.contains(minorUnit.lowercased()),
-                      let cents = spokenNumber(fraction), cents < 100
-                else { return String(match.output.0) }
-                amount += cents < 10 ? ".0\(cents)" : ".\(cents)"
-            }
-            if amount.hasPrefix("-") { return "-" + currency.symbol + amount.dropFirst() }
-            return currency.symbol + amount
+        guard let currencyPattern else { return text }
+        var output = ""
+        var cursor = text.startIndex
+        for match in currencyPattern.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+            guard let range = Range(match.range, in: text) else { continue }
+            output += text[cursor..<range.lowerBound]
+            let prior = text[..<range.lowerBound].suffix(32)
+            let replacement = isCurrencyBoundary(prior) ? currencyReplacement(match, in: text, range: range) : nil
+            output += replacement ?? String(text[range])
+            cursor = range.upperBound
+        }
+        return output + text[cursor...]
+    }
+
+    private static func isCurrencyBoundary(_ prefix: Substring) -> Bool {
+        if prefix.firstMatch(of: /(?:[0-9][.,:]|[+−$€£₵¢¥₹-])$/) != nil { return false }
+        guard let prior = prefix.split(whereSeparator: \.isWhitespace).last?.lowercased() else { return true }
+        return !(prior.wholeMatch(of: /[0-9]+(?:[.,][0-9]+)*/) != nil || units.contains(prior) || tens.contains(prior)
+            || currencyScales[prior[...]] != nil
+            || ["hundred", "point", "plus", "positive", "minus", "negative"].contains(prior))
+    }
+
+    private static func currencyReplacement(_ match: NSTextCheckingResult, in text: String, range: Range<String.Index>)
+        -> String? {
+        func group(_ name: String) -> Substring? {
+            Range(match.range(withName: name), in: text).map { text[$0] }
+        }
+
+        if let standalone = group("standaloneValue"), var value = currencyAmount(standalone), value.fraction.isEmpty,
+           let cents = UInt64(value.whole.filter { $0 != "," }) {
+            value.whole = String(cents / 100)
+            value.fraction = leftPadded(value: String(cents % 100), to: 2)
+            return value.render(code: "GHS", symbol: nil, digits: 2)
+        }
+
+        guard let unit = group("unit") ?? group("code"),
+              let code = currencyCode(unit), let digits = DictationCurrencyData.digits[code],
+              let rawAmount = group("value") ?? group("prefixed"),
+              var value = currencyAmount(rawAmount)
+        else { return nil }
+
+        let name = normalizedCurrencyName(unit)
+        let ghanaMishearing = ["ghana cities", "ghana sades", "ghana sadis"].contains(name)
+        let ambiguousCode = currencyCodeWords.contains(String(unit)) && group("followingUnit") == nil
+            && text[range.upperBound...].firstMatch(of: /^[ \t]+\p{L}/) != nil
+        if ghanaMishearing || ambiguousCode {
+            let context = text[..<range.lowerBound].suffix(80)
+            let paymentContext = context.firstMatch(of: #/
+                (?ix: \b(?:paid|pay|costs?|spent|spend|charged?|worth|(?:fee|salary|price|budget)[\x20\t]+(?:is|of))
+                    [\x20\t]+(?:(?:about|around|roughly|approximately|at[\x20\t]+least|up[\x20\t]+to)[\x20\t]+)?$)
+                /#) != nil
+            let ghanaContext = ghanaMishearing && context.firstMatch(of: #/
+                (?ix: \b(?:invoice[\x20\t]+lists|cost[\x20\t]+(?:is|of))[\x20\t]+
+                    (?:(?:about|around|roughly|approximately|at[\x20\t]+least|up[\x20\t]+to)[\x20\t]+)?$)
+                /#) != nil
+            guard paymentContext || ghanaContext else { return nil }
+        }
+        if let followingUnit = group("followingUnit"), currencyCode(followingUnit) != code { return nil }
+
+        if let codeSign = group("codeSign") {
+            guard value.sign.isEmpty else { return nil }
+            value.sign = codeSign == "+" ? "+" : "-"
+        }
+        if let rawMinor = group("minor") ?? group("prefixMinor"),
+           let subunit = group("subunit") ?? group("prefixSubunit") {
+            guard value.fraction.isEmpty, let scale = minorUnits[code]?[subunit.lowercased()],
+                  let minor = currencyAmount(rawMinor), minor.sign.isEmpty, minor.fraction.isEmpty,
+                  minor.whole.count <= scale
+            else { return nil }
+            value.fraction = leftPadded(value: minor.whole, to: scale)
+        }
+        if code == "GHS", value.fraction.count > digits {
+            guard value.fraction.dropFirst(digits).allSatisfy({ $0 == "0" }) else { return nil }
+            value.fraction = String(value.fraction.prefix(digits))
+        }
+        let symbol = legacyCurrencySymbols[name]
+        let rendered = value.render(code: code, symbol: symbol, digits: digits)
+        guard let first = group("first"), let lead = group("rangeStart"), let join = group("rangeJoin") else {
+            return rendered
+        }
+        let expectedJoin = lead.lowercased().hasPrefix("between") ? "and" : "to"
+        guard join.lowercased().contains(expectedJoin), var start = currencyAmount(first)
+        else { return nil }
+        if code == "GHS", start.fraction.count > digits {
+            guard start.fraction.dropFirst(digits).allSatisfy({ $0 == "0" }) else { return nil }
+            start.fraction = String(start.fraction.prefix(digits))
+        }
+        return lead + start.render(code: code, symbol: symbol, digits: digits) + join + rendered
+    }
+
+    private static func normalizedCurrencyName(_ unit: Substring) -> String {
+        unit.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    private static func currencyCode(_ unit: Substring) -> String? {
+        if DictationCurrencyData.digits[String(unit)] != nil { return String(unit) }
+        if ["gh₵", "gh¢", "₵"].contains(unit.lowercased()) { return "GHS" }
+        return currencyNames[normalizedCurrencyName(unit)]
+    }
+
+    private struct CurrencyAmount {
+        var sign: String
+        var whole: String
+        var fraction: String
+
+        func render(code: String, symbol: String?, digits: Int) -> String {
+            let prefix = symbol ?? code + " "
+            let grouped = Self.grouped(whole.filter { $0 != "," })
+            let fraction = symbol == nil
+                ? fraction.padding(toLength: max(digits, fraction.count), withPad: "0", startingAt: 0) : fraction
+            return sign + prefix + grouped + (fraction.isEmpty ? "" : "." + fraction)
+        }
+
+        private static func grouped(_ whole: String) -> String {
+            String(whole.reversed().enumerated().flatMap { index, digit in
+                index > 0 && index.isMultiple(of: 3) ? [",", digit] : [digit]
+            }.reversed())
         }
     }
 
-    private static func currencyAmount(_ text: Substring) -> String? {
-        var words = text.lowercased().split(whereSeparator: { $0.isWhitespace || $0 == "-" })
-        let negative = words.first == "minus" || words.first == "negative"
-        if negative { words.removeFirst() }
-        guard !words.isEmpty else { return nil }
-        let parts = words.split(separator: "point", omittingEmptySubsequences: false)
-        guard parts.count <= 2 else { return nil }
-        let whole = parts[0].joined(separator: " ")
-        let value: String
-        if whole.contains(".") || whole.contains(",") {
-            guard parts.count == 1, whole.wholeMatch(of: /(?:[0-9]{1,12}|[0-9]{1,3}(?:,[0-9]{3}){1,3})(?:\.[0-9]{1,2})?/) != nil
+    private static func leftPadded(value: String, to count: Int) -> String {
+        String(repeating: "0", count: max(0, count - value.count)) + value
+    }
+
+    private static func currencyAmount(_ raw: Substring) -> CurrencyAmount? {
+        var text = raw.lowercased()[...]
+        let sign: String
+        if let first = text.first, "+-−".contains(first) {
+            sign = first == "+" ? "+" : "-"
+            text = text.dropFirst().drop(while: \.isWhitespace)
+        } else if let first = text.split(whereSeparator: \.isWhitespace).first,
+                  ["minus", "negative", "plus", "positive"].contains(first) {
+            sign = first == "minus" || first == "negative" ? "-" : "+"
+            text = text.dropFirst(first.count).drop(while: \.isWhitespace)
+        } else {
+            sign = ""
+        }
+        let words = text.split(whereSeparator: { $0.isWhitespace || $0 == "-" })
+        var integral: UInt64 = 0
+        var largestAllowedScale = 19
+        var start = words.startIndex
+        for index in words.indices {
+            guard let power = currencyScales[words[index]] else { continue }
+            guard power < largestAllowedScale else { return nil }
+            let segment = removingScaleConjunction(words[start..<index], afterScale: start > 0)
+            guard let value = currencyCoefficient(segment), let group = scaledCurrencyInteger(value, by: power)
             else { return nil }
-            value = whole
-        } else if let number = Int(whole), whole.count <= 12, number >= 0 {
-            value = String(number)
-        } else if let number = spokenNumber(Substring(whole)) {
-            value = String(number)
+            let sum = integral.addingReportingOverflow(group)
+            guard !sum.overflow else { return nil }
+            integral = sum.partialValue
+            largestAllowedScale = power
+            start = index + 1
+        }
+        if start == words.endIndex, start > 0 {
+            return CurrencyAmount(sign: sign, whole: String(integral), fraction: "")
+        }
+        let segment = removingScaleConjunction(words[start...], afterScale: start > 0)
+        guard let value = currencyCoefficient(segment), let tail = UInt64(value.whole.filter { $0 != "," })
+        else { return nil }
+        if start == 0 { return CurrencyAmount(sign: sign, whole: value.whole, fraction: value.fraction) }
+        guard value.whole.filter(\.isNumber).count <= largestAllowedScale else { return nil }
+        let total = integral.addingReportingOverflow(tail)
+        guard !total.overflow else { return nil }
+        return CurrencyAmount(sign: sign, whole: String(total.partialValue), fraction: value.fraction)
+    }
+
+    private static func removingScaleConjunction(_ words: ArraySlice<Substring>, afterScale: Bool)
+        -> ArraySlice<Substring> {
+        afterScale && words.first == "and" ? words.dropFirst() : words
+    }
+
+    private static func currencyCoefficient(_ words: ArraySlice<Substring>) -> (whole: String, fraction: String)? {
+        if words.count == 1, let numeric = words.first,
+           numeric.wholeMatch(of: /(?:[0-9]{1,20}|[0-9]{1,3}(?:,[0-9]{3}){1,6})(?:\.[0-9]{1,12})?/) != nil {
+            let parts = numeric.split(separator: ".")
+            return (String(parts[0]), parts.count == 2 ? String(parts[1]) : "")
+        }
+
+        let parts = words.split(separator: "point", omittingEmptySubsequences: false)
+        guard let first = parts.first, parts.count <= 2 else { return nil }
+        let phrase = first.joined(separator: " ")
+        let whole: String
+        if ["a", "an"].contains(phrase) { whole = "1" } else if first.isEmpty, parts.count == 2 {
+            whole = "0"
+        } else if let number = spokenNumber(phrase[...]) {
+            whole = String(number)
         } else {
             return nil
         }
-        guard parts.count == 2 else { return (negative ? "-" : "") + value }
+        guard parts.count == 2 else { return (whole, "") }
         let digits = parts[1].compactMap { word -> String? in
-            if word.count == 1, word.first?.isNumber == true { return String(word) }
-            guard let index = units.firstIndex(of: String(word)), index < 10 else { return nil }
-            return String(index)
+            if word.wholeMatch(of: /[0-9]{1,12}/) != nil { return String(word) }
+            if word == "oh" { return "0" }
+            guard let digit = spokenNumber(word), digit < 10 else { return nil }
+            return String(digit)
         }
-        guard digits.count == parts[1].count, (1...2).contains(digits.count) else { return nil }
-        return (negative ? "-" : "") + value + "." + digits.joined()
+        let fraction = digits.joined()
+        guard digits.count == parts[1].count, (1...12).contains(fraction.count) else { return nil }
+        return (whole, fraction)
     }
 
-    private static func currencyFormat(_ unit: String) -> (symbol: String, minorUnits: [String])? {
-        if unit.hasPrefix("dollar") || unit.hasPrefix("us") { return ("$", ["cent", "cents"]) }
-        if unit.hasPrefix("euro") { return ("€", ["cent", "cents"]) }
-        if unit.hasPrefix("pound") { return ("£", ["penny", "pence", "pennies"]) }
-        if unit.hasPrefix("cedi") { return ("GH₵", ["pesewa", "pesewas"]) }
-        if unit == "yen" { return ("¥", []) }
-        if unit.hasPrefix("indian") { return ("₹", ["paise"]) }
-        return nil
+    private static func scaledCurrencyInteger(_ value: (whole: String, fraction: String), by scale: Int) -> UInt64? {
+        let whole = value.whole.filter { $0 != "," }
+        let fraction = value.fraction.prefix(scale)
+        guard value.fraction.dropFirst(scale).allSatisfy({ $0 == "0" }) else { return nil }
+        return UInt64(whole + fraction + String(repeating: "0", count: scale - fraction.count))
     }
 
     private static func normalizeSpokenTimes(_ text: String) -> String {

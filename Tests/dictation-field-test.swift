@@ -6,6 +6,7 @@ import SwiftUI
 struct DictationFieldTest {
     static func main() async throws {
         NSApplication.shared.setActivationPolicy(.prohibited)
+        await testPreparedCleanup()
         try await testDelivery()
         try await testCorrectionLearning()
         try testCorrectionStore()
@@ -24,6 +25,39 @@ struct DictationFieldTest {
         try await testCancelDuringStartCue()
         try await testBluetoothStartCue()
         print("ALL PASSED")
+    }
+
+    private static func testPreparedCleanup() async {
+        let line = "Send it on Friday, no sorry, Monday."
+        let blocks = DictationPreviewSequence.cleanupBlocks(in: line + "\nDraft the update. I will")
+        let revised = DictationPreviewSequence.cleanupBlocks(in: line + "\nDraft the update. We can")
+        expect(blocks.map(\.text) == [line, "Draft the update."] && blocks == revised,
+            "Completed blocks keep their identity while recognition revises the unfinished tail")
+        guard let first = blocks.first else { return }
+        expect(first.isLine && blocks.last?.isLine == false, "Only a real line break closes a line for cleanup")
+        let prepared = await DictationLocalCleanup.prepare(first, mode: .advanced)
+        let fixed = ContinuousClock.now
+        let matching = await DictationLocalCleanup.clean(
+            line + "\nDraft the update.", mode: .advanced, isEnglish: true, prepared: [prepared], now: { fixed })
+        expect(matching == "Send it on Monday.\nDraft the update.", "An exact completed line can reuse cleanup")
+
+        let merged = line + " Do not send a copy."
+        let contextual = await DictationLocalCleanup.clean(
+            merged, mode: .advanced, isEnglish: true, prepared: [prepared], now: { fixed })
+        expect(contextual == merged, "Later same-line negation changes whether a weekday correction is safe")
+
+        let changed = "Send it on Thursday, no sorry, Tuesday.\nDraft the update."
+        let corrected = await DictationLocalCleanup.clean(
+            changed, mode: .advanced, isEnglish: true, prepared: [prepared], now: { fixed })
+        expect(corrected == "Send it on Tuesday.\nDraft the update.", "A revised source line is cleaned again")
+
+        let quoted = line + "\nSay \"keep these words\"."
+        let literal = await DictationLocalCleanup.clean(
+            quoted, mode: .advanced, isEnglish: true, prepared: [prepared], now: { fixed })
+        expect(literal == quoted, "Quotation in the final transcript bypasses prepared cleanup")
+        let untranslated = await DictationLocalCleanup.clean(
+            line, mode: .advanced, isEnglish: false, prepared: [prepared], now: { fixed })
+        expect(untranslated == line, "The final language decision bypasses prepared English cleanup")
     }
 
     private static func testDelivery() async throws {
@@ -598,7 +632,9 @@ final class HotKeyManager {
 
 @MainActor
 final class DictationCapture {
+    nonisolated static let maximumSegmentSamples = 30 * DictationWire.sampleRate
     func recentSamples(seconds: Int) async -> [Float] { [] }
+    func nextSegment(after start: Int) async -> (end: Int, samples: [Float])? { nil }
     static weak var latest: DictationCapture?
     var onLevels: (([Float]) -> Void)?
     var onLimit: (() -> Void)?
