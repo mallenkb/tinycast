@@ -3,22 +3,27 @@ import Synchronization
 
 /// Bodies cross the bridge base64-encoded, so binary responses survive.
 final class ExtensionFetcher: Sendable {
-    private let session: URLSession
+    private let sessionBox = Mutex<URLSession?>(nil)
 
-    init() {
-        let configuration = URLSessionConfiguration.ephemeral
-        if configuration.responds(to: NSSelectorFromString("set_preventsAppSSO:")) {
-            configuration.setValue(true, forKey: "_preventsAppSSO")
+    deinit { sessionBox.withLock { $0 }?.invalidateAndCancel() }
+
+    private func session() -> URLSession {
+        sessionBox.withLock { box in
+            if let existing = box { return existing }
+            let configuration = URLSessionConfiguration.ephemeral
+            if configuration.responds(to: NSSelectorFromString("set_preventsAppSSO:")) {
+                configuration.setValue(true, forKey: "_preventsAppSSO")
+            }
+            configuration.timeoutIntervalForRequest = 60
+            configuration.httpCookieStorage = nil
+            configuration.urlCredentialStorage = nil
+            configuration.urlCache = nil
+            configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            let created = URLSession(configuration: configuration)
+            box = created
+            return created
         }
-        configuration.timeoutIntervalForRequest = 60
-        configuration.httpCookieStorage = nil
-        configuration.urlCredentialStorage = nil
-        configuration.urlCache = nil
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        session = URLSession(configuration: configuration)
     }
-
-    deinit { session.invalidateAndCancel() }
 
     enum FetchError: LocalizedError {
         case badURL(String)
@@ -56,7 +61,7 @@ final class ExtensionFetcher: Sendable {
         if let socketPath = fields["socketPath"]?.stringValue, !socketPath.isEmpty {
             (data, response) = try await Self.socketResponse(for: request, socketPath: socketPath)
         } else {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await session().data(for: request)
         }
         let http = response as? HTTPURLResponse
         var headers: [String: String] = [:]

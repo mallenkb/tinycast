@@ -37,9 +37,6 @@ struct DictationSettingsView: View {
         .frame(maxWidth: Theme.Size.settingsPageWidth)
         .frame(maxWidth: .infinity)
         .settingsScrollTarget(.dictation)
-        .onChange(of: settings.dictationAutoLearnsWords) { _, enabled in
-            if !enabled { coordinator.stopCorrectionLearning() }
-        }
         .onAppear {
             microphoneAccess = Permissions.microphoneAccess()
             if settings.dictationEnabled { microphones = DictationCapture.microphones }
@@ -613,12 +610,11 @@ struct DictationSettingsView: View {
     @ViewBuilder private var dictionarySection: some View {
         @Bindable var settings = settings
         Section {
-            settingToggle(
-                anchor: .dictationDictionary, title: "Auto-learn words",
-                subtitle: "Learn spelling corrections you make just after dictation.",
-                isOn: $settings.dictationAutoLearnsWords
-            )
-            .settingsEnabled(settings.dictationEnabled)
+            SettingsRow(
+                title: "Auto-learn words",
+                subtitle: String(localized: "Learn spelling corrections while the dictation field is focused."),
+                anchor: .dictationDictionary
+            ) { EmptyView() }
             HStack(spacing: Theme.Spacing.lg) {
                 TextField("Word or phrase", text: $dictionaryWord, prompt: Text("Word or phrase"))
                     .labelsHidden()

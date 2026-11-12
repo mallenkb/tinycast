@@ -1,4 +1,5 @@
 import AppKit
+import Synchronization
 
 /// An extension's artwork; docs/features/extensions.md says why it draws smaller.
 enum ExtensionIconCache {
@@ -14,6 +15,14 @@ enum ExtensionIconCache {
         cache.totalCostLimit = 16 * 1024 * 1024
         return cache
     }()
+    private static let cacheGeneration = Mutex(IconCacheGeneration())
+
+    static func purgeDecoded() {
+        cacheGeneration.withLock { generation in
+            generation.invalidate()
+            cache.removeAllObjects()
+        }
+    }
 
     /// A freshly-decoded, thereafter-immutable `NSImage` is safe to move across the actor boundary.
     private struct Decoded: @unchecked Sendable {
@@ -44,14 +53,15 @@ enum ExtensionIconCache {
 
     /// Never rasterized: fitting flattens a GIF to its first frame.
     static func loadOriginalAsync(atPath path: String) async -> NSImage? {
+        let generation = cacheGeneration.withLock { $0.value }
         let key = originalKey(path)
         if let cached = cache.object(forKey: key) { return cached }
         let decoded = await Task.detached(priority: .userInitiated) {
             Decoded(image: NSImage(contentsOfFile: path))
         }.value
         guard let image = decoded.image else { return nil }
-        cache.setObject(image, forKey: key, cost: Int(image.size.width * image.size.height * 4))
-        return image
+        let cost = Int(image.size.width * image.size.height * 4)
+        return store(image, forKey: key, cost: cost, generation: generation)
     }
 
     // MARK: - Carried inline by the extension
@@ -115,6 +125,7 @@ enum ExtensionIconCache {
 
     /// A failure caches nothing, so a transient error retries; `asIcon` is off for markdown images.
     static func loadRemoteAsync(_ url: URL, asIcon: Bool = true) async -> NSImage? {
+        let generation = cacheGeneration.withLock { $0.value }
         let key = remoteKey(url, asIcon: asIcon)
         if let cached = cache.object(forKey: key) { return cached }
         guard let (data, _) = try? await session.data(from: url) else { return nil }
@@ -123,12 +134,20 @@ enum ExtensionIconCache {
         }.value
         guard let source = decoded.image else { return nil }
         guard asIcon else {
-            cache.setObject(source, forKey: key, cost: Int(source.size.width * source.size.height * 4))
-            return source
+            let cost = Int(source.size.width * source.size.height * 4)
+            return store(source, forKey: key, cost: cost, generation: generation)
         }
         let (icon, cost) = IconCache.fitted(source, to: extent)
-        cache.setObject(icon, forKey: key, cost: cost)
-        return icon
+        return store(icon, forKey: key, cost: cost, generation: generation)
+    }
+
+    private static func store(_ image: NSImage, forKey key: NSString, cost: Int, generation: Int) -> NSImage {
+        guard !Task.isCancelled else { return image }
+        return cacheGeneration.withLock { current in
+            current.publish(image, capturedAt: generation) { image in
+                cache.setObject(image, forKey: key, cost: cost)
+            }
+        }
     }
 
     /// Cacheless, never `URLSession.shared`: an extension names these URLs.

@@ -590,7 +590,8 @@ enum CommandCatalog {
     static func command(for entry: AppEntry) -> CommandID? { CommandID(rawValue: entry.id) }
 }
 enum HotKeyAction: Hashable, Sendable {
-    case togglePalette, dictationHold, dictationToggle, command(CommandID)
+    case togglePalette, dictationHold, dictationToggle, dictationToggleAlternate, command(CommandID)
+    case dictationTransform(id: UUID)
     case app(bundleID: String), settingsPane(bundleID: String), quickAction(id: UUID)
     case customCommand(id: UUID), systemAction(id: SystemAction.ID), windowCommand(id: WindowCommand.ID)
     case customWindowSize(id: UUID), windowLayout(id: UUID), windowRoom(id: UUID), quicklink(id: UUID)

@@ -69,7 +69,6 @@ final class DictationCleanupModel {
     }
 
     private let directory = AppPaths.caches().appending(path: "DictationCleanup")
-    private let session: URLSession
     private var installed: Set<Variant> = []
     private(set) var downloading: Variant?
     private(set) var downloadedBytes: Int64 = 0
@@ -88,15 +87,18 @@ final class DictationCleanupModel {
     private func modelURL(_ variant: Variant) -> URL { directory.appending(path: variant.filename) }
 
     init() {
+        for variant in [Variant.s1Mini, .s1ASRCleanup] where FileManager.default.fileExists(atPath: modelURL(variant).path) {
+            installed.insert(variant)
+        }
+    }
+
+    private static func makeSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.connectionProxyDictionary = [:]
         configuration.timeoutIntervalForRequest = 20
         configuration.timeoutIntervalForResource = 600
-        session = URLSession(configuration: configuration)
-        for variant in [Variant.s1Mini, .s1ASRCleanup] where FileManager.default.fileExists(atPath: modelURL(variant).path) {
-            installed.insert(variant)
-        }
+        return URLSession(configuration: configuration)
     }
 
     func isInstalled(_ variant: Variant) -> Bool { installed.contains(variant) }
@@ -113,6 +115,8 @@ final class DictationCleanupModel {
         }
         let temporary = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: temporary) }
+        let session = Self.makeSession()
+        defer { session.invalidateAndCancel() }
         let response = try await DictationModelDownloader.downloadFile(
             from: variant.downloadURL, to: temporary, using: session
         ) { [weak self] received in
@@ -209,8 +213,10 @@ final class DictationCleanupModel {
             requestVariant = nil
             releaseWhenUnused()
         }
+        let session = Self.makeSession()
+        defer { session.invalidateAndCancel() }
         do {
-            let server = try await start(variant)
+            let server = try await start(variant, session: session)
             try Task.checkCancellation()
             guard self.server?.process === server.process else { throw CancellationError() }
             var request = URLRequest(url: server.endpoint.appending(path: "v1/chat/completions"))
@@ -241,7 +247,7 @@ final class DictationCleanupModel {
         } catch { stop(); throw error }
     }
 
-    private func start(_ variant: Variant) async throws -> Server {
+    private func start(_ variant: Variant, session: URLSession) async throws -> Server {
         let server = try await launch(variant)
         let child = server.process
         guard self.server?.process === child else { throw CancellationError() }

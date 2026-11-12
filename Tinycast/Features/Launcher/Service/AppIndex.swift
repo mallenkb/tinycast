@@ -625,8 +625,10 @@ final class AppIndex {
             let languages = BundleLocalization.indexedLanguages(SystemLanguages.preferred)
             let reusing = BundleNameCache(reusing: nameCache, languages: languages)
             let (found, cache, panes) = await Task.detached(priority: .utility) {
-                AppIndex.scan(
-                    scopes: scopes, languages: languages, cache: reusing, paneCache: reusingPanes)
+                autoreleasepool {
+                    AppIndex.scan(
+                        scopes: scopes, languages: languages, cache: reusing, paneCache: reusingPanes)
+                }
             }.value
             nameCache = cache
             paneCache = panes
@@ -655,25 +657,8 @@ final class AppIndex {
             for url in SearchScopes.appBundles(in: scopes) {
                 let path = url.resolvingSymlinksInPath().standardizedFileURL.path
                 guard paths.insert(path).inserted else { continue }
-                let bundle = Bundle(url: url)
-                let bundleID = bundle?.bundleIdentifier
-                let fileName = EntryNaming.strippingAppExtension(url.lastPathComponent)
-                // Finder's rule: LaunchServices ignores a display name the file name contradicts.
-                let names = cache.names(
-                    for: url, base: fileName, developmentRegion: bundle?.developmentLocalization)
-                // Raw: a localized strings file can swap this array for a plain name.
-                let alternates = bundle?.infoDictionary?["CFBundleAlternateNames"] as? [String] ?? []
-                let declared = (bundle?.infoDictionary).flatMap(AppDisplayName.inInfo)
-                var entry = AppEntry(
-                    id: path, name: names.first ?? fileName, url: url, bundleID: bundleID,
-                    kind: .application,
-                    subtitle: AppDisplayName.named(bundle?.infoDictionary?["CFBundleShortVersionString"]),
-                    alternateTitles: Array(names.dropFirst()) + alternates,
-                    keywords: declared.map { [$0] } ?? [], iconStamp: FileIconStamp.value(for: url),
-                    installedAt: try? url.resourceValues(forKeys: [.addedToDirectoryDateKey])
-                        .addedToDirectoryDate)
-                entry.addAlternateTitle(fileName)
-                if let bundleID {
+                var entry = application(at: url, path: path, cache: &cache)
+                if let bundleID = entry.bundleID {
                     if let first = indexByBundleID[bundleID] {
                         entry.primaryInstallationID = result[first].id
                         result[first].primaryInstallationID = result[first].id
@@ -711,6 +696,28 @@ final class AppIndex {
             let (panes, panesCache) = SettingsPaneScanner.scan(languages: languages, cache: paneCache)
             // Named here, not at publish: romanizing a CJK index is ~50 ms of main-actor time.
             return (AppIndex.named(apps + panes), cache, panesCache)
+        }
+    }
+
+    nonisolated private static func application(
+        at url: URL, path: String, cache: inout BundleNameCache
+    ) -> AppEntry {
+        autoreleasepool {
+            let info = CFBundleCopyInfoDictionaryForURL(url as CFURL) as? [String: Any]
+            let fileName = EntryNaming.strippingAppExtension(url.lastPathComponent)
+            let names = cache.names(
+                for: url, base: fileName, developmentRegion: info?["CFBundleDevelopmentRegion"] as? String)
+            let alternates = info?["CFBundleAlternateNames"] as? [String] ?? []
+            let declared = info.flatMap(AppDisplayName.inInfo)
+            var entry = AppEntry(
+                id: path, name: names.first ?? fileName, url: url,
+                bundleID: info?["CFBundleIdentifier"] as? String, kind: .application,
+                subtitle: AppDisplayName.named(info?["CFBundleShortVersionString"]),
+                alternateTitles: Array(names.dropFirst()) + alternates,
+                keywords: declared.map { [$0] } ?? [], iconStamp: FileIconStamp.value(for: url),
+                installedAt: try? url.resourceValues(forKeys: [.addedToDirectoryDateKey]).addedToDirectoryDate)
+            entry.addAlternateTitle(fileName)
+            return entry
         }
     }
 

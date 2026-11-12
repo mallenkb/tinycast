@@ -79,6 +79,7 @@ struct FileSearchSessionTests {
         await cleanupFollowsSettledWork()
         await cancellationPreventsPendingWork()
         await suspensionPreservesAndResumesSearch()
+        await suspensionReleasesSettledResults()
         await idleCancellationKeepsTheSessionUsable()
         await refreshRerunsThePublishedQuery()
         await blankScreenOpensOnKeptRecents()
@@ -237,7 +238,7 @@ struct FileSearchSessionTests {
         session.search("later", filter: .images)
         guard await probe.waitUntilPaused() else { return expect(false, "the search starts before hiding") }
         session.suspend()
-        expect(session.results.first?.name == "visible", "hiding keeps the visible results")
+        expect(session.results.isEmpty, "hiding releases the visible results")
         session.refresh()
         await probe.resumePausedSearch()
         try? await Task.sleep(for: .milliseconds(150))
@@ -249,6 +250,19 @@ struct FileSearchSessionTests {
         await waitUntil { session.state == .ready && session.results.first?.name == "later" }
         let shown = await probe.snapshot()
         expect(shown.calls.filter { $0 == "later [Images]" }.count == 2, "reopening resumes the same filtered query")
+    }
+
+    static func suspensionReleasesSettledResults() async {
+        let probe = FileSearchProbe()
+        let session = makeSession(probe: probe)
+        session.search("settled")
+        await waitUntil { session.state == .ready && !session.results.isEmpty }
+        session.suspend()
+        expect(session.results.isEmpty, "hiding releases settled results")
+        session.search("settled")
+        await waitUntil { session.state == .ready && session.results.first?.name == "settled" }
+        let snapshot = await probe.snapshot()
+        expect(snapshot.calls == ["settled", "settled"], "reopening reruns a settled search")
     }
 
     static func refreshRerunsThePublishedQuery() async {

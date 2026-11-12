@@ -11,6 +11,10 @@ enum ImageThumbnail {
         cache.purgePreviews()
     }
 
+    static func purgeDecoded() {
+        cache.purgeDecoded()
+    }
+
     /// Cache-only, never touching disk, so a warm thumbnail renders on the same frame.
     static func cached(_ url: URL, maxPixel: CGFloat) -> NSImage? {
         cache.cached(url, maxPixel: maxPixel)
@@ -23,8 +27,8 @@ enum ImageThumbnail {
     static func loadAsync(
         _ url: URL, maxPixel: CGFloat, copyingWith helper: URL? = nil
     ) async -> NSImage? {
-        if let cached = cached(url, maxPixel: maxPixel) { return cached }
         let generation = cache.generation
+        if let cached = cached(url, maxPixel: maxPixel) { return cached }
         var decodable = url
         if let helper, let copy = ImageDerivative.covering(url, maxPixel: Int(maxPixel.rounded(.up))),
             await makeCopy(copy, of: url, helper: helper)
@@ -45,12 +49,13 @@ enum ImageThumbnail {
     }
 
     static func load(_ url: URL, maxPixel: CGFloat) -> NSImage? {
+        let generation = cache.generation
         if let cached = cached(url, maxPixel: maxPixel) { return cached }
-        return decode(url, cachingAs: url, maxPixel: maxPixel, generation: cache.generation)
+        return decode(url, cachingAs: url, maxPixel: maxPixel, generation: generation)
     }
 
     private static func decode(
-        _ file: URL, cachingAs url: URL, maxPixel: CGFloat, generation: Int
+        _ file: URL, cachingAs url: URL, maxPixel: CGFloat, generation: ThumbnailCache.Generation
     ) -> NSImage? {
         guard let cgImage = downsample(file, maxPixel: maxPixel) else { return nil }
         let image = NSImage(

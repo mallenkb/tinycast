@@ -31,3 +31,4 @@ When the check fails, delete everything the row lists, then the row.
 
 | Migration | Repairs | Delete with it |
 | --- | --- | --- |
+| `DictationAutoLearnMigration` | Retired auto-learn preference | Its call in `AppCore.start()` |

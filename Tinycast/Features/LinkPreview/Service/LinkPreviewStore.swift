@@ -63,6 +63,11 @@ final class LinkPreviewStore {
         revision += 1
     }
 
+    func purgePreviews() {
+        purgeBanners()
+        cache.removeAllObjects()
+    }
+
     /// Cache-only, so a list row can show a favicon without ever reaching the network.
     func cached(_ url: URL) -> Preview? {
         _ = revision
@@ -86,8 +91,8 @@ final class LinkPreviewStore {
         guard !Task.isCancelled else { return result }
         var metadata = result
         metadata.image = nil
-        cache.setObject(Cached(result), forKey: url as NSURL, cost: Self.cost(result.icon))
         guard generation == bannerGeneration else { return metadata }
+        cache.setObject(Cached(result), forKey: url as NSURL, cost: Self.cost(result.icon))
         banners.removeAllObjects()
         if let image = result.image, Self.cost(image) <= Self.bannerBytes {
             banners.setObject(image, forKey: url as NSURL, cost: Self.cost(image))

@@ -95,6 +95,10 @@ Book. Don't reintroduce such a heuristic.
 `AppIndex.start(settings:)` observes `$searchScopes`, so an edit re-indexes immediately; overlapping
 refreshes collapse into a single trailing scan.
 
+The scan copies application metadata directly from the bundle URL without registering each app as
+a `Bundle`. Each app's temporary property lists are drained before scanning the next one; only the
+fields used by launcher results and the localized-name cache remain in memory.
+
 ## Search fields
 
 | Field | What lands in it | Compared against | Ranks |

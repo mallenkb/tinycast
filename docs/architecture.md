@@ -141,6 +141,9 @@ single idle timer. After two seconds it detaches hidden search views and release
 requests allocator relief off-main. Settings schedules the same cleanup when opening, navigating
 through its coordinator, and closing. Teardown cancels the timer and worker and removes the event monitor.
 
+While the palette is hidden, that idle pass also releases row thumbnails and extension artwork.
+Cache generations prevent decodes started before the purge from restoring those allocations.
+
 Spotlight content queries also run in a disposable helper. The file-search session owns cancellation;
 the helper is reaped before its bounded paths are matched against the current index. Once the search
 worker has drained, its coordinator schedules the same idle cache and allocator cleanup.

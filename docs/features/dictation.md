@@ -39,15 +39,14 @@ models use CPU/Neural Engine.
 - The enable switch is consent. It explains microphone and Accessibility access before enabling,
   and, like every Dictation preference, is excluded from backups so importing settings cannot arm
   a global recording shortcut.
-- Auto-learn words defaults to on when Dictation is enabled. An explicit Off choice is preserved
-  when Dictation is turned off and on again. After a confirmed paste into a readable text field, Tinycast
-  can watch the inserted text for up to 60 seconds. It learns a single similar word replacement
-  after the edit settles and stops watching when focus leaves the field or the surrounding text
+- Auto-learn words is active when Dictation is enabled. After a confirmed paste into a readable text
+  field, Tinycast watches the inserted text while the field remains focused. It learns similar word
+  replacements after each edit settles and stops watching when focus leaves the field or the surrounding text
   changes. Add a word or phrase under Dictation Settings > Dictionary to keep its preferred spelling.
   Enter a misspelling to replace the text Tinycast repeatedly hears. The dictionary stores up to 100
   entries on this Mac and keeps manual entries when learned ones are dropped. All engines apply
   dictionary entries to finished text. Apple Dictation also uses saved words as recognition hints.
-  Entries apply with learning off. Remove an entry in Dictation Settings to stop using it.
+  Remove an entry in Dictation Settings to stop using it.
 - Microphone status appears in Permissions and the Dictation pane. Neither pane prompts on display;
   only a user action requests access, while revoked access is refreshed from macOS.
 - Push to talk and Hands-free have separate global shortcuts and can both be assigned.
@@ -143,7 +142,8 @@ models use CPU/Neural Engine.
 - Play sounds is on by default. When on, macOS's `dt-begin.caf` plays on the microphone's first samples
   and `dt-confirm.caf` when recording stops (release, toggle, Return or the length limit); cancelling
   stays silent. These are internal resources in `AssistantServices.framework`, not bundled audio;
-  their location is undocumented, and a missing sound is silently skipped without blocking dictation.
+  the cue runner loads them only when a recording first plays a sound.
+  Their location is undocumented, and a missing sound is silently skipped without blocking dictation.
   A Bluetooth headset drops output while it switches to its microphone, sometimes after the first
   samples arrive, so with a Bluetooth microphone the start cue waits half a second more. The stop cue
   plays before the microphone closes and a headset switches back. Media can mask the cues, and
@@ -251,6 +251,10 @@ its helper too. Standalone previews and manual transforms keep a one-minute idle
 The helper also stops on request errors, disabling dictation, changing engines, or quitting.
 Tinycast releases its Apple Intelligence session after use.
 macOS manages the shared Apple Intelligence model's memory.
+
+Raw recording buffers are released as soon as recognition returns, before cleanup and insertion.
+Cleanup downloads and requests create their own ephemeral network sessions and invalidate them
+when finished; an idle cleanup store retains no network session.
 
 Saved transforms live in `dictation-transforms.json` in the shared application-support directory.
 Polish, Shorten, Make a list, and Prompt Engineer seed a new installation; users can edit, create, or delete entries.

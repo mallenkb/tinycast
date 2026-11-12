@@ -29,6 +29,11 @@ final class ExtensionCoordinator {
 
     // MARK: - Feature presence
 
+    func releaseIdleArtwork() {
+        guard !palette.isVisible else { return }
+        ExtensionIconCache.purgeDecoded()
+    }
+
     /// Applies both switches as they stand — on launch, and after a backup import moves them.
     func applyEnabled() {
         extensions.setShowsInLauncher(settings.extensionsShowInLauncher)

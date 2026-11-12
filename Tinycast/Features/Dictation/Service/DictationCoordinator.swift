@@ -12,7 +12,7 @@ final class DictationCoordinator {
     let models: DictationModelStore
     let corrections: DictationCorrectionStore
     private let capture = DictationCapture()
-    private let cues = DictationCueRunner()
+    @ObservationIgnored private lazy var cues = DictationCueRunner()
     private let panel = DictationPanelController()
     private let injector: TextInjector
     private let focusedTarget: @MainActor () -> InjectionTarget?
@@ -265,7 +265,7 @@ final class DictationCoordinator {
         transcriptionTask = Task { [weak self] in
             guard let self else { return }
             guard token == current else { return }
-            let samples = await capture.stop()
+            var samples = await capture.stop()
             await previewTask?.value
             guard token == current else { return }
             guard samples.count >= 1_600 else {
@@ -296,6 +296,7 @@ final class DictationCoordinator {
                     transcript = try await models.transcribe(samples, model: model, language: language)
                 }
                 guard token == current else { return }
+                samples.removeAll(keepingCapacity: false)
                 models.endRecording()
                 let isEnglish = englishOverride(model: applePreparation == nil ? model : nil, language: language)
                 let cleaned: String
@@ -320,7 +321,7 @@ final class DictationCoordinator {
                 }
                 let destination = followsFocus ? focusedTarget() : target
                 let insertion = DictationInsertionContext.read(
-                    in: destination, learnsCorrections: settings.dictationEnabled && settings.dictationAutoLearnsWords)
+                    in: destination, learnsCorrections: settings.dictationEnabled)
                 let original = processed == transcript ? nil : transcript
                 let formatted = DictationTextFormatter.format(
                     processed,
@@ -367,18 +368,16 @@ final class DictationCoordinator {
     }
 
     private func learnCorrection(using probe: DictationInsertionContext.CorrectionProbe, recognized: String) {
-        guard settings.dictationEnabled, settings.dictationAutoLearnsWords,
-            probe.readInsertion() == probe.inserted
+        guard settings.dictationEnabled, probe.readInsertion() == probe.inserted
         else { return }
         correctionTask = Task { [weak self] in
             defer { if !Task.isCancelled { self?.correctionTask = nil } }
-            let deadline = ContinuousClock.now + .seconds(60)
             var previous = probe.inserted
+            var learned = probe.inserted
             var lastChange = ContinuousClock.now
-            while ContinuousClock.now < deadline {
+            while !Task.isCancelled {
                 do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
-                guard !Task.isCancelled, ContinuousClock.now < deadline,
-                    let self, settings.dictationEnabled, settings.dictationAutoLearnsWords,
+                guard !Task.isCancelled, let self, settings.dictationEnabled,
                     let edited = probe.readInsertion()
                 else { return }
                 if edited != previous {
@@ -386,13 +385,14 @@ final class DictationCoordinator {
                     lastChange = .now
                     continue
                 }
-                guard edited != probe.inserted, lastChange.duration(to: .now) >= .seconds(1),
-                    let correction = DictationCorrection.infer(from: probe.inserted, to: edited, recognized: recognized)
+                guard edited != learned, lastChange.duration(to: .now) >= .seconds(1),
+                    let correction = DictationCorrection.infer(from: learned, to: edited, recognized: recognized)
                 else { continue }
                 do { try corrections.record(correction) } catch {
                     showMessage(error.localizedDescription, .danger)
+                    return
                 }
-                return
+                learned = edited
             }
         }
     }

@@ -43,6 +43,8 @@ the top hits too. The design follows [fsearch](https://github.com/noahdunnagan/f
 - **A superseded query never publishes.** The session runs one search at a time, keeps only the newest
   pending request, cancels the superseded scan, and checks its revision before publishing.
   Previously displayed results remain visible until the latest query finishes.
+- Closing the palette releases typed search results and recomputes them when Search Files reopens.
+  The small Recent cache remains available for the blank search screen.
 - **Share is the one system popover, and the palette stays up under it.** `AGENTS.md` keeps Tinycast's
   own dialogs because a question or a report is Tinycast's to word. A share sheet is neither: it is
   AirDrop, Mail and Messages, and re-drawing it would mean re-implementing the transports and losing

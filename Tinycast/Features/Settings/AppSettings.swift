@@ -484,10 +484,6 @@ final class AppSettings {
         didSet { defaults.set(dictationTransformID, forKey: Key.dictationTransformID.rawValue) }
     }
 
-    var dictationAutoLearnsWords: Bool {
-        didSet { defaults.set(dictationAutoLearnsWords, forKey: Key.dictationAutoLearnsWords.rawValue) }
-    }
-
     /// Nil lets macOS follow the system input device as it changes.
     var dictationMicrophone: String? {
         didSet { defaults.set(dictationMicrophone, forKey: Key.dictationMicrophone.rawValue) }
@@ -955,7 +951,6 @@ final class AppSettings {
         dictationAutoTransform = defaults.object(forKey: Key.dictationAutoTransform.rawValue) as? Bool ?? false
         dictationTransformID = defaults.string(forKey: Key.dictationTransformID.rawValue)
             ?? "D1C70000-0000-4000-8000-000000000001"
-        dictationAutoLearnsWords = defaults.object(forKey: Key.dictationAutoLearnsWords.rawValue) as? Bool ?? true
         dictationMicrophone = defaults.string(forKey: Key.dictationMicrophone.rawValue)
         dictationAdaptsCapitalization =
             defaults.object(forKey: Key.dictationAdaptsCapitalization.rawValue) == nil

@@ -107,7 +107,10 @@ enum SearchScopes {
     /// Empty when unreadable, which `.numeric` ranks below every real version.
     private static func shortVersion(of url: URL) -> String {
         guard url.pathExtension == "app" else { return "" }
-        return Bundle(url: url)?.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        return autoreleasepool {
+            let info = CFBundleCopyInfoDictionaryForURL(url as CFURL) as? [String: Any]
+            return info?["CFBundleShortVersionString"] as? String ?? ""
+        }
     }
 
     /// Without `.app`, so `Xcode` sorts before `Xcode-beta` rather than after it.

@@ -71958,54 +71958,54 @@
         }
       }
     },
-    "Learn spelling corrections you make just after dictation." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lernt Rechtschreibkorrekturen direkt nach dem Diktat."
+    "Learn spelling corrections while the dictation field is focused." : {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtschreibkorrekturen lernen, solange das Diktatfeld aktiv ist."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aprende las correcciones ortográficas que haces justo después de dictar."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprender correcciones ortográficas mientras el campo de dictado está activo."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mémorise les corrections orthographiques que vous faites juste après la dictée."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apprendre les corrections orthographiques tant que le champ de dictée est actif."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "音声入力の直後に修正した単語のつづりを学習します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声入力欄にフォーカスがある間、つづりの修正を学習します。"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "받아쓰기 직후에 수정한 철자를 학습합니다."
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받아쓰기 입력란에 포커스가 있는 동안 철자 수정을 학습합니다."
           }
         },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aprende as correções de ortografia feitas logo após o ditado."
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprender correções ortográficas enquanto o campo de ditado estiver ativo."
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запоминает исправления орфографии, внесённые сразу после диктовки."
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запоминать исправления, пока поле диктовки активно."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "学习你在听写后立即更正的拼写。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "听写输入框处于焦点时学习拼写更正。"
           }
         }
       }
@@ -133495,54 +133495,54 @@
         }
       }
     },
-    "Tinycast needs microphone access for dictation and Accessibility to paste into other apps. Audio is processed on this Mac. With Auto-learn words on, Tinycast saves spelling corrections on this Mac." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast benötigt Mikrofonzugriff für das Diktat und Bedienungshilfen zum Einsetzen in andere Apps. Audio wird auf diesem Mac verarbeitet. Wenn das automatische Lernen eingeschaltet ist, speichert Tinycast Rechtschreibkorrekturen auf diesem Mac."
+    "Tinycast needs microphone access for dictation and Accessibility to paste into other apps. Audio is processed on this Mac. Tinycast watches the pasted dictation while its field is focused and saves spelling corrections on this Mac." : {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycast benötigt Mikrofonzugriff für das Diktat und Bedienungshilfen zum Einsetzen in andere Apps. Audio wird auf diesem Mac verarbeitet. Tinycast beobachtet das eingefügte Diktat, solange das Feld aktiv ist, und speichert Rechtschreibkorrekturen auf diesem Mac."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast necesita acceso al micrófono para el dictado y a Accesibilidad para pegar en otras apps. El audio se procesa en este Mac. Si el aprendizaje automático de palabras está activado, Tinycast guarda las correcciones ortográficas en este Mac."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycast necesita acceso al micrófono para dictar y a Accesibilidad para pegar en otras apps. El audio se procesa en este Mac. Tinycast observa el dictado pegado mientras el campo está activo y guarda las correcciones ortográficas en este Mac."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La dictée nécessite l’accès au micro. L’autorisation d’accessibilité permet de coller dans les autres apps. Le son est traité sur ce Mac. Si l’apprentissage automatique des mots est activé, Tinycast enregistre les corrections orthographiques sur ce Mac."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycast a besoin du micro pour la dictée et de l’accessibilité pour coller dans les autres apps. Le son est traité sur ce Mac. Tinycast surveille la dictée collée tant que le champ est actif et enregistre les corrections orthographiques sur ce Mac."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycastは音声入力にマイクへのアクセス権、ほかのアプリへのペーストにアクセシビリティのアクセス権が必要です。音声はこのMacで処理されます。単語の自動学習がオンの場合、Tinycast はつづりの修正をこの Mac に保存します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycastは音声入力にマイクへのアクセス権、ほかのアプリへのペーストにアクセシビリティのアクセス権が必要です。音声はこのMacで処理されます。入力欄にフォーカスがある間、Tinycastはペーストした音声入力を監視し、つづりの修正をこのMacに保存します。"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast는 받아쓰기를 위해 마이크 접근 권한이 필요하며 다른 앱에 붙여넣으려면 손쉬운 사용 권한이 필요합니다. 오디오는 이 Mac에서 처리됩니다. 단어 자동 학습이 켜져 있으면 Tinycast가 철자 수정을 이 Mac에 저장합니다."
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycast는 받아쓰기에 마이크 접근 권한이, 다른 앱에 붙여넣기에 손쉬운 사용 권한이 필요합니다. 오디오는 이 Mac에서 처리됩니다. Tinycast는 입력란에 포커스가 있는 동안 붙여넣은 받아쓰기를 확인하고 철자 수정을 이 Mac에 저장합니다."
           }
         },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Tinycast precisa de acesso ao microfone para o ditado e à Acessibilidade para colar em outros apps. O áudio é processado neste Mac. Com o aprendizado automático de palavras ativado, o Tinycast salva as correções ortográficas neste Mac."
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Tinycast precisa de acesso ao microfone para ditado e à Acessibilidade para colar em outros apps. O áudio é processado neste Mac. O Tinycast acompanha o ditado colado enquanto o campo estiver ativo e salva as correções ortográficas neste Mac."
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast нужен доступ к микрофону для диктовки и Универсальному доступу для вставки в другие приложения. Аудио обрабатывается на этом Mac. Если автоматическое запоминание слов включено, Tinycast сохраняет исправления орфографии на этом Mac."
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycast нужен доступ к микрофону для диктовки и к Универсальному доступу для вставки в другие приложения. Аудио обрабатывается на этом Mac. Tinycast отслеживает вставленный текст, пока поле активно, и сохраняет исправления на этом Mac."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast 需要麦克风访问权限来进行听写，以及辅助功能权限来粘贴到其他 App。音频在这台 Mac 上处理。开启自动学习词语后，Tinycast 会将拼写更正保存在这台 Mac 上。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinycast 需要麦克风访问权限来进行听写，以及辅助功能权限来粘贴到其他 App。音频在这台 Mac 上处理。当输入框处于焦点时，Tinycast 会观察粘贴的听写文本，并将拼写更正保存在这台 Mac 上。"
           }
         }
       }

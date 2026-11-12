@@ -567,8 +567,9 @@ Link titles and favicons remain cached separately from banners. Hiding purges th
 invalidates pending banner publication; reopening can fetch the selected banner again.
 
 Image and file thumbnail caches each keep only one large preview, with a 4 MiB cost limit, and
-a separate 4 MiB row cache. Quick Look receives the pixel budget at scale 1, avoiding a second
-Retina multiplication. Row sizes and the on-screen preview size are unchanged.
+a separate 4 MiB row cache. Hiding the palette clears the previews immediately. Idle cleanup clears
+both caches and rejects cache writes from decodes that began before the purge. Quick Look receives
+the pixel budget at scale 1, avoiding a second Retina multiplication.
 
 ## Search by description
 

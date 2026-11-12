@@ -18,8 +18,9 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
   extension namespace, so storage, preferences and command launches cannot target the palette's
   extension. Shutdown cancels pending host tasks; a generation check rejects replies from old contexts.
 - **Bridges share one private HTTP transport, never execution state.** Cookies, credential storage and
-  URL caching are disabled. Individual task cancellation leaves other requests running; releasing the
-  fetcher invalidates its session so CFNetwork does not retain discarded connections and sessions.
+  URL caching are disabled. The fetcher creates its session on the first request without a Unix socket.
+  Cancelling a request leaves other requests running. Releasing the fetcher invalidates its session if
+  one exists.
   Only its session configuration opts out of the AppSSO broker through the private `_preventsAppSSO`
   property when its setter is available. Other sessions keep their own authentication behavior.
 - **An idle menu item holds no JavaScript.** Once `isLoading` clears, keep only the native button and
@@ -974,6 +975,9 @@ so every pixel of it reads. At equal geometry the extension shouts, and fitting 
 makes the two match by eye. Shipped and fetched images take the same target, so an icon doesn't
 change size depending on where it came from. An inline `data:` image is the one exception and is never
 fitted: the extension that drew it has already sized it, and rasterizing would cost the vector.
+
+Idle cleanup clears cached remote and original artwork while the palette is hidden. Loads that
+started before the purge can still return their image, and they cannot refill the cache.
 
 Change the number only against a rendered strip of real icons; it means nothing on its own.
 `ext-icon-test` guards the invariant: padding in the source cannot change the drawn size, and a

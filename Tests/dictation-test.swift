@@ -113,7 +113,11 @@ struct DictationTest {
                 else {
                     fatalError("Parakeet download and inference disagree")
                 }
-            } else if !model.isQwen {
+            } else if model == .unified {
+                guard model.family == .parakeet,
+                    model.components.contains("parakeet_unified_encoder_int8.mlmodelc")
+                else { fatalError("Unified Parakeet installation metadata is incomplete") }
+            } else if !model.isQwen && !model.isCohere {
                 fatalError("Missing Parakeet decoding configuration")
             }
         }

@@ -18,7 +18,7 @@ the palette indicates loading; Reduce Motion holds the strip still.
 - Bannerless results can retry on selection after 15 seconds; no background retry timer runs.
 - Metadata and favicons retain up to 24 entries with a 1 MiB cost limit. Only the latest banner
   stays cached, with a 3 MB budget. Revisiting an older banner fetches it again.
-- Hiding clears banners and prevents pending requests from restoring them.
+- Hiding clears cached metadata, icons and banners, and prevents pending requests from restoring them.
 - Missing metadata or failed requests fall back to the URL's host without blocking paste actions.
 
 ## Implementation

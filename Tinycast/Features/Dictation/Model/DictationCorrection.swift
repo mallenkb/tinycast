@@ -53,7 +53,7 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
             key.split(separator: " ").map { NSRegularExpression.escapedPattern(for: String($0)) }
                 .joined(separator: "\\h+")
         }.joined(separator: "|")
-        let punctuation = NSRegularExpression.escapedPattern(for: Self.punctuation)
+        let punctuation = Self.punctuation.unicodeScalars.map { "\\x{\(String($0.value, radix: 16))}" }.joined()
         let pattern = "(?<!\\S)[\(punctuation)]*?(\(phrases))(?=[\(punctuation)]*(?:\\s|$))"
         guard let expression = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return text }
         var corrected = ""

@@ -211,6 +211,10 @@ final class FileSearchSession {
         guard !suspended else { return }
         suspended = true
         isFetching = false
+        if request != .recent, !results.isEmpty {
+            results = []
+            needsResume = request != nil
+        }
         guard activeSearch != nil || pending != nil else { return }
         needsResume = request != nil
         revision &+= 1

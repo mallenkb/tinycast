@@ -61,7 +61,11 @@ struct DictationWorkerTest {
         for model in DictationModel.allCases {
             let directory = root.appending(path: model.folderName)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            for name in model.requiredFiles { try Data([0]).write(to: directory.appending(path: name)) }
+            for name in model.requiredFiles {
+                let file = directory.appending(path: name)
+                try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try Data([0]).write(to: file)
+            }
         }
         let store = DictationModelStore(idleRelease: .never, root: root) {
             readiness.workers += 1

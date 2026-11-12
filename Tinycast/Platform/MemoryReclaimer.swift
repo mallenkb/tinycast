@@ -38,7 +38,7 @@ final class MemoryReclaimer {
 
     private func reclaim() {
         timer = nil
-        releaseCaches()
+        autoreleasepool { releaseCaches() }
         guard trimming == nil else { return }
         trimming = Task { [weak self] in
             await Self.trimAllocator()

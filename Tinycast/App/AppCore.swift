@@ -54,11 +54,18 @@ final class AppCore {
     let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
     @ObservationIgnored private(set) lazy var memoryReclaimer = MemoryReclaimer { [weak self] in
-        self?.windowController.releaseHiddenSearchContent()
+        guard let self else { return }
+        windowController.releaseHiddenSearchContent()
         IconCache.purgeDecoded()
-        ImageThumbnail.purgePreviews()
-        FilePreviewThumbnail.purgePreviews()
-        self?.linkPreviews.purgeBanners()
+        if palette.isVisible {
+            ImageThumbnail.purgePreviews()
+            FilePreviewThumbnail.purgePreviews()
+        } else {
+            ImageThumbnail.purgeDecoded()
+            FilePreviewThumbnail.purgeDecoded()
+            extensionCoordinator.releaseIdleArtwork()
+        }
+        linkPreviews.purgeBanners()
     }
     let settings: AppSettings
     /// Mirrors settings into settings.json; nil while the Backup pane's switch is off.
@@ -172,8 +179,8 @@ final class AppCore {
                 message: String(
                     localized: """
                         Tinycast needs microphone access for dictation and Accessibility to paste into \
-                        other apps. Audio is processed on this Mac. With Auto-learn words on, \
-                        Tinycast saves spelling corrections on this Mac.
+                        other apps. Audio is processed on this Mac. Tinycast watches the pasted \
+                        dictation while its field is focused and saves spelling corrections on this Mac.
                         """),
                 symbol: "waveform", confirmTitle: String(localized: "Continue"), tone: .neutral,
                 confirmRole: .standard)
@@ -362,6 +369,7 @@ final class AppCore {
     }
 
     func start(launchedByUser: Bool) {
+        DictationAutoLearnMigration.run(defaults: AppPaths.preferences)
         memoryReclaimer.start()
         clipboardStore.setTextSearchActive(false)
         clipboardStore.onSearchResultsChanged = { [weak self] query, previous, current in
@@ -542,6 +550,7 @@ final class AppCore {
             }
             appIndex.onScan = { [weak self] in
                 guard let self else { return }
+                memoryReclaimer.schedule()
                 hotKeys.removeAppBindings(where: appIndex.isUninstalled)
                 // After the first scan, so the file's apps and panes have entries to match.
                 if settings.settingsFileEnabled, settingsFile == nil {

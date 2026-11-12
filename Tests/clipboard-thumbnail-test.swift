@@ -11,6 +11,7 @@ struct ClipboardThumbnailTests {
     static func main() async {
         previewCacheKeepsOneImage()
         stalePreviewCannotRepopulateCache()
+        staleThumbnailCannotRepopulateIdleCache()
         await removalDuringGenerationLeavesNoCopy()
         await clearDuringGenerationLeavesNoCopy()
         await sameNameDifferentExtensionsStayApart()
@@ -48,6 +49,24 @@ struct ClipboardThumbnailTests {
         expect(cache.cached(url, maxPixel: 64) != nil, "row thumbnails remain warm")
         cache.store(image, for: url, maxPixel: 900, cost: 1024, generation: cache.generation)
         expect(cache.cached(url, maxPixel: 900) != nil, "reopened preview can populate cache")
+    }
+
+    static func staleThumbnailCannotRepopulateIdleCache() {
+        let cache = ThumbnailCache(rowBytes: 4096, previewBytes: 4096)
+        let url = URL(fileURLWithPath: "/test-thumbnail.png")
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        let generation = cache.generation
+        cache.store(image, for: url, maxPixel: 64, cost: 1024, generation: generation)
+        cache.store(image, for: url, maxPixel: 900, cost: 1024, generation: generation)
+        cache.purgeDecoded()
+        expect(cache.cached(url, maxPixel: 64) == nil, "idle purge releases row thumbnails")
+        expect(cache.cached(url, maxPixel: 900) == nil, "idle purge releases previews")
+        cache.store(image, for: url, maxPixel: 64, cost: 1024, generation: generation)
+        cache.store(image, for: url, maxPixel: 900, cost: 1024, generation: generation)
+        expect(cache.cached(url, maxPixel: 64) == nil, "late decode cannot refill purged rows")
+        expect(cache.cached(url, maxPixel: 900) == nil, "late decode cannot refill purged previews")
+        cache.store(image, for: url, maxPixel: 64, cost: 1024, generation: cache.generation)
+        expect(cache.cached(url, maxPixel: 64) != nil, "reopened row can populate the cache")
     }
 
     // MARK: - Cases

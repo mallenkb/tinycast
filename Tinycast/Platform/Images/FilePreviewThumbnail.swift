@@ -14,11 +14,15 @@ enum FilePreviewThumbnail {
         cache.purgePreviews()
     }
 
+    static func purgeDecoded() {
+        cache.purgeDecoded()
+    }
+
     /// Returns the render directly, so an eviction mid-flight can't strand a placeholder.
     static func loadAsync(_ url: URL, maxPixel: CGFloat) async -> NSImage? {
+        let generation = cache.generation
         if let cached = cached(url, maxPixel: maxPixel) { return cached }
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        let generation = cache.generation
         let request = QLThumbnailGenerator.Request(
             fileAt: url, size: CGSize(width: maxPixel, height: maxPixel), scale: 1,
             representationTypes: .all)
