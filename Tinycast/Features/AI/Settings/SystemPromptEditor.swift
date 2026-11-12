@@ -55,6 +55,7 @@ struct SystemPromptEditor: View {
         } else {
             ScrollView {
                 Text(text)
+                    .smallScrollIndicators()
                     .font(.body)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Self.textInset)

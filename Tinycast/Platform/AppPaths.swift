@@ -1,7 +1,19 @@
 import Foundation
 
-/// The per-channel storage roots. Keyed by bundle id so a Dev build never shares a stable's dirs.
 enum AppPaths {
+    static var storageIdentifier: String {
+        storageIdentifier(for: Bundle.main.bundleIdentifier ?? "com.tinycast.app")
+    }
+
+    static var preferences: UserDefaults {
+        if storageIdentifier == Bundle.main.bundleIdentifier { return .standard }
+        return UserDefaults(suiteName: storageIdentifier)!
+    }
+
+    static func storageIdentifier(for bundleID: String) -> String {
+        bundleID == "com.tinycast.app.dev" ? "com.tinycast.app" : bundleID
+    }
+
     static func caches(
         bundleID: String = Bundle.main.bundleIdentifier ?? "com.tinycast.app"
     ) -> URL {
@@ -14,13 +26,12 @@ enum AppPaths {
         root(.applicationSupportDirectory, bundleID: bundleID)
     }
 
-    /// `~/.config/tinycast/settings.json`; another channel suffixes the folder, as `tinycast-dev`.
     static func settingsFile(
         bundleID: String = Bundle.main.bundleIdentifier ?? "com.tinycast.app"
     ) -> URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appending(path: ".config", directoryHint: .isDirectory)
-            .appending(path: configFolderName(bundleID: bundleID), directoryHint: .isDirectory)
+            .appending(path: configFolderName(bundleID: storageIdentifier(for: bundleID)), directoryHint: .isDirectory)
             .appending(path: "settings.json", directoryHint: .notDirectory)
     }
 
@@ -65,7 +76,7 @@ enum AppPaths {
     ) -> URL {
         let url = FileManager.default
             .urls(for: directory, in: .userDomainMask)[0]
-            .appendingPathComponent(bundleID, isDirectory: true)
+            .appendingPathComponent(storageIdentifier(for: bundleID), isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }

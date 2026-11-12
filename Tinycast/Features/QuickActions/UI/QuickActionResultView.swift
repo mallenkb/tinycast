@@ -20,6 +20,7 @@ struct QuickActionResultView: View {
     var body: some View {
         ScrollView {
             body(for: state.phase)
+                .smallScrollIndicators()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, metrics.spacing.xxl)
                 // A `ScrollView` has no ideal height, so the frame below is set, not merely capped.

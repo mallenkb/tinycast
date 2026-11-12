@@ -225,6 +225,50 @@ struct DictationAdvancedTest {
     }
 
     private static let edgeCases = [
+        Fixture(family: "Repeated pronouns",
+                input: "They They go and they they try. You you know we we agree.",
+                expected: "They go and they try. You know we agree."),
+        Fixture(family: "Repeated contractions",
+                input: "You're you're ready and they've they've finished. We’re we’re leaving.",
+                expected: "You're ready and they've finished. We’re leaving."),
+        Fixture(family: "Multiple pronoun restarts",
+                input: "She she she said he he could help. I I prefer the the blue one.",
+                expected: "She said he could help. I prefer the blue one."),
+        Fixture(family: "Intentional repetition",
+                input: "It was very very good. We had had enough. That that happened is surprising.",
+                expected: "It was very very good. We had had enough. That that happened is surprising."),
+        Fixture(family: "Punctuated repetition",
+                input: "You, you should know. They. They came back. No, no, please stay.",
+                expected: "You, you should know. They. They came back. No, no, please stay."),
+        Fixture(family: "Different contractions",
+                input: "I I'm ready. You you're next. We we're leaving.",
+                expected: "I I'm ready. You you're next. We we're leaving."),
+        Fixture(family: "Pronoun line boundary",
+                input: "They\nthey finished the work.", expected: "They\nthey finished the work."),
+        Fixture(family: "Developed contrast",
+                input: "The team spent the morning checking every room and recording the equipment we would need. "
+                    + "We also spoke with the organizers about the schedule and confirmed that everyone could arrive early. "
+                    + "However, the delivery is still delayed. "
+                    + "We need to contact the supplier before we can confirm the opening date.",
+                expected: "The team spent the morning checking every room and recording the equipment we would need. "
+                    + "We also spoke with the organizers about the schedule and confirmed that everyone could arrive early.\n\n"
+                    + "However, the delivery is still delayed. "
+                    + "We need to contact the supplier before we can confirm the opening date."),
+        Fixture(family: "Developed question and answer",
+                input: "The team spent the morning checking every room and recording the equipment we would need. "
+                    + "We also spoke with the organizers about the schedule and confirmed that everyone could arrive early. "
+                    + "What happens next? We will send the revised schedule to everyone "
+                    + "and ask them to confirm their availability.",
+                expected: "The team spent the morning checking every room and recording the equipment we would need. "
+                    + "We also spoke with the organizers about the schedule and confirmed that everyone could arrive early.\n\n"
+                    + "What happens next? We will send the revised schedule to everyone "
+                    + "and ask them to confirm their availability."),
+        Fixture(family: "Short question and answer",
+                input: "The room is ready. What happens next? We can open the doors.",
+                expected: "The room is ready. What happens next? We can open the doors."),
+        Fixture(family: "Existing paragraph spacing",
+                input: "They they finished the work.\n\n\nHowever, we we still need to check it.",
+                expected: "They finished the work.\n\n\nHowever, we still need to check it."),
         Fixture(family: "List from heading and sequence",
                 input: "Here are the next steps. First, send the invoice. Next, confirm the date. Finally, notify the team.",
                 expected: "Here are the next steps:\n1. send the invoice.\n2. confirm the date.\n3. notify the team."),

@@ -3,14 +3,15 @@ import Foundation
 @MainActor
 @Observable
 final class FallbackStore {
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let orderKey = "fallbackOrder"
     private let disabledKey = "disabledFallbacks"
 
     private(set) var orderedIDs: [String]
     private(set) var disabledIDs: Set<String>
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         orderedIDs = defaults.stringArray(forKey: orderKey) ?? []
         disabledIDs = Set(defaults.stringArray(forKey: disabledKey) ?? [])
     }

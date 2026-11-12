@@ -336,6 +336,7 @@ struct ClipboardPreview: View {
     private func textPreview(_ text: String) -> some View {
         ScrollView {
             Text(text)
+                .smallScrollIndicators()
                 .font(.system(.subheadline, design: .monospaced))
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .topLeading)

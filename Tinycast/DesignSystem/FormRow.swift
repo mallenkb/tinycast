@@ -30,5 +30,6 @@ struct FormRow<Content: View>: View {
             content.frame(maxWidth: .infinity, alignment: .leading)
             Color.clear.frame(width: labelWidth, height: 0)
         }
+        .smallScrollIndicators()
     }
 }

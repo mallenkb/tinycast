@@ -1,10 +1,12 @@
 import Foundation
 import FoundationModels
 import NaturalLanguage
+import OSLog
 
 @MainActor
 @Observable
 final class DictationWritingCoordinator {
+    private let logger = Logger(subsystem: "com.tinycast.app", category: "DictationCleanup")
     let store: DictationTransformStore
     let cleanup: DictationCleanupModel
     private let settings: AppSettings
@@ -112,10 +114,13 @@ final class DictationWritingCoordinator {
             return settings.dictationCleanupEngine == engine ? result : original
         } catch {
             guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
+            logger.error("Text cleanup failed: \(error.localizedDescription, privacy: .public)")
             if smart {
                 let fallback = await DictationLocalCleanup.clean(original, mode: .advanced, isEnglish: isEnglish)
                 guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
-                report(String(localized: "Smart cleanup failed. Used Advanced cleanup."), .neutral)
+                report(
+                    String(localized: "Smart cleanup failed. Used Advanced cleanup.") + "\n" + error.localizedDescription,
+                    .neutral)
                 return fallback
             }
             report(String(localized: "Text cleanup failed. Using the original transcript."), .neutral)

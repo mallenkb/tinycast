@@ -43,6 +43,8 @@ struct ChatComposerTextView: NSViewRepresentable {
         scroll.borderType = .noBorder
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
+        scroll.verticalScroller?.controlSize = .small
+        scroll.horizontalScroller?.controlSize = .small
         guard let textView = scroll.documentView as? ComposerTextView else { return scroll }
         handle.textView = textView
         textView.delegate = context.coordinator

@@ -35,6 +35,7 @@ struct WindowLayoutInspector: View {
                     positionField
                 }
             }
+            .smallScrollIndicators()
             .padding(Theme.Spacing.xxl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }

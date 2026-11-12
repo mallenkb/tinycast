@@ -22,6 +22,7 @@ struct ClipboardEditField: View {
                 minimumHeight: metrics.size.dialogTextHeight,
                 label: String(localized: "Clipboard entry"), isCode: true, moveFocus: { _ in }
             )
+            .smallScrollIndicators()
         }
         .frame(height: metrics.size.dialogTextHeight)
         .background(

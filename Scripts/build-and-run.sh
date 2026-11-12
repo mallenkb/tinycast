@@ -53,7 +53,6 @@ if [[ "$MODE" == --build-only ]]; then
     exit 0
 fi
 
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 echo "Build complete. Launching $APP_NAME..."
 case "$MODE" in
     run)

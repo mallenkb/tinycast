@@ -4,12 +4,13 @@ import Foundation
 @MainActor
 @Observable
 final class ExtensionAppearanceStore {
-    @ObservationIgnored private let defaults = UserDefaults.standard
+    @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let key = "extensionAppearances"
 
     private(set) var overrides: [String: ExtensionAppearance]
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         if let data = defaults.data(forKey: key),
             let decoded = try? JSONDecoder().decode([String: ExtensionAppearance].self, from: data)
         {

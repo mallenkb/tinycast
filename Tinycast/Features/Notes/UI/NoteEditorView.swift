@@ -19,6 +19,8 @@ struct NoteEditorView: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.scrollerStyle = .overlay
         scrollView.autohidesScrollers = true
+        scrollView.verticalScroller?.controlSize = .small
+        scrollView.horizontalScroller?.controlSize = .small
         scrollView.borderType = .noBorder
         // `NotesView` lays out its own title-bar band, so AppKit must not inset this a second time.
         scrollView.automaticallyAdjustsContentInsets = false

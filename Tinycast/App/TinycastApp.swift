@@ -1,10 +1,42 @@
 import SwiftUI
+import OSLog
 
 @main
 enum TinycastLaunch {
-    static func main() {
+    @MainActor static func main() {
+        guard let storageLease = acquireStorageLease() else { return }
+        defer { close(storageLease) }
         AppSettings.pinLanguage()
         TinycastApp.main()
+    }
+
+    @MainActor private static func acquireStorageLease() -> Int32? {
+        let path = AppPaths.applicationSupport().appending(path: ".instance.lock").path
+        let descriptor = open(path, O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else { return nil }
+        var requested: Set<pid_t> = []
+        let deadline = ContinuousClock.now + .seconds(15)
+        while ContinuousClock.now < deadline {
+            let peers = NSWorkspace.shared.runningApplications.filter {
+                $0.processIdentifier != getpid()
+                    && AppPaths.storageIdentifier(for: $0.bundleIdentifier ?? "") == AppPaths.storageIdentifier
+            }
+            let acquired = flock(descriptor, LOCK_EX | LOCK_NB) == 0
+            if acquired, peers.isEmpty { return descriptor }
+            if !acquired, peers.allSatisfy({ !$0.isFinishedLaunching }) {
+                close(descriptor)
+                return nil
+            }
+            for peer in peers where peer.isFinishedLaunching && !requested.contains(peer.processIdentifier) {
+                requested.insert(peer.processIdentifier)
+                peer.terminate()
+            }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        }
+        close(descriptor)
+        Logger(subsystem: "com.tinycast.app", category: "Launch")
+            .error("Shared storage is still in use; leaving the running app open.")
+        return nil
     }
 }
 

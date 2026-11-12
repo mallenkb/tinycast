@@ -32,6 +32,7 @@ struct SettingsSidebarView: View {
                             SettingsTabIcon(name: tab.iconAsset)
                         }
                         .tag(tab)
+                        .smallScrollIndicators()
                     }
                 }
             }
@@ -51,7 +52,7 @@ struct SettingsSidebarView: View {
             List(selection: $highlighted) {
                 Section("Results") {
                     ForEach(results) { entry in
-                        SettingsSearchResultRow(entry: entry).tag(entry.id)
+                        SettingsSearchResultRow(entry: entry).tag(entry.id).smallScrollIndicators()
                     }
                 }
             }

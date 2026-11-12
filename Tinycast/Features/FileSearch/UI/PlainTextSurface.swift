@@ -22,6 +22,8 @@ struct PlainTextSurface: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
+        scrollView.verticalScroller?.controlSize = .small
+        scrollView.horizontalScroller?.controlSize = .small
         guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
         // Unselectable, as QuickLook's is: a selectable view would take the search field's caret.
         textView.isEditable = false

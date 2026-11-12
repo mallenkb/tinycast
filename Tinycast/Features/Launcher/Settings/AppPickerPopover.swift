@@ -30,6 +30,7 @@ struct AppPickerPopover: View {
                     }
                 }
                 .padding(Theme.Spacing.sm)
+                .smallScrollIndicators()
             }
         }
         .frame(width: 220, height: 240)

@@ -7,7 +7,7 @@ another app.
 ## Invariants
 
 - **Snippets are channel-isolated and path-identified.** They persist under
-  `~/Library/Application Support/<bundle-id>/Snippets/` unless the user chooses a folder;
+  `~/Library/Application Support/com.tinycast.app/Snippets/` unless the user chooses a folder;
   `StoredSnippet.ID` is the standardized source path, and an external rename is a delete plus a create.
 - **The feature ships off, and its enable switch doubles as keyword-expansion consent.**
   `snippetsEnabled` is excluded from settings backups, and Accessibility — the only permission it needs,
@@ -27,10 +27,10 @@ another app.
 
 ## Storage and identity
 
-Each app channel owns a separate library:
+Dev and release share the default library:
 
 ```text
-~/Library/Application Support/<bundle-id>/Snippets/
+~/Library/Application Support/com.tinycast.app/Snippets/
 ```
 
 **Snippets Folder** in the Snippets pane, or `snippets.folder` in the [settings file](settings-file.md),
@@ -39,9 +39,9 @@ points the library at another folder, absolute or under `~/`, as it is: nothing 
 `SnippetsStore.relocate` stops, swaps and reloads. The folder is excluded from backups, since it names
 a place on this Mac.
 
-Debug (`com.tinycast.app.dev`), beta, and stable therefore never share snippet files. The storage
-root and bundle identifier are injectable in the standalone harness so tests cannot touch a real
-library.
+Beta and custom bundle identities retain separate default libraries. Dev and release also share
+the chosen-folder preference. The storage root and bundle identifier are injectable in the standalone
+harness so tests cannot touch a real library.
 
 A stored snippet's identity is the standardized path of its Markdown file. Changing `name` or other
 frontmatter keeps the same identity. Renaming a file outside Tinycast appears as deletion of the old

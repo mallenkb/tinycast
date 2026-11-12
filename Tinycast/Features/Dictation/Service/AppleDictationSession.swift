@@ -21,12 +21,13 @@ struct AppleDictationSession: Sendable {
     private let format: AVAudioFormat
 
     @concurrent
-    static func prepare(vocabulary: [String]) async throws -> Self {
+    static func prepare(vocabulary: [String], progressive: Bool = false) async throws -> Self {
         let preferred = Locale.preferredLanguages.first.map(Locale.init(identifier:)) ?? .current
         guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: preferred) else {
             throw Failure.unsupportedLanguage
         }
-        let transcriber = DictationTranscriber(locale: locale, preset: .longDictation)
+        let transcriber = DictationTranscriber(
+            locale: locale, preset: progressive ? .progressiveLongDictation : .longDictation)
         if let installation = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
             try await installation.downloadAndInstall()
         }
@@ -52,8 +53,41 @@ struct AppleDictationSession: Sendable {
             continuation.yield(input)
             continuation.finish()
         }
-        return try await withTaskCancellationHandler {
-            async let text = collectResults()
+        return try await analyze(sequence, onPartial: nil)
+    }
+
+    @concurrent
+    func transcribe(
+        _ audio: AsyncStream<[Float]>, onPartial: @escaping @MainActor @Sendable (String) -> Void
+    ) async throws -> String {
+        let (input, continuation) = AsyncThrowingStream<AnalyzerInput, Error>.makeStream()
+        async let feed: Void = sendAudio(audio, to: continuation)
+        let text = try await analyze(input, onPartial: onPartial)
+        await feed
+        return text
+    }
+
+    @concurrent
+    private func sendAudio(
+        _ audio: AsyncStream<[Float]>, to continuation: AsyncThrowingStream<AnalyzerInput, Error>.Continuation
+    ) async {
+        do {
+            for await samples in audio {
+                try Task.checkCancellation()
+                continuation.yield(try makeInput(samples))
+            }
+            continuation.finish()
+        } catch {
+            continuation.finish(throwing: error)
+        }
+    }
+
+    @concurrent
+    private func analyze<Input: AsyncSequence & Sendable>(
+        _ sequence: Input, onPartial: (@MainActor @Sendable (String) -> Void)?
+    ) async throws -> String where Input.Element == AnalyzerInput {
+        try await withTaskCancellationHandler {
+            async let text = collectResults(onPartial: onPartial)
             do {
                 if let end = try await analyzer.analyzeSequence(sequence) {
                     try await analyzer.finalizeAndFinish(through: end)
@@ -71,10 +105,21 @@ struct AppleDictationSession: Sendable {
         }
     }
 
-    private func collectResults() async throws -> String {
+    private func collectResults(onPartial: (@MainActor @Sendable (String) -> Void)?) async throws -> String {
         var transcript = ""
-        for try await result in transcriber.results where result.isFinal {
-            transcript.append(contentsOf: result.text.characters)
+        var partials: [(range: CMTimeRange, text: String)] = []
+        for try await result in transcriber.results {
+            let text = String(result.text.characters)
+            if result.isFinal {
+                transcript.append(text)
+            }
+            guard let onPartial else { continue }
+            partials.removeAll { $0.range.intersection(result.range).duration > .zero }
+            if !result.isFinal {
+                partials.append((result.range, text))
+                partials.sort { $0.range.start < $1.range.start }
+            }
+            await onPartial(transcript + partials.map(\.text).joined())
         }
         return transcript
     }

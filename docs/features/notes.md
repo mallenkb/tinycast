@@ -49,11 +49,14 @@ commands and global shortcuts can show, search, or extend the collection.
 
 ## Storage and identity
 
-The per-channel directory is:
+Dev and release share the default directory:
 
 ```text
-~/Library/Application Support/<bundle-id>/Notes/
+~/Library/Application Support/com.tinycast.app/Notes/
 ```
+
+Beta and custom bundle identities retain separate default directories. Dev and release share both
+the default library and the chosen-folder preference.
 
 **Notes Folder** in the Notes pane, or `notes.folder` in the [settings file](settings-file.md), uses
 another folder, absolute or under `~/`, as it is: nothing moves out of the old one. `NotesStore.relocate`

@@ -31,7 +31,7 @@ final class DictationCapture {
     private var active: CaptureSessionBox?
     var isBluetooth: Bool { active?.isBluetooth == true }
 
-    func start(microphoneID: String?) async throws {
+    func start(microphoneID: String?, stream: AsyncStream<[Float]>.Continuation? = nil) async throws {
         try Task.checkCancellation()
         let permission = AVCaptureDevice.authorizationStatus(for: .audio)
         let granted: Bool
@@ -43,7 +43,7 @@ final class DictationCapture {
         guard granted else { throw Failure.microphoneDenied }
         let id = UUID()
         let box = try await CaptureSessionBox.configure(
-            id: id, microphoneID: microphoneID,
+            id: id, microphoneID: microphoneID, stream: stream,
             onLevels: { [weak self] levels in
                 Task { @MainActor [weak self] in
                     guard let self, active?.id == id else { return }
@@ -71,9 +71,9 @@ final class DictationCapture {
         return await active.stop()
     }
 
-    func recentSamples() async -> [Float] {
+    func recentSamples(seconds: Int) async -> [Float] {
         guard let active else { return [] }
-        return await active.recentSamples()
+        return await active.recentSamples(seconds: seconds)
     }
 }
 
@@ -86,7 +86,8 @@ private struct CaptureSessionBox: @unchecked Sendable {
     private let collector: AudioCollector
 
     @concurrent static func configure(
-        id: UUID, microphoneID: String?, onLevels: @escaping @Sendable ([Float]) -> Void,
+        id: UUID, microphoneID: String?, stream: AsyncStream<[Float]>.Continuation?,
+        onLevels: @escaping @Sendable ([Float]) -> Void,
         onLimit: @escaping @Sendable () -> Void
     ) async throws -> Self {
         try Task.checkCancellation()
@@ -115,7 +116,7 @@ private struct CaptureSessionBox: @unchecked Sendable {
         }
         capture.addInput(input)
         capture.addOutput(output)
-        let collector = try AudioCollector(onLevels: onLevels, onLimit: onLimit)
+        let collector = try AudioCollector(stream: stream, onLevels: onLevels, onLimit: onLimit)
         output.setSampleBufferDelegate(collector, queue: collector.queue)
         return Self(id: id, isBluetooth: isBluetooth, session: capture, output: output, collector: collector)
     }
@@ -132,7 +133,7 @@ private struct CaptureSessionBox: @unchecked Sendable {
         return collector.finish()
     }
 
-    @concurrent func recentSamples() async -> [Float] { collector.recentSamples() }
+    @concurrent func recentSamples(seconds: Int) async -> [Float] { collector.recentSamples(seconds: seconds) }
 }
 
 // Sample buffers and mutable state are confined to the delegate queue, including finish().
@@ -141,6 +142,8 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
 {
     let queue = DispatchQueue(label: "com.tinycast.dictation.audio")
     private var samples: [Float] = []
+    private var streamedSamples = 0
+    private let stream: AsyncStream<[Float]>.Continuation?
     private var displayedLevels: [Float]
     private let spectrum: DictationSpectrum
     private var waveformStartIndex = 0
@@ -149,7 +152,11 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     private let onLevels: @Sendable ([Float]) -> Void
     private let onLimit: @Sendable () -> Void
 
-    init(onLevels: @escaping @Sendable ([Float]) -> Void, onLimit: @escaping @Sendable () -> Void) throws {
+    init(
+        stream: AsyncStream<[Float]>.Continuation?, onLevels: @escaping @Sendable ([Float]) -> Void,
+        onLimit: @escaping @Sendable () -> Void
+    ) throws {
+        self.stream = stream
         spectrum = try DictationSpectrum()
         displayedLevels = [Float](repeating: 0, count: DictationSpectrum.barCount)
         self.onLevels = onLevels
@@ -176,6 +183,10 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
         let floats = data.assumingMemoryBound(to: Float.self)
         let accepted = min(count, DictationWire.maximumSamples - samples.count)
         samples.append(contentsOf: UnsafeBufferPointer(start: floats, count: accepted))
+        if let stream, samples.count - streamedSamples >= DictationWire.sampleRate / 10 {
+            stream.yield(Array(samples[streamedSamples...]))
+            streamedSamples = samples.count
+        }
         if samples.count == DictationWire.maximumSamples, !reachedLimit {
             reachedLimit = true
             onLimit()
@@ -192,9 +203,17 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
         onLevels(displayedLevels)
     }
 
-    func finish() -> [Float] { queue.sync { samples } }
+    func finish() -> [Float] {
+        queue.sync {
+            if let stream {
+                if streamedSamples < samples.count { stream.yield(Array(samples[streamedSamples...])) }
+                stream.finish()
+            }
+            return samples
+        }
+    }
 
-    func recentSamples() -> [Float] {
-        queue.sync { Array(samples.suffix(DictationWire.sampleRate * 8)) }
+    func recentSamples(seconds: Int) -> [Float] {
+        queue.sync { Array(samples.suffix(DictationWire.sampleRate * seconds)) }
     }
 }

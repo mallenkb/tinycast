@@ -71,6 +71,7 @@ struct SettingsRow<Icon: View, Trailing: View>: View {
             Spacer(minLength: Theme.Spacing.lg)
             trailing
         }
+        .smallScrollIndicators()
     }
 }
 

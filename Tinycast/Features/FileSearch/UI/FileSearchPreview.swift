@@ -14,7 +14,7 @@ struct FileSearchPreview: View {
                     .frame(maxWidth: .infinity)
                     .layoutPriority(1)
                 ScrollView {
-                    FileSearchInfoSection(result: result)
+                    FileSearchInfoSection(result: result).smallScrollIndicators()
                 }
             }
             .padding(.horizontal, metrics.spacing.xl)

@@ -452,8 +452,9 @@ There is no UI test suite, so this is it. Run the core sweep for any change that
 run the scoped section for whatever feature you touched. Budget about five minutes plus three per
 section.
 
-Run against the **Debug channel** (`Tinycast Dev.app`, `com.tinycast.app.dev`). It has its own prefs,
-caches, TCC grants and login item, so this cannot disturb an installed copy.
+Run against the **Debug channel** (`Tinycast Dev.app`, `com.tinycast.app.dev`). Dev and release share
+settings, histories, authored data, and caches. Back up authored data before a manual sweep, and use
+a separate macOS user account for destructive checks. Permission grants remain app-specific.
 
 ### Core
 
@@ -1015,22 +1016,20 @@ Debug answers `tinycast-dev://`; use that scheme for every link below.
 - Untick a category on **import** and confirm it did not arrive, while the ticked ones did
 - An image clip round-trips and still renders; the archive can then be deleted without breaking it
 - A file whose `manifest.json` `format` was hand-edited is refused **with a message naming it**
-- Cancelling the save panel leaves nothing in `~/Library/Caches/com.tinycast.app.dev/backup-staging/`
+- Cancelling the save panel leaves nothing in `~/Library/Caches/com.tinycast.app/backup-staging/`
 - **`snippetsEnabled` is not in the exported file**, and importing does not enable snippets
 - Nothing in the extracted tree names a Keychain item, an extension, or an AI conversation
 
 ### Clean install
 
 The realistic storage failure is a store that crashes on an absent file rather than starting empty.
-Wipe the Dev channel and check that path directly:
+Use a fresh macOS user account for this manual check. Dev uses the release storage roots, so clearing
+Dev's old directories does not create a clean installation, and clearing the shared roots would erase
+release data too. Do not delete or reset the working account's shared data for this check.
 
-```sh
-rm -rf ~/Library/Caches/com.tinycast.app.dev
-rm -rf "$HOME/Library/Application Support/com.tinycast.app.dev"
-rm -rf ~/.config/tinycast-dev
-defaults delete com.tinycast.app.dev 2>/dev/null || true
-tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
-```
+Standalone store harnesses should inject temporary directories and unique preference suites. They
+can cover absent files without accessing either app's real data. Beta and custom bundle identities
+retain separate roots, but a disposable user account also isolates permissions and system preferences.
 
 - Launches with every store directory absent — no crash, no hang; onboarding runs
 - With no saved app language, onboarding uses the primary system language if supported, otherwise
@@ -1043,5 +1042,7 @@ tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
 - **Every setting shows its intended default.** Walk the panes: this is what catches a broken
   absence-versus-`false` read
 - Quit and relaunch: everything created above persisted
-- Nothing was written outside `com.tinycast.app.dev/`. Channel isolation is not negotiable — a Dev build
-  writing into the stable app's directory is a defect even though the data is disposable
+- Dev and release read the same data in the disposable account. A change made in either build is
+  visible after switching to the other. Only one build owns the stores at a time.
+- The working macOS account's data is unchanged. Harnesses write only to their injected temporary
+  directories and preference suites.

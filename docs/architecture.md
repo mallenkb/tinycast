@@ -105,6 +105,10 @@ app: the stores (`AppIndex`, `ClipboardStore`, `SnippetsStore`, `QuicklinkStore`
 `MeetingClock`), `NotesStore`, the twenty-one feature coordinators, and the
 window controllers.
 
+Before any stores open, `TinycastLaunch` takes an exclusive lease on the shared storage. Dev and
+release use the same `AppPaths` roots and preference domain. Switching builds waits for the previous
+process to finish its writes and quit, so two copies cannot overwrite shared state.
+
 `AppDelegate.applicationDidFinishLaunching` calls `AppCore.shared.start(launchedByUser:)` and nothing
 else; the delegate only reads the launch Apple Event to tell a plain open from a login-item or URL
 launch. That is the one wiring point, and `start` reads as the app's whole boot sequence in one screen.

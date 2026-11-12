@@ -90,10 +90,14 @@ enum DictationTextFormatter {
         text = text.replacing(/(?i:\b(the|a|an|to|in|of|for|from|with)(?:[ \t]+\1\b)+)/) { String($0.1) }
         text = text.replacing(
             #/
-            \bI(?:[\x20\t]+I\b)+
-            (?=[\x20\t]+(?:am|was|have|had|think|came|said|want|would|will|can|could|do|did|mean|know|went|agree)\b)
-            /#,
-            with: "I")
+            (?ix:
+                (^|[^\w'’])
+                ((?:I|you|he|she|it|we|they)(?:['’](?:m|re|s|ve|ll|d))?)
+                (?:[\x20\t]+\2\b)+(?!['’])
+                (?=[\x20\t]+\p{L})
+            )
+            /#
+        ) { String($0.1) + String($0.2) }
         if text.firstMatch(of: /(?i:\b(?:not|never|except|unless|without|only)\b|n['’]t\b)/) == nil {
             text = text.replacing(
                 #/
@@ -487,8 +491,11 @@ enum DictationTextFormatter {
     private static func separateTopicParagraphs(_ text: Substring) -> String {
         var start = text.startIndex
         var paragraphs: [String] = []
+        var sentenceCount = 0
         for boundary in sentenceBoundaries(in: text) {
-            guard text[boundary.upperBound...].firstMatch(of: #/
+            sentenceCount += 1
+            let remainder = text[boundary.upperBound...]
+            let explicitTransition = remainder.firstMatch(of: #/
                 (?ix: ^
                     (?: (?:on[\x20\t]+(?:another|a[\x20\t]+(?:separate|different))[\x20\t]+note|
                           changing[\x20\t]+(?:topics|subjects)|switching[\x20\t]+gears|
@@ -501,16 +508,32 @@ enum DictationTextFormatter {
                     )
                 )
                 /#) != nil
-            else { continue }
             let end = text.index(after: boundary.lowerBound)
+            let developedPassage = sentenceCount >= 2
+                && text[start..<end].split(maxSplits: 34, whereSeparator: \.isWhitespace).count == 35
+                && remainder.split(maxSplits: 14, whereSeparator: \.isWhitespace).count == 15
+            guard explicitTransition || (developedPassage && startsParagraphTransition(remainder))
+            else { continue }
             guard text[start..<end].split(maxSplits: 3, whereSeparator: \.isWhitespace).count == 4,
                   text[boundary.upperBound...].split(maxSplits: 3, whereSeparator: \.isWhitespace).count == 4
             else { continue }
             paragraphs.append(String(text[start..<end]))
             start = boundary.upperBound
+            sentenceCount = 0
         }
         paragraphs.append(String(text[start...]))
         return paragraphs.joined(separator: "\n\n")
+    }
+
+    private static func startsParagraphTransition(_ text: Substring) -> Bool {
+        if text.firstMatch(of: #/
+            (?ix: ^(?:however|nevertheless|meanwhile|instead|but|yet)\b[,:\x20\t]
+                | ^(?:for[\x20\t]+(?:example|instance)|on[\x20\t]+the[\x20\t]+other[\x20\t]+hand|
+                      in[\x20\t]+contrast|as[\x20\t]+a[\x20\t]+result)[,:\x20\t])
+            /#) != nil { return true }
+        return text.firstMatch(of: #/
+            (?ix: ^(?:what|why|how|when|where|who|which)\b[^.!?\r\n]{0,160}\?)
+            /#) != nil
     }
 
     private static func formatSpokenStructure(_ text: String) -> String {

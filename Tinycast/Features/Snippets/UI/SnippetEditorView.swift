@@ -19,6 +19,7 @@ struct SnippetEditorView: View {
             }
             .padding(.horizontal, metrics.spacing.xxxl * 2)
             .padding(.vertical, metrics.spacing.md)
+            .smallScrollIndicators()
         }
         .scrollClipDisabled()
         .edgeDissolve()

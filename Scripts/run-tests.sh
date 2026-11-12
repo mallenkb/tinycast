@@ -298,6 +298,7 @@ run language-test          Tinycast/Features/Settings/AppLanguage.swift
 run localized-resource-test Tinycast/Platform/LocalizedResource.swift
 run exclusive onboarding-test Tinycast/Features/Onboarding/OnboardingCoordinator.swift \
                            Tinycast/Windows/AppWindowController.swift \
+                           Tinycast/Platform/AppPaths.swift \
                            Tinycast/DesignSystem/Interaction/Motion.swift \
                            Tinycast/Windows/WindowChrome.swift Tinycast/Platform/ActivationPolicy.swift
 run relaunch-test          Tinycast/App/AppDelegate.swift Tinycast/Platform/RelaunchRunner.swift
@@ -431,6 +432,7 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swif
                            Tinycast/Features/Dictation/Model/DictationIndicatorStyle.swift \
                            Tinycast/Features/Dictation/Model/DictationLanguage.swift \
                            Tinycast/Features/Dictation/Model/DictationMode.swift \
+                           Tinycast/Features/Dictation/Model/DictationPreviewSequence.swift \
                            Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
                            Tinycast/Features/Dictation/Service/AppleDictationSession.swift \
                            Tinycast/Features/Dictation/Service/DictationCoordinator.swift \

@@ -99,6 +99,7 @@ final class AppWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard let window else { return }
+        saveFrame()
         self.window = nil
         self.chrome = nil
         activation?.windowDidClose(window)
@@ -108,7 +109,16 @@ final class AppWindowController: NSObject, NSWindowDelegate {
         onClose()
     }
 
+    func windowDidMove(_ notification: Notification) { saveFrame() }
+
+    func windowDidResize(_ notification: Notification) { saveFrame() }
+
     // MARK: - Private
+
+    private func saveFrame() {
+        guard let window, let autosaveName else { return }
+        AppPaths.preferences.set(window.frameDescriptor, forKey: "NSWindow Frame \(autosaveName)")
+    }
 
     private func makeWindow(content: NSViewController, chrome: WindowChrome?) -> NSWindow {
         var style: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
@@ -137,18 +147,16 @@ final class AppWindowController: NSObject, NSWindowDelegate {
         window.setContentSize(contentSize)
         window.contentMinSize = minimumSize
 
-        if let autosaveName {
-            window.setFrameAutosaveName(autosaveName)
-            if window.setFrameUsingName(autosaveName) {
-                let floor = window.frameRect(forContentRect: NSRect(origin: .zero, size: minimumSize)).size
-                var frame = window.frame
-                if frame.width < floor.width || frame.height < floor.height {
-                    frame.origin.y = frame.maxY - max(frame.height, floor.height)
-                    frame.size = CGSize(width: max(frame.width, floor.width), height: max(frame.height, floor.height))
-                    window.setFrame(frame, display: false)
-                }
-            } else {
-                window.center()
+        if let autosaveName,
+           let savedFrame = AppPaths.preferences.string(forKey: "NSWindow Frame \(autosaveName)"),
+           !savedFrame.isEmpty {
+            window.setFrame(from: savedFrame)
+            let floor = window.frameRect(forContentRect: NSRect(origin: .zero, size: minimumSize)).size
+            var frame = window.frame
+            if frame.width < floor.width || frame.height < floor.height {
+                frame.origin.y = frame.maxY - max(frame.height, floor.height)
+                frame.size = CGSize(width: max(frame.width, floor.width), height: max(frame.height, floor.height))
+                window.setFrame(frame, display: false)
             }
         } else {
             window.center()

@@ -22,7 +22,7 @@ final class CalendarStore {
     /// Fired whenever `events` changes, so the launcher's meeting slice is republished.
     @ObservationIgnored var onChange: (() -> Void)?
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let hiddenKey = "hiddenMeetingCalendars"
     /// Exclusions, not inclusions, so a calendar added after this was written defaults to on.
     private var hiddenCalendarIDs: Set<String>
@@ -36,7 +36,8 @@ final class CalendarStore {
     /// Covers the day rolling over and a Mac that slept; edits come from EventKit.
     private static let staleAfter: TimeInterval = 10 * 60
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         hiddenCalendarIDs = Set(defaults.stringArray(forKey: hiddenKey) ?? [])
     }
 

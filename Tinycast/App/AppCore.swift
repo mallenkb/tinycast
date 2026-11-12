@@ -8,16 +8,16 @@ final class AppCore {
 
     let launcherRanking: LauncherRankingStore
     let appIndex: AppIndex
-    let customCommands = CustomCommandStore()
-    let quicklinks = QuicklinkStore()
-    let windowLayouts = WindowLayoutStore()
-    let customWindowSizes = CustomWindowSizeStore()
-    let rooms = RoomStore()
-    let roomMinimums = RoomMinimumSizeStore()
+    let customCommands = CustomCommandStore(defaults: AppPaths.preferences)
+    let quicklinks = QuicklinkStore(directory: AppPaths.applicationSupport())
+    let windowLayouts = WindowLayoutStore(defaults: AppPaths.preferences)
+    let customWindowSizes = CustomWindowSizeStore(defaults: AppPaths.preferences)
+    let rooms = RoomStore(defaults: AppPaths.preferences)
+    let roomMinimums = RoomMinimumSizeStore(defaults: AppPaths.preferences)
     let roomParking = RoomParkingLedger(
         fileURL: AppPaths.applicationSupport().appendingPathComponent("room-parking.json"))
     let roomSession = RoomSession()
-    let clipboardStore = ClipboardStore(describeQuery: { query in
+    let clipboardStore = ClipboardStore(directory: AppPaths.applicationSupport(), describeQuery: { query in
         guard let description = SearchDescription(query, now: Date(), calendar: .current),
             description.folder == nil, description.fileExtension == nil
         else { return nil }
@@ -41,15 +41,15 @@ final class AppCore {
     let snippetListener = SnippetKeywordListener(
         syntheticEventTag: Paster.tinycastEventTag)
     let textInjector: TextInjector
-    let hotKeys = HotKeyManager()
+    let hotKeys = HotKeyManager(defaults: AppPaths.preferences)
     @ObservationIgnored private(set) lazy var dictationHistory =
         DictationHistoryStore(retention: settings.dictationHistoryRetention)
     @ObservationIgnored private lazy var dictationCorrections = DictationCorrectionStore()
     @ObservationIgnored private(set) lazy var dictationModels =
         DictationModelStore(idleRelease: settings.dictationIdleRelease)
     @ObservationIgnored private(set) lazy var hyperKey = HyperKeyManager(
-        settings: settings, hotKeys: hotKeys)
-    @ObservationIgnored private lazy var dictationKey = DictationKeyManager(hotKeys: hotKeys)
+        settings: settings, hotKeys: hotKeys, defaults: AppPaths.preferences)
+    @ObservationIgnored private lazy var dictationKey = DictationKeyManager(hotKeys: hotKeys, defaults: AppPaths.preferences)
     let windowMover = WindowMover()
     let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
@@ -69,14 +69,14 @@ final class AppCore {
     /// The last verdict `trackChatRoute` acted on; nil until it has read one.
     @ObservationIgnored private var chatsRunTheirOwnTools: Bool?
     @ObservationIgnored private let iconStyle = IconStyleMonitor()
-    let favorites = FavoritesStore()
-    let visibility = VisibilityStore()
-    let aliases = AliasStore()
-    let fallbacks = FallbackStore()
+    let favorites = FavoritesStore(defaults: AppPaths.preferences)
+    let visibility = VisibilityStore(defaults: AppPaths.preferences)
+    let aliases = AliasStore(defaults: AppPaths.preferences)
+    let fallbacks = FallbackStore(defaults: AppPaths.preferences)
     let calcHistory = CalculatorHistoryStore()
     let currencyRates = CurrencyRateStore()
     let regionNumberFormat = RegionNumberFormatMonitor()
-    let calendarStore = CalendarStore()
+    let calendarStore = CalendarStore(defaults: AppPaths.preferences)
     let meetingClock = MeetingClock()
     let updateChecker = UpdateCheckStore()
     let supportReminders: SupportReminderStore
@@ -135,13 +135,14 @@ final class AppCore {
     let chatHistory: ChatHistoryStore
     let aiChats: AIChatSurfacesState
     let aiSettings = AISettingsStore(
+        defaults: AppPaths.preferences,
         environmentStore: .keychain,
         isAppleIntelligenceAvailable: { AppleIntelligenceProvider.status().isAvailable })
-    let mcpSettings = MCPSettingsStore()
+    let mcpSettings = MCPSettingsStore(defaults: AppPaths.preferences)
     let mcpOAuth = MCPOAuthManager()
     @ObservationIgnored private(set) lazy var mcp = MCPServerManager(oauth: mcpOAuth)
-    let quickActionSettings = QuickActionSettingsStore()
-    let customQuickActions = CustomQuickActionStore()
+    let quickActionSettings = QuickActionSettingsStore(defaults: AppPaths.preferences)
+    let customQuickActions = CustomQuickActionStore(directory: AppPaths.applicationSupport())
     let chatGPTSubscription = ChatGPTSubscriptionManager()
     let installedAI = InstalledAIManager()
     @ObservationIgnored private var appliedLaunchRevisions: [InstalledAIKind: Int] = [:]
@@ -242,9 +243,9 @@ final class AppCore {
         settings: settings,
         appIndex: appIndex,
         core: self,
-        isFormattingBarExpanded: UserDefaults.standard.bool(forKey: Self.noteFormattingBarKey),
+        isFormattingBarExpanded: AppPaths.preferences.bool(forKey: Self.noteFormattingBarKey),
         saveFormattingBarExpanded: {
-            UserDefaults.standard.set($0, forKey: Self.noteFormattingBarKey)
+            AppPaths.preferences.set($0, forKey: Self.noteFormattingBarKey)
         })
 
     @ObservationIgnored private(set) lazy var launcherCoordinator = LauncherCoordinator(
@@ -288,7 +289,7 @@ final class AppCore {
         settings: settings, appIndex: appIndex, session: windowSwitch, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
-    @ObservationIgnored private lazy var dictionarySavedWords = DictionarySavedWordsStore()
+    @ObservationIgnored private lazy var dictionarySavedWords = DictionarySavedWordsStore(defaults: AppPaths.preferences)
     @ObservationIgnored private(set) lazy var dictionaryCoordinator = DictionaryCoordinator(
         paletteCoordinator: paletteCoordinator, palette: palette, session: dictionary, settings: settings,
         pronunciation: dictionaryPronunciation, savedWords: dictionarySavedWords)
@@ -334,7 +335,8 @@ final class AppCore {
     private var relaunchRequested = false
 
     private init() {
-        let launcherRanking = LauncherRankingStore()
+        let launcherRanking = LauncherRankingStore(
+            fileURL: AppPaths.applicationSupport().appending(path: "launcher-ranking.json"))
         let settings = AppSettings()
         let chatHistory = ChatHistoryStore(directory: AppPaths.applicationSupport())
         self.launcherRanking = launcherRanking
@@ -354,9 +356,9 @@ final class AppCore {
         notesStore = NotesStore(
             repository: Self.notesRepository(for: settings),
             loadSelection: {
-                UserDefaults.standard.string(forKey: noteSelectionKey).map(NoteID.init(rawValue:))
+                AppPaths.preferences.string(forKey: noteSelectionKey).map(NoteID.init(rawValue:))
             },
-            saveSelection: { UserDefaults.standard.set($0?.rawValue, forKey: noteSelectionKey) })
+            saveSelection: { AppPaths.preferences.set($0?.rawValue, forKey: noteSelectionKey) })
     }
 
     func start(launchedByUser: Bool) {
@@ -1062,6 +1064,7 @@ final class AppCore {
 
     private static func snippetsRepository(for settings: AppSettings) -> SnippetRepository {
         SnippetRepository(
+            bundleIdentifier: AppPaths.storageIdentifier,
             snippetsDirectory: AppPaths.contentFolder(settings.snippetsFolder, named: "Snippets"))
     }
 

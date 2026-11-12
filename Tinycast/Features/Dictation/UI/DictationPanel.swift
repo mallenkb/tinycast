@@ -303,16 +303,11 @@ struct DictationTranscriptView: View {
 
         let range: Range<Int>
         let start: Date
-        let leading: CGFloat
-        let width: CGFloat
 
-        var duration: TimeInterval { Double(range.count) * Theme.Duration.dictationCharacterStep }
-        var end: Date { start.addingTimeInterval(duration + Theme.Duration.dictationCharacterFade) }
-
-        func progress(at date: Date) -> Double {
-            let t = min(1, max(0, date.timeIntervalSince(start) / duration))
-            return 1 - pow(1 - t, 3)
+        var duration: TimeInterval {
+            min(Double(range.count) * Theme.Duration.dictationCharacterStep, Theme.Duration.dictationRevealLimit)
         }
+        var end: Date { start.addingTimeInterval(duration + Theme.Duration.dictationCharacterFade) }
 
         func opacity(at date: Date, index: Int) -> Double {
             let fraction = Double(index - range.lowerBound + 1) / Double(range.count)
@@ -326,7 +321,6 @@ struct DictationTranscriptView: View {
     private var ink: Color { style.isDark ? Theme.Colors.dictationDarkInk : Theme.Colors.dictationLightInk }
 
     @State private var viewportWidth: CGFloat = 0
-    @State private var previousViewportWidth: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     @State private var wrappedLines: ArraySlice<NSRange> = []
 
@@ -393,18 +387,9 @@ struct DictationTranscriptView: View {
 
     private func transcriptViewport(at date: Date) -> some View {
         let text = text(at: date)
-        let lines = visibleLines(at: date)
+        let lines: ArraySlice<NSRange> = twoLines ? wrappedLines.suffix(2) : []
         let lineCount = twoLines ? max(1, lines.count) : 1
-        let activeReveal = usesMotion ? characterReveals.last {
-            date >= $0.start && date.timeIntervalSince($0.start) < $0.duration
-        } : nil
-        let revealEdge = activeReveal.map { $0.leading + $0.width * $0.progress(at: date) }
-        let hasWrapped = twoLines && (lines.count > 1 || (lines.first?.location ?? 0) > 0)
-        let growingWidth = hasWrapped ? viewportWidth
-            : min(viewportWidth, max(previousViewportWidth, revealEdge ?? viewportWidth))
-        let offset = twoLines ? 0 : revealEdge.map {
-            min(scrollOffset, max(0, $0 - viewportWidth))
-        } ?? scrollOffset
+        let offset = twoLines ? 0 : scrollOffset
         return Group {
             if twoLines && !lines.isEmpty {
                 rollingLines(text, lines: lines)
@@ -416,7 +401,7 @@ struct DictationTranscriptView: View {
         .frame(height: Self.lineHeight + CGFloat(lineCount - 1) * Self.lineStride, alignment: .topLeading)
         .animation(lineAnimation, value: lineCount)
         .offset(x: -offset)
-        .frame(width: max(24, growingWidth), alignment: .leading)
+        .frame(width: max(24, viewportWidth), alignment: .leading)
         .animation(lineAnimation, value: viewportWidth)
         .clipped()
         .mask(alignment: .leading) {
@@ -432,29 +417,23 @@ struct DictationTranscriptView: View {
 
     private func revealCharacters(_ source: String) async {
         let previous = displayedText
-        let prefix = zip(previous, source).prefix { $0.0 == $0.1 }.count
-        let suffix = zip(previous.dropFirst(prefix).reversed(), source.dropFirst(prefix).reversed())
-            .prefix { $0.0 == $0.1 }.count
         updateText(source)
-        let changed = prefix..<(source.count - suffix)
-        let now = Date()
-        var pending = characterReveals.filter { $0.range.upperBound <= prefix && $0.end > now }
-        var start = max(now, pending.map(\.end).max() ?? now)
-        let lines = twoLines ? Array(wrappedLines) : [NSRange(source.startIndex..., in: source)]
+        characterReveals = []
+        let first = DictationPreviewSequence.revealStart(previous: previous, incoming: source, limit: 36)
+        guard first < source.count else { return }
+        let changed = first..<source.count
+        var start = Date()
+        var pending: [CharacterReveal] = []
+        let lines = twoLines ? Array(wrappedLines.suffix(2)) : [NSRange(source.startIndex..., in: source)]
         for line in lines {
             guard let range = Range(line, in: source) else { continue }
             let lower = source.distance(from: source.startIndex, to: range.lowerBound)
             let upper = source.distance(from: source.startIndex, to: range.upperBound)
             let newCharacters = changed.clamped(to: lower..<upper)
             guard !newCharacters.isEmpty else { continue }
-            let first = source.index(source.startIndex, offsetBy: newCharacters.lowerBound)
-            let last = source.index(first, offsetBy: newCharacters.count)
-            let reveal = CharacterReveal(
-                range: newCharacters, start: start,
-                leading: measuredWidth(String(source[range.lowerBound..<first])),
-                width: measuredWidth(String(source[first..<last])))
+            let reveal = CharacterReveal(range: newCharacters, start: start)
             pending.append(reveal)
-            start = start.addingTimeInterval(reveal.duration + Theme.Duration.dictationRevealLineGap)
+            start = start.addingTimeInterval(min(reveal.duration, Theme.Duration.dictationRevealLineDelay))
         }
         characterReveals = pending
         if let end = pending.map(\.end).max() {
@@ -470,17 +449,6 @@ struct DictationTranscriptView: View {
             .contentTransition(.identity)
             .fixedSize(horizontal: true, vertical: false)
             .transaction { $0.animation = nil }
-    }
-
-    private func visibleLines(at date: Date) -> ArraySlice<NSRange> {
-        guard twoLines else { return [] }
-        guard let next = characterReveals.first(where: { $0.start > date }) else {
-            return wrappedLines.suffix(2)
-        }
-        let boundary = displayedText.index(displayedText.startIndex, offsetBy: next.range.lowerBound)
-        let utf16Boundary = boundary.utf16Offset(in: displayedText)
-        let visible = wrappedLines.prefix { $0.location < utf16Boundary }
-        return visible.isEmpty ? wrappedLines.prefix(1) : visible.suffix(2)
     }
 
     private func rollingLines(_ text: AttributedString, lines: ArraySlice<NSRange>) -> some View {
@@ -503,7 +471,6 @@ struct DictationTranscriptView: View {
     }
 
     private func updateText(_ source: String) {
-        previousViewportWidth = viewportWidth
         displayedText = source
         updateWrappedLines(source)
         let contentWidth = measuredWidth(source)
@@ -950,11 +917,12 @@ final class DictationPanelController {
 
     func showListening() { panel?.show(.listening) }
 
-    func showPreview(_ text: String, twoLines: Bool) {
+    func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) {
         let incoming = text.split(whereSeparator: \.isWhitespace).suffix(100).joined(separator: " ")
         let previous = state.transcript
-        let preview = DictationPreviewSequence.merge(previous, incoming)
-        let hasNewText = !preview.isEmpty && preview != previous && !previous.hasSuffix(" " + preview)
+        let preview = cumulative ? incoming : DictationPreviewSequence.merge(previous, incoming)
+        let hasNewText = !preview.isEmpty && preview != previous
+            && (cumulative || !previous.hasSuffix(" " + preview))
         guard hasNewText || state.twoLinePreview != twoLines else { return }
         if hasNewText {
             state.transcript = preview

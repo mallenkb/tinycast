@@ -108,7 +108,7 @@ enum HideCurrentEvent: Int, CaseIterable, Identifiable, Sendable {
 @MainActor
 @Observable
 final class AppSettings {
-    @ObservationIgnored private let defaults = UserDefaults.standard
+    @ObservationIgnored private let defaults = AppPaths.preferences
     private typealias Key = AppSettingsKey
 
     /// What `AppIndex` scans, in scan order; editing it re-indexes, being observed.
@@ -831,8 +831,7 @@ final class AppSettings {
     /// The app's own domain only: a plain read falls through to the global list.
     private static var storedLanguage: AppLanguage {
         AppLanguage(
-            storedPreferences: Bundle.main.bundleIdentifier
-                .flatMap(UserDefaults.standard.persistentDomain(forName:))?[Key.language.rawValue]
+            storedPreferences: AppPaths.preferences.persistentDomain(forName: AppPaths.storageIdentifier)?[Key.language.rawValue]
                 as? [String], systemPreferences: SystemLanguages.preferred)
     }
 

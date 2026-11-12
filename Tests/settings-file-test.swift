@@ -374,8 +374,14 @@ struct SettingsFileTest {
     }
 
     private static func testPaths() {
+        check("Dev and release share a storage identifier",
+              AppPaths.storageIdentifier(for: "com.tinycast.app.dev") == "com.tinycast.app")
+        check("Beta keeps its own storage identifier",
+              AppPaths.storageIdentifier(for: "com.tinycast.app.beta") == "com.tinycast.app.beta")
+        check("Custom bundles keep their storage identifiers",
+              AppPaths.storageIdentifier(for: "org.example.cast") == "org.example.cast")
         let expected = [
-            ("com.tinycast.app", "tinycast"), ("com.tinycast.app.dev", "tinycast-dev"),
+            ("com.tinycast.app", "tinycast"), ("com.tinycast.app.dev", "tinycast"),
             ("com.tinycast.app.beta", "tinycast-beta"), ("org.example.cast", "org.example.cast")
         ]
         for (bundleID, folder) in expected {

@@ -21,8 +21,9 @@ final class HyperKeyManager: HealthCheckable {
 
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private let hotKeys: HotKeyManager
+    @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let tap = HyperKeyTap()
-    @ObservationIgnored private lazy var remapper = KeyboardRemapper(instanceLock: instanceLock)
+    @ObservationIgnored private lazy var remapper = KeyboardRemapper(defaults: defaults, instanceLock: instanceLock)
     @ObservationIgnored private let secureInput = SecureInputMonitor()
     @ObservationIgnored private let instanceLock = RemapInstanceLock(
         url: .temporaryDirectory.appending(path: "com.tinycast.hyper-key.lock"))
@@ -36,7 +37,8 @@ final class HyperKeyManager: HealthCheckable {
         case asleep, screenLocked, sessionInactive
     }
 
-    init(settings: AppSettings, hotKeys: HotKeyManager) {
+    init(settings: AppSettings, hotKeys: HotKeyManager, defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.settings = settings
         self.hotKeys = hotKeys
     }

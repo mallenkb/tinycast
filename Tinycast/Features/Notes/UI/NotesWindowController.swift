@@ -34,6 +34,7 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
 
     func hide(restoreFocus: Bool) {
         let restore = restoreFocus && !userMovedOn
+        saveFrame()
         panel?.orderOut(nil)
         guard restore else { return }
         if let previousOwnWindow, previousOwnWindow.isVisible {
@@ -106,8 +107,11 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
 
     func windowDidResize(_ notification: Notification) {
         guard let panel else { return }
+        saveFrame()
         seatTrafficLights(in: panel)
     }
+
+    func windowDidMove(_ notification: Notification) { saveFrame() }
 
     func windowDidUpdate(_ notification: Notification) {
         guard let panel else { return }
@@ -115,6 +119,11 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
     }
 
     // MARK: - Private
+
+    private func saveFrame() {
+        guard let panel else { return }
+        AppPaths.preferences.set(panel.frameDescriptor, forKey: "NSWindow Frame \(Self.frameAutosaveName)")
+    }
 
     /// Typing fits before the frame draws, or the caret scrolls first and the text bounces back.
     private func observeLayout(of textView: NoteTextView) {
@@ -203,8 +212,12 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
         panel.optionCommandChords = [
             "t": { [weak coordinator] in coordinator?.toggleFormattingBar() }
         ]
-        panel.setFrameAutosaveName(Self.frameAutosaveName)
-        if !panel.setFrameUsingName(Self.frameAutosaveName) { panel.center() }
+        if let savedFrame = AppPaths.preferences.string(forKey: "NSWindow Frame \(Self.frameAutosaveName)"),
+           !savedFrame.isEmpty {
+            panel.setFrame(from: savedFrame)
+        } else {
+            panel.center()
+        }
         // An autosaved frame can sit below the floor, so it is clamped on the way back in.
         panel.setContentSize(
             CGSize(

@@ -92,32 +92,41 @@ models use CPU/Neural Engine.
   at the same height as the recording pill. The button starts hands-free dictation. The indicator
   expands into the selected pill when recording begins and contracts when
   dictation finishes. The border follows the pill as it resizes. Live transcript preview is
-  separately opt-in and shows recent words above the pill. It transcribes up to eight seconds of
-  recent audio at a time, with a 1.5-second pause between requests. Preview requests are serialized
-  with the final transcription. The full recording is transcribed when recording stops.
+  separately opt-in and shows recent words above the pill. Apple Dictation streams audio to one
+  recognition session and displays partial results as they arrive. Stopping flushes the remaining
+  audio and finalizes that session. If the stream fails, the full recording is still available for
+  a fresh Apple Dictation pass. Parakeet and Qwen use overlapping five-second audio windows and aim
+  to start requests at least 350 ms and 500 ms apart, respectively. One request runs at a time.
+  Stopping lets an in-flight request finish before the full recording is transcribed.
+  A preview error hides stale text and retries after 1.5 seconds. Three consecutive failures end
+  the preview loop; the full recording remains available for final transcription.
   After four seconds without new preview text, the card fades out while the recording pill stays visible.
   Its text and width are retained, and a new transcript update fades it back in. Empty or repeated
   recognition results do not restart this timer. Finishing or cancelling recording cancels the timer.
   Transcript animation defaults to on and follows global animations and Reduce Motion.
-  The animation preference remains accessible in settings.json. New characters appear from left
-  to right over 30 ms per character, with cubic ease-out and 150 ms character fades. The preview grows to its
-  maximum width without shrinking during a recording. By default it scrolls along one line.
-  Both preview modes grow with the revealed text up to 360 points. Two-line mode grows on the first wrap.
+  The animation preference remains accessible in settings.json. The newest words receive a
+  character reveal of up to 340 ms per line with a 150 ms fade. Word alignment preserves earlier
+  text when recognition revises a phrase or shifts the rolling window. The viewport follows the
+  newest text. The preview grows to its maximum width without shrinking during a recording.
+  By default it scrolls along one line. Both modes grow up to 400 points; two-line
+  mode shows the newest two lines.
   Overlapping audio windows use bounded word alignment to retain recent words and apply recognition
   revisions. Uncertain overlaps replace the recent preview rather than append possible duplicates.
-  Preview history is limited to 100 words. The bubble fits the visible
-  text up to two lines. Older lines scroll up when new words begin appearing on the next line.
-  Corrections update in place without replaying earlier text.
-  Text updates without an implicit crossfade inside the separately animated, clipped viewport.
-  Reduce Motion or turning the effect off displays updates immediately.
+  Preview history is limited to 100 words. Text updates without an implicit crossfade inside the
+  separately animated, clipped viewport. Reduce Motion or turning the effect off displays updates
+  immediately.
+  While the live preview is active, the local cleanup pass can work on a stable transcript
+  snapshot off the main actor. It never writes back to the preview. The result is reused if the
+  final recognition matches its source exactly. Smart rewriting and automatic transforms still
+  use the complete transcript after recording so they have the full context.
   Each indicator fits the current state. Settings previews both listening and processing for the
   selected style.
   The waveform blends neighboring
   frequency peaks so the bars rise together. Capture samples 21 bands at most 20 times per
   second through a reused 512-point Accelerate transform. The logarithmic bands span 32–5000 Hz.
   The bars grow around a fixed centerline and ease between readings when Reduce Motion is off.
-  A spinning ring replaces the bars during transcription. Labeled styles cycle through a shuffled
-  list of processing words every two seconds.
+  A spinning ring replaces the bars during final transcription and cleanup. Labeled styles cycle
+  through the same shuffled list of ten processing words every two seconds across both stages.
   The ring and the text shimmer pause when Reduce Motion is on.
   Closing the panel releases its hosting view.
 - Recording leaves the system output volume alone.
@@ -140,7 +149,7 @@ models use CPU/Neural Engine.
 - The Apple Dictation engine uses Apple's on-device `DictationTranscriber` and the Mac's preferred
   language. Tinycast starts preparation when recording begins. macOS installs missing speech assets,
   then manages those assets and their memory. The analyzer lives for one recording.
-- Core ML models live under this build's bundle-ID cache. By default, the store terminates and reaps
+- Dev and release share Core ML models under `~/Library/Caches/com.tinycast.app/Dictation/`. By default, the store terminates and reaps
   the helper as soon as speech recognition finishes, so cleanup can run without keeping the speech
   model resident. Choose a delay or Never to keep it warm between recordings. Switching models
   reaps the old helper before loading the next. Removing a loaded model
@@ -218,7 +227,7 @@ This tool uses installed models and runs outside the deterministic suite and app
 Smart cleanup is opt-in. Its engine defaults to S1-mini by Superwhisper, with Apple Intelligence
 and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
 S1-mini by Superwhisper for dictation with paragraph breaks. Each Q4_K_M download has its own
-file in the channel's caches, pinned to a repository revision and checked against its SHA-256 digest. The app
+file in the shared caches, pinned to a repository revision and checked against its SHA-256 digest. The app
 bundles a pinned, statically linked llama.cpp server under `Contents/Helpers/TinycastCleanup`.
 It binds only to authenticated loopback, disables its web UI and logs, and performs no remote
 inference. Downloads alone use the network. Both downloads are intended for English. Smart cleanup
@@ -233,13 +242,14 @@ The helper also stops on request errors, disabling dictation, changing engines, 
 Tinycast releases its Apple Intelligence session after use.
 macOS manages the shared Apple Intelligence model's memory.
 
-Saved transforms live in `dictation-transforms.json` in this channel's application-support directory.
+Saved transforms live in `dictation-transforms.json` in the shared application-support directory.
 Polish, Shorten, Make a list, and Prompt Engineer seed a new installation; users can edit, create, or delete entries.
 Transforms use the same engine selection as Smart cleanup, even in the Off, Basic, and Advanced
 modes. Local models receive the transform instructions directly. Apple Intelligence honors its
 availability and route switch. Auto-apply is off by default. Automatic processing occurs before
 insertion, with the original recording token checked again after processing. Smart cleanup failures
-use Advanced cleanup. If only an automatic transform was requested and it fails, Tinycast keeps
+use Advanced cleanup and report the underlying error alongside the fallback notice. The app also
+logs the error for diagnosis. If only an automatic transform was requested and it fails, Tinycast keeps
 the transcript it received. Cleanup and transforms run locally.
 
 History preserves original recognition text when the inserted text was processed. Its actions
@@ -275,9 +285,11 @@ Clicking Dictation returns to the overview; no second back row appears inside th
 Text cleanup offers Off, Basic, Advanced, and Smart. Basic and Advanced remove English fillers
 and format supported spoken values, including currency, dates, times, percentages, measurements,
 fractions, and certain contact details. Both use local rules and load the bundled FluidInference
-formatter when a supported phrase needs it. Advanced also handles stutters, clear weekday
+formatter when a supported phrase needs it. Advanced also handles repeated pronouns and contractions,
+other supported stutters, clear weekday
 corrections, and spoken punctuation. It can format lists from explicit commands, ordered cues,
-headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps. See the
+headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps,
+or at transitions and questions after a substantial passage. See the
 [formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
 budget expires, Basic keeps its filler removal and Advanced keeps the original text. Smart runs the
 selected engine. The After dictation switch

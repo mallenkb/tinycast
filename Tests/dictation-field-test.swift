@@ -423,7 +423,7 @@ final class HotKeyManager {
 
 @MainActor
 final class DictationCapture {
-    func recentSamples() async -> [Float] { [] }
+    func recentSamples(seconds: Int) async -> [Float] { [] }
     static weak var latest: DictationCapture?
     var onLevels: (([Float]) -> Void)?
     var onLimit: (() -> Void)?
@@ -432,7 +432,7 @@ final class DictationCapture {
     var stopCount = 0
 
     init() { Self.latest = self }
-    func start(microphoneID: String?) async throws {
+    func start(microphoneID: String?, stream: AsyncStream<[Float]>.Continuation? = nil) async throws {
         try Task.checkCancellation()
         isRecording = true
     }
@@ -475,6 +475,7 @@ final class DictationPanelController {
         var animatesTranscript = true
         var twoLinePreview = false
         var levels: [Float] = []
+        var transcript = ""
     }
     static weak var latest: DictationPanelController?
     let state = State()
@@ -485,7 +486,7 @@ final class DictationPanelController {
     init() { Self.latest = self }
     func showStarting(style: DictationIndicatorStyle) { isVisible = true }
     func showListening() {}
-    func showPreview(_ text: String, twoLines: Bool) {}
+    func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) { state.transcript = text }
     func hidePreview() {}
     func showIdle(style: DictationIndicatorStyle) { isVisible = true }
     func showTranscribing() {}

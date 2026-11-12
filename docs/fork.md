@@ -110,7 +110,7 @@ active screen, and operating system, so an unconditional under-100-MB claim is n
 
 - Downloads, update checks and the Changelog menu use `mallenkb/tinycast` releases.
 - Release builds use `com.tinycast.app`, the same identity as upstream stable. Dev builds use
-  `com.tinycast.app.dev` and keep separate data.
+  `com.tinycast.app.dev` and share app data with release. macOS permissions remain app-specific.
 - Releases are packaged locally with the fork's self-signed certificate. It is not notarized.
   Installation instructions are in the README and release notes.
 - GitHub Actions validates pushes and pull requests and provides a manual signed release workflow.

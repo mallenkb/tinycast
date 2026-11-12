@@ -473,8 +473,9 @@ real app; see [launcher.md](launcher.md#owner-names).
 
 ## Installing extensions
 
-Extensions live in `~/Library/Application Support/<bundle id>/extensions/<name>/`, keyed by bundle id
-like everything else, so a Debug build never shares installs with a release channel. A directory holds
+Dev and release share extensions in
+`~/Library/Application Support/com.tinycast.app/extensions/<name>/`. Beta and custom bundle identities
+use their own storage roots. A directory holds
 `package.json`, `assets/`, one `<command>.js` per command and, when the build externalised
 dependencies, a `node_modules/` of pre-built packages — byte-for-byte the layout Raycast's own
 build produces.
@@ -874,7 +875,7 @@ node test.mjs ~/.config/raycast/extensions/<uuid> [command]
 
 # 3. the real Swift engine, against JavaScriptCore
 Scripts/run-tests.sh ext-test
-"${TMPDIR:-/tmp}"/tinycast-harness/ext-test ~/Library/Application\ Support/com.tinycast.app.dev/extensions/<name> [command]
+"${TMPDIR:-/tmp}"/tinycast-harness/ext-test ~/Library/Application\ Support/com.tinycast.app/extensions/<name> [command]
 ```
 
 `ext-test` compiles the real engine sources — there is no copy to keep in sync. `EXT_TEST_VERBOSE=1`
@@ -889,7 +890,7 @@ status items stay hidden so a test run cannot interfere with the running app's m
 
 ```sh
 EXT_TEST_MENU_BAR=1 "${TMPDIR:-/tmp}/tinycast-harness/ext-test" \
-  "$HOME/Library/Application Support/com.tinycast.app.dev/extensions/opencodex-usage" usage-menu-bar
+  "$HOME/Library/Application Support/com.tinycast.app/extensions/opencodex-usage" usage-menu-bar
 ```
 
 ### Debugging a failing extension
@@ -906,8 +907,9 @@ contains frames only (V8 repeats the message, so the headline has to be prepende
 
 ## Where things are stored, and what uninstall removes
 
-Everything is under `~/Library/Application Support/<bundle id>/`, keyed by bundle id so a Debug run
-never shares with an installed copy.
+Dev and release share extension installs and state under
+`~/Library/Application Support/com.tinycast.app/`. Uninstalling an extension in either build removes
+it for both. Beta and custom bundle identities retain separate roots.
 
 | What                                               | Where                                                 | Gone on uninstall |
 | -------------------------------------------------- | ----------------------------------------------------- | ----------------- |

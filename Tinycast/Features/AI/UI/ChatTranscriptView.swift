@@ -74,6 +74,7 @@ struct ChatTranscriptView: View {
                     surface == .palette ? metrics.spacing.chatTranscriptBottom : metrics.spacing.xl
                 )
                 .lineSpacing(metrics.spacing.chatLine)
+                .smallScrollIndicators()
                 // The gutter sits outside the cap, as the composer's does, so both share a column.
                 .frame(maxWidth: surface == .window ? Theme.Size.aiChatReadingWidth : nil)
                 .padding(.horizontal, metrics.spacing.xxl)

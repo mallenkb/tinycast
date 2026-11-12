@@ -149,6 +149,7 @@ struct UpdateWindowView: View {
     private func card(@ViewBuilder _ content: () -> some View) -> some View {
         ScrollView {
             content()
+                .smallScrollIndicators()
                 .textSelection(.enabled)
                 .padding(Theme.Spacing.xl)
         }

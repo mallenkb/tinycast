@@ -11,7 +11,7 @@ extension View {
     /// A `Section` with no header of its own: still somewhere a result can scroll to, with no pulse
     /// to paint. Every section that *has* a header uses `SettingsSectionHeader` instead.
     func settingsAnchor(_ anchor: SettingsAnchor) -> some View {
-        id(SettingsTarget.section(anchor))
+        id(SettingsTarget.section(anchor)).smallScrollIndicators()
     }
 }
 
@@ -42,7 +42,7 @@ struct SettingsSectionHeader<Label: View>: View {
     @ViewBuilder var label: Label
 
     var body: some View {
-        label.modifier(SearchPill(target: .section(anchor)))
+        label.modifier(SearchPill(target: .section(anchor))).smallScrollIndicators()
     }
 }
 

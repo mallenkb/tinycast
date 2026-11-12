@@ -30,6 +30,7 @@ Automatic transforms can load the selected cleanup engine independently.
 | Fillers | Um, send Ana the agenda. | Send Ana the agenda. |
 | Stutters | I I I will send the agenda. | I will send the agenda. |
 | Repeated short words | Send the the agenda. | Send the agenda. |
+| Repeated pronouns | They they said we're we're ready. | They said we're ready. |
 | Clear weekday correction | Send it on Friday, no sorry, Monday. | Send it on Monday. |
 | Spoken punctuation | Is the room booked, insert question mark. | Is the room booked? |
 | Line break | Send the agenda. New line. Keep a copy. | Two lines, with “Keep a copy.” on the second. |
@@ -46,6 +47,14 @@ The examples from Stutters onward require Advanced. It keeps existing paragraph 
 add breaks at clear topic changes, recaps, speaker handoffs, and sentence boundaries in long blocks.
 It keeps transition phrases such as “Moving on to delivery” in the transcript. A greeting and a
 conventional sign-off with a name can mark the start and end of a message.
+
+Advanced removes adjacent repeated subject pronouns and contractions when another word follows.
+It preserves punctuation-separated repetition, repeated emphasis such as "very very," and grammatical
+repetition such as "had had" or "that that." It does not join repetitions across line breaks.
+
+After at least two sentences and 35 words, Advanced can start a paragraph at a contrast, example,
+result, or direct question if at least 15 words remain. Short continuations stay together. These
+rules use sentence cues rather than interpreting the topic, and preserve the transition words.
 
 The currency rule covers dollars, euros, pounds sterling, Ghanaian cedis, yen, and explicitly
 named Indian rupees. It accepts spoken whole amounts up to 999, larger amounts that speech

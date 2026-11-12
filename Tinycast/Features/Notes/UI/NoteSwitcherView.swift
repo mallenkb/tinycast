@@ -102,6 +102,7 @@ struct NoteSwitcherView: View {
                         }
                     }
                     .padding(Theme.Spacing.md)
+                    .smallScrollIndicators()
                     .measuredHeight(onContentHeight)
                 }
                 // The search row is a sibling, not a floating bar, so only the bottom edge fades.

@@ -29,8 +29,8 @@ Build and launch Tinycast Dev from the project folder:
 ./Scripts/build-and-run.sh
 ```
 
-The Codex environment's Run action uses the same script. It restarts only Tinycast Dev and
-uses the project's signing identity. `DEVELOPER_DIR` defaults to the Xcode installation below.
+The Codex environment's Run action uses the same script. It builds Tinycast Dev with the project's
+signing identity, then hands shared storage over from any running Dev or release build. `DEVELOPER_DIR` defaults to the Xcode installation below.
 If another Xcode build locks the shared build database, the script retries for up to two minutes.
 The running app stays open until the build succeeds. Use `--build-only` to build without restarting
 the app. Other flags are `--debug` for LLDB, `--logs` for process logs, `--telemetry` for subsystem
@@ -66,34 +66,40 @@ download on demand; none are app resources.
 
 ### The dev channel
 
-Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.tinycast.app.dev`. Every
-persisted thing is keyed by bundle id — `~/Library/Preferences/<id>.plist` (settings and hotkey
-bindings), `~/Library/Application Support/<id>/` (the onboarding marker, Notes, snippets, quicklinks,
-clipboard history, calculator history, launch ranking and frequent emoji; Notes and snippets unless
-a folder is chosen),
-`~/Library/Caches/<id>/` (exchange rates, the update check, staged downloads), the opt-in
-`~/.config/tinycast-dev/settings.json` (`tinycast` on stable), the `SMAppService`
-login item, and the Accessibility / Input Monitoring (TCC) grants — so a local build can neither read
-nor clobber an installed app's state, and both run side by side.
+Debug builds keep the name **`Tinycast Dev.app`** and bundle id `com.tinycast.app.dev`, while Dev
+and release read and write the same app data. Changes made in either build are available in the other:
 
-Launch at login defaults to on. Each channel saves the switch independently and reconciles it with
-macOS on startup. If macOS requires approval, Settings offers a button to open Login Items.
-Turning off the switch removes the login item, including one waiting for approval. Older versions
-did not save in-app opt-outs, so an unset preference uses the new default.
+- `~/Library/Preferences/com.tinycast.app.plist` holds shared settings and hotkey bindings.
+- `~/Library/Application Support/com.tinycast.app/` holds authored data, including Notes, snippets,
+  quicklinks, clipboard and dictation histories, calculator history, and launcher ranking. A chosen
+  Notes or snippets folder still takes precedence.
+- `~/Library/Caches/com.tinycast.app/` holds downloaded speech and cleanup models, exchange rates,
+  update checks, and staged downloads.
+- The opt-in settings mirror is `~/.config/tinycast/settings.json` in both builds.
+- App secrets use the `com.tinycast.app` Keychain namespace.
 
-**What earns a place in Caches is refetchable, and nothing else.** Anything the user would notice the
-loss of goes in Application Support: `~/Library/Caches` is excluded from Time Machine and the system
-reclaims it under disk pressure without saying so.
+`AppPaths` resolves both identities to the shared storage root. `AppCore` injects shared preferences
+and directories into stores. Startup takes an exclusive storage lease before opening stores. When
+switching builds, the new process asks the running build to quit and waits for its writes and owned
+work to finish. If it cannot acquire the lease, it leaves the running app open and exits.
 
-Consequences worth knowing:
+macOS still identifies the two apps separately. Accessibility, Input Monitoring, microphone, and
+other permission grants remain app-specific, as do `SMAppService` login registrations. Dev may
+therefore need a permission grant even when release already has it. Its fixed build path and the
+`Tinycast Self-Signed` identity keep that grant across rebuilds.
 
-- The dev build asks for Accessibility on its own the first time, and starts with **no** hotkeys bound
-  and onboarding unseen. Grant and bind once; it persists across rebuilds, because the fixed build path
-  and the `Tinycast Self-Signed` identity keep the TCC grant alive.
-- Don't bind the same global hotkey in both — whichever registered first wins.
-- The Hyper Key's Caps Lock remap lives on the keyboards, which are **shared, not per-bundle**:
-  enable Hyper in one build at a time so their keyboard owners do not compete. An identical mapping
-  already installed by another build is left unowned.
+Launch at login defaults to on. Both builds read the shared preference and reconcile their own
+registration with macOS on startup. If macOS requires approval, Settings offers a button to open
+Login Items. Turning off the switch removes the current app's registration, including one waiting
+for approval. An unset preference uses the default.
+
+**Caches contain only refetchable data.** Anything the user would notice losing goes in Application
+Support. `~/Library/Caches` is excluded from Time Machine and macOS can reclaim it under disk
+pressure. Shared storage also means deleting a model or history entry in one build removes it for
+the other. Back up authored data before experimenting with a destructive change in Dev.
+
+The startup lease prevents Dev and release from competing for global hotkeys or keyboard remaps.
+Beta and custom bundle identities keep their separate storage roots.
 
 ## Editor
 

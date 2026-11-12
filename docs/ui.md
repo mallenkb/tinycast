@@ -13,7 +13,7 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 Tinycast is a **command palette**: a borderless floating panel. Dark retains its original native
 Liquid Glass background, 55% black glass tint and softened glass edge. Light uses `PaletteBackdrop`,
 an active `NSVisualEffectView` HUD material with behind-window blending, a 40% white overlay and a
-subtle one-pixel border at 12% black. Everything on that surface uses an appearance-aware ink ramp.
+subtle 1.2-pixel border at 12% black. Everything on that surface uses an appearance-aware ink ramp.
 Both materials follow system accessibility settings.
 The header and bottom bar **float over the list as fully transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the bars, they
 **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the
@@ -207,8 +207,9 @@ Its bottom edge sits 32pt above the bottom of the usable screen area.
 The compact capsule has light and dark finishes. Its waveform centers seven bars with 16pt
 of horizontal padding on each side. The bars are
 2.5pt wide and 5.0625pt apart. The pill shows Starting… as soon as a recording begins setup.
-During transcription, a rounded dash spins on a faint ring. Labeled styles choose a status word
-at random when transcription starts. The word shimmers when motion is enabled.
+During final transcription and cleanup, a rounded dash spins on a faint ring. Labeled styles cycle
+through the same shuffled list of ten processing words every two seconds across both stages.
+The word shimmers when motion is enabled.
 Every waveform bar and spinner stroke is 2.5pt wide, or 5 pixels at 2× scale.
 Dictation's Indicator style setting also offers labeled capsules and rounded rectangles, with
 light, dark, or outlined finishes. These versions show five bars with 3pt gaps
@@ -655,11 +656,15 @@ Source: `DesignSystem/Scrolling/ThinScrollbar.swift`.
 Custom thin overlay scrollbar (the native one flashes and reserves a gutter inside a transparent panel).
 `.hideNativeScrollers()` on the scroll _content_ forces the backing `NSScrollView` to a hidden `.overlay`
 style; `.thinScrollbar()` on the scroll view draws a hairline thumb (`Color.primary` alpha 0.30 rest →
-0.42 hover → 0.5 drag) that fattens on hover, with a faint rail revealed only while hovering/dragging.
+0.42 hover → 0.5 drag) that grows from 4.5 pt to 7.5 pt on hover, with a faint rail revealed only
+while hovering/dragging. The 16 pt interaction zone and 28 pt minimum thumb height stay unchanged.
 
 Routing: the palette lists (App Launcher, Clipboard history, Emoji, File Search, Calculator history) use
 `.thinScrollbar()` + `.hideNativeScrollers()`; the Clipboard preview (right pane), every Settings
-pane and the update window take the native scroller as-is. Don't reintroduce native scrollers on the palette lists.
+pane and the update window use native scrollers. App-owned native scroll content uses
+`.smallScrollIndicators()` to set only its enclosing scrollers to AppKit's `.small` size; explicit
+AppKit scroll views set that size directly. System-owned previews and SwiftUI text editors retain
+their system-managed indicator sizing. Don't reintroduce native scrollers on the palette lists.
 
 **Native scrollers are overlay app-wide, set once.** `AppDelegate.applicationWillFinishLaunching`
 writes `AppleShowScrollBars = WhenScrolling` into Tinycast's own defaults domain, which outranks the

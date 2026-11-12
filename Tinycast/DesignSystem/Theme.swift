@@ -148,7 +148,7 @@ enum Theme {
         /// Hit target for a chat message footer glyph; its caption symbol floats inside it.
         static let chatMessageAction: CGFloat = 16
         static let hairline: CGFloat = 1
-        static let paletteLightBorderPixels: CGFloat = 1
+        static let paletteLightBorderPixels: CGFloat = 1.2
         static let markdownListMarker: CGFloat = 20
         static let markdownQuoteBar: CGFloat = 2
         static let contextRingStroke: CGFloat = 2
@@ -306,7 +306,7 @@ enum Theme {
         static let dictationIdleWidth: CGFloat = 40
         static let dictationIdleHeight: CGFloat = 7
         static let dictationIdleHoverWidth: CGFloat = 60
-        static let dictationPreviewWidth: CGFloat = 360
+        static let dictationPreviewWidth: CGFloat = 400
         static let dictationSettingsPreviewWidth: CGFloat = 240
         static let dictationOutlineWidth: CGFloat = 1
         static let dictationLabelWaveBarCount = 5
@@ -332,7 +332,8 @@ enum Theme {
         static let dictationPreviewLineShift: TimeInterval = 0.32
         static let dictationCharacterStep: TimeInterval = 0.03
         static let dictationCharacterFade: TimeInterval = 0.15
-        static let dictationRevealLineGap: TimeInterval = 0.15
+        static let dictationRevealLimit: TimeInterval = 0.34
+        static let dictationRevealLineDelay: TimeInterval = 0.12
         static let dictationIndicatorMorph: TimeInterval = 0.24
         static let dictationProcessingWord: TimeInterval = 2
         static let dictationTranscribingShimmer: TimeInterval = 1.8

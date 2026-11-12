@@ -25,8 +25,8 @@ struct ThinScrollbar: ViewModifier {
     @State private var hoverExit: Task<Void, Never>?
 
     // Knob/rail geometry: thin at rest, fatter on hover/drag — like the macOS overlay knob.
-    private let thinWidth: CGFloat = 6
-    private let expandedWidth: CGFloat = 10
+    private let thinWidth: CGFloat = 4.5
+    private let expandedWidth: CGFloat = 7.5
     private let inset: CGFloat = 3
     private let minThumb: CGFloat = 28
     private let hoverZone: CGFloat = 16  // trailing strip that reveals the rail; wider than the thumb
@@ -174,9 +174,45 @@ extension View {
         modifier(ThinScrollbar())
     }
 
+    func smallScrollIndicators() -> some View {
+        background(NativeScrollerSizer().frame(width: 0, height: 0))
+    }
+
     /// Attach *inside* a `ScrollView` (on its content) to remove the native scrollers so only our `thinScrollbar` shows.
     func hideNativeScrollers() -> some View {
         background(NativeScrollerHider().frame(width: 0, height: 0))
+    }
+}
+
+private struct NativeScrollerSizer: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { SizerView() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? SizerView)?.applySize()
+    }
+
+    private final class SizerView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            applySize()
+        }
+
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            applySize()
+        }
+
+        override func layout() {
+            super.layout()
+            applySize()
+        }
+
+        func applySize() {
+            guard let scrollView = enclosingScrollView else { return }
+            for scroller in [scrollView.verticalScroller, scrollView.horizontalScroller].compactMap({ $0 }) {
+                if scroller.controlSize != .small { scroller.controlSize = .small }
+            }
+        }
     }
 }
 

@@ -44,6 +44,49 @@ enum DictationPreviewSequence {
         return bounded(Array(old.prefix(overlap.start)) + new)
     }
 
+    static func stableCleanupInput(previous: String, incoming: String) -> String? {
+        guard !previous.isEmpty, !incoming.isEmpty, incoming.utf8.prefix(16_385).count <= 16_384 else { return nil }
+        if previous == incoming { return incoming }
+        let count = zip(previous, incoming).prefix { $0.0 == $0.1 }.count
+        let stable = incoming.prefix(count)
+        let boundaries = ".!?。！？"
+        guard let end = stable.indices.last(where: { index in
+            guard boundaries.contains(stable[index]) else { return false }
+            let next = stable.index(after: index)
+            return next < stable.endIndex && stable[next].isWhitespace
+        }) else { return nil }
+        return String(stable[...end])
+    }
+
+    static func revealStart(previous: String, incoming: String, limit: Int) -> Int {
+        let count = incoming.count
+        let floor = max(0, count - limit)
+        if incoming.hasPrefix(previous) { return max(floor, previous.count) }
+        let old = previous.split(whereSeparator: \.isWhitespace).map { normalized(String($0)) }
+        let words = incoming.split(whereSeparator: \.isWhitespace)
+        let new = words.map { normalized(String($0)) }
+        guard !new.isEmpty, old.last != new.last else { return count }
+        var bestLength = 1
+        var firstNewWord = 0
+        for left in old.indices.suffix(8).reversed() {
+            for right in new.indices.reversed() where old[left] == new[right] && !old[left].isEmpty {
+                var length = 1
+                while left >= length, right >= length,
+                    old[left - length] == new[right - length], !old[left - length].isEmpty
+                {
+                    length += 1
+                }
+                if length > bestLength {
+                    bestLength = length
+                    firstNewWord = right + 1
+                }
+            }
+        }
+        guard firstNewWord < words.count else { return count }
+        let index = words[firstNewWord].startIndex
+        return max(floor, incoming.distance(from: incoming.startIndex, to: index))
+    }
+
     private static func normalized(_ word: String) -> String {
         word.lowercased().trimmingCharacters(in: .punctuationCharacters)
     }
