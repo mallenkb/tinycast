@@ -97,11 +97,13 @@ enum DictationModelDownloader {
         repository: String, revision: String, components: Set<String>, baseURL: URL, using session: URLSession
     ) async throws -> [(File, URL)] {
         let tree = baseURL.appending(path: "api/models/\(repository)/tree/\(revision)")
-            .appending(queryItems: [URLQueryItem(name: "recursive", value: "true")])
+            .appending(queryItems: [
+                URLQueryItem(name: "recursive", value: "true"), URLQueryItem(name: "limit", value: "1000")
+            ])
         let files = try JSONDecoder().decode([File].self, from: try await data(from: tree, using: session))
             .filter { file in
                 file.type == "file"
-                    && components.contains(file.path.split(separator: "/").first.map(String.init) ?? "")
+                    && components.contains { file.path == $0 || file.path.hasPrefix($0 + "/") }
             }
         guard
             components.allSatisfy({ component in

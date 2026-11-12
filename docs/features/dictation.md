@@ -2,16 +2,25 @@
 
 Dictation is off by default. Either assigned global shortcut records from the chosen microphone,
 transcribes locally and sends the result through `TextInjector`. Parakeet V3, Ultra and Redux
-support 25 languages. Parakeet V2 and Phonon-2 support English. Phonon-2 is a smaller model
+support 25 languages. Parakeet V2, Unified and Phonon-2 support English. Phonon-2 is a smaller model
 retrained from V3 for English. Qwen3-ASR 0.6B and 1.7B support 30 languages and 22 Chinese dialects.
-Settings marks Parakeet Ultra as Recommended and selects it by default. Choose Download
-to install the selected Parakeet or Qwen model. Apple Dictation uses speech assets managed by macOS.
+Settings marks Parakeet Ultra as Recommended and selects it by default. The speech recognition page
+shows selectable rows and filters for accuracy, speed, multilingual support, compact size and live
+streaming. Accuracy and speed are curated shortlists, compact means at most 650 MB on disk, and live
+currently includes Apple Dictation. Rows show language coverage and approximate disk size; published
+benchmark figures are external measurements, with their sources in the row help. Hovering over language coverage shows the supported languages.
+Choose an installed model, download one from its row, or remove it after selecting another. Cohere Q8
+uses a separate Core ML encoder-decoder pipeline and 14 selectable languages, with English as its default.
+Its fixed 35-second batch encoder does not provide live preview. Cohere Q4 requires a separate GGUF
+speech runtime and remains unavailable.
+Qwen models remain available. Apple Dictation uses speech assets managed by macOS.
 After microphone access is granted, enabling Dictation offers the missing recommended downloads for
 the selected engines. On the defaults, Ultra transcribes speech and S1-mini is optional for Smart
 cleanup and transforms. The setup lets you download both, download Ultra alone, or decide later.
-Progress appears on the main Dictation settings page.
+Model downloads show progress and cancellation within their row; onboarding also shows progress on
+the main Dictation settings page.
 
-Parakeet and Qwen use Core ML and Accelerate. Each family has its own adapter inside the bundled
+Parakeet and Qwen use Core ML and Accelerate. Unified uses a separate RNNT decoder and offline 15-second windows; its live preview uses the existing rolling batch preview. Each family has its own adapter inside the bundled
 helper, and variants share their family's implementation.
 Parakeet variants declare their encoder, joint model, blank token and compute units in
 `DictationModel` alongside the pinned download metadata. V3 uses FluidInference's re-quantized

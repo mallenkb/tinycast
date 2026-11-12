@@ -28,6 +28,7 @@ dictation by default, and runs clipboard text recognition on demand.
 Version 0.1.18 refines live dictation previews and improves link preview recovery.
 Version 0.1.19 improves live dictation and cleanup, shares data between Dev and release builds,
 and refines scroll indicators and the light-mode palette border.
+Version 0.1.20 adds Unified and Cohere Q8 dictation support and improves model selection.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

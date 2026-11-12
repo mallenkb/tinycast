@@ -32,9 +32,12 @@ enum DictationHelper {
                     loaded = nil
                     do {
                         recognizer = try autoreleasepool { () throws -> any DictationRecognizer in
-                            request.model.isQwen
-                                ? try QwenRecognizer(directory: request.directory)
-                                : try ParakeetRecognizer(directory: request.directory, model: request.model)
+                            if request.model.isCohere { return try CohereRecognizer(directory: request.directory) }
+                            if request.model == .unified {
+                                return try UnifiedRecognizer(directory: request.directory)
+                            }
+                            if request.model.isQwen { return try QwenRecognizer(directory: request.directory) }
+                            return try ParakeetRecognizer(directory: request.directory, model: request.model)
                         }
                         loaded = request.model
                     } catch {

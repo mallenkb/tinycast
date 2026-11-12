@@ -419,9 +419,11 @@ final class DictationCoordinator {
     }
 
     private func englishOverride(model: DictationModel?, language: String?) -> Bool? {
-        if model == .v2 || model == .phonon2 {
+        if model == .v2 || model == .phonon2 || model == .unified {
             true
-        } else if model?.isQwen == true, let language {
+        } else if model?.isCohere == true, language == nil {
+            true
+        } else if (model?.isQwen == true || model?.isCohere == true), let language {
             language == DictationLanguage.english.rawValue
         } else {
             nil
@@ -506,7 +508,7 @@ final class DictationCoordinator {
     }
 
     private func startPreview() {
-        guard settings.dictationLivePreview else { return }
+        guard settings.dictationLivePreview, !settings.dictationModel.isCohere else { return }
         let current = token
         let model = settings.dictationModel
         let language = settings.dictationLanguage
