@@ -7,6 +7,9 @@ struct DictationFieldTest {
     static func main() async throws {
         NSApplication.shared.setActivationPolicy(.prohibited)
         try await testDelivery()
+        try await testCorrectionLearning()
+        try testCorrectionStore()
+        try testCorrectionWriteFailure()
         try await testShortcutOwnership()
         try await testShortcutFollowsFocusDuringProcessing()
         try await testScopedCancellation()
@@ -38,6 +41,171 @@ struct DictationFieldTest {
         expect(Paster.copies.isEmpty, "A field mic leaves the clipboard alone")
         expect(fixture.transcripts == ["Spoken words"], "A field mic saves its transcript once")
         expect(fixture.pasteAppIDs == [NSRunningApplication.current.processIdentifier], "History records the editor's app")
+    }
+
+    private static func testCorrectionLearning() async throws {
+        let fixture = Fixture()
+        let editor = ComposerTextView()
+        let window = CorrectionWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 120),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = editor
+        expect(window.makeFirstResponder(editor), "Correction learning reads the focused editor")
+        defer {
+            fixture.coordinator.stopCorrectionLearning()
+            window.close()
+            try? FileManager.default.removeItem(at: fixture.correctionFileURL)
+        }
+
+        func dictate(_ transcript: String) async throws {
+            let count = fixture.transcripts.count
+            try await fixture.start(into: editor)
+            fixture.coordinator.accept()
+            try await wait { fixture.models.pending != nil }
+            fixture.models.finish(transcript)
+            try await wait { fixture.transcripts.count == count + 1 }
+        }
+
+        try await dictate("Ask Haptel and Kathrine.")
+        expect(editor.string == "Ask Haptel and Kathrine.", "The first transcript arrives without prior corrections")
+        editor.string = "Ask Hubtel and Kathrine."
+        editor.string = "Ask Hubtel and Katherine."
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+
+        try await dictate("Haptel and Kathrine again.")
+        expect(editor.string == "Ask Hubtel and Katherine. Hubtel and Katherine again.",
+            "The next dictation applies both edits even when it starts before they settle")
+        expect(fixture.transcripts.last == "Hubtel and Katherine again.", "History records the corrected transcript")
+        expect(fixture.originalTranscripts.last == .some("Haptel and Kathrine again."),
+            "History retains the raw transcript when the dictionary changes it")
+        let reloaded = DictationCorrectionStore(fileURL: fixture.correctionFileURL)
+        expect(Set(reloaded.entries.map(\.spelling)) == ["Hubtel", "Katherine"], "Both corrections survive a store reload")
+
+        editor.string = "Ask Hubtel and Katherine. Haptel and Katherine again."
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+        try await dictate("Haptel and Kathrine returned.")
+        expect(fixture.transcripts.last == "Haptel and Katherine returned.",
+            "Reverting one applied spelling restores its recognized form and keeps the other correction")
+
+        fixture.settings.dictationAdaptsCapitalization = false
+        editor.string = "Ask Huptel."
+        editor.setSelectedRange(NSRange(location: 4, length: 6))
+        try await dictate("Haptel")
+        expect(editor.string == "Ask Haptel.", "Dictation replaces the selected word")
+        editor.string = "Ask Huptel."
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+        try await dictate("Haptel returned.")
+        expect(fixture.transcripts.last == "Haptel returned.", "Restoring a replaced selection does not learn its old text")
+
+        editor.string = "Ask Huptel. Hubtel returned."
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+        fixture.coordinator.cancel(in: editor)
+        try await dictate("Haptel called.")
+        expect(fixture.transcripts.last == "Haptel called.", "Tearing down an editor drops pending learning after a paste")
+
+        expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Haptel", spelling: "Hubtel", isManual: true)),
+            "The first manual entry is saved")
+        expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Hubtel", spelling: "Other", isManual: true)),
+            "The second manual entry is saved")
+        var transformInput: String?
+        fixture.coordinator.processTranscript = { transcript, _ in
+            transformInput = transcript
+            return transcript
+        }
+        try await dictate("Haptel called.")
+        expect(transformInput == "Haptel called.", "The transform receives the cleaned transcript before dictionary application")
+        expect(fixture.transcripts.last == "Hubtel called.", "Dictionary entries apply once without chaining")
+    }
+
+    private static func testCorrectionStore() throws {
+        let fileURL = FileManager.default.temporaryDirectory.appending(path: "dictation-corrections-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        let store = DictationCorrectionStore(fileURL: fileURL)
+        let original = DictationCorrection(original: "Haptel", spelling: "Huptel")
+        let revised = DictationCorrection(original: "Haptel", spelling: "Hubtel")
+        let detection = DictationCorrection.detect(
+            from: "Ask about Samoa.", to: "Ask about Samuel.", recognized: "Ask about Samoa.")
+        guard let candidate = detection.candidates.first, let context = candidate.context else {
+            fatalError("A speculative correction should retain its spoken context")
+        }
+        try store.record(original)
+
+        let firstSession = UUID()
+        let firstBaseline = store.entries
+        let firstChanges = try store.learn([revised], candidates: [candidate], sessionID: firstSession,
+            replacing: [], baseline: firstBaseline)
+        expect(firstChanges.map(\.spelling) == ["Hubtel"], "The first observation records only the confident spelling")
+        let repeated = try store.learn([revised], candidates: [candidate], sessionID: firstSession,
+            replacing: firstChanges, baseline: firstBaseline)
+        expect(repeated.map(\.spelling) == ["Hubtel"], "One session cannot confirm its own candidate")
+
+        let secondSession = UUID()
+        let secondBaseline = store.entries
+        let revert = DictationCorrection(original: "Haptel", spelling: "Haptel")
+        let lowercasedCandidate = DictationCorrection(original: "samoa", spelling: "Samuel", context: context)
+        let secondChanges = try store.learn([revert], candidates: [lowercasedCandidate], sessionID: secondSession,
+            replacing: [], baseline: secondBaseline)
+        expect(Set(secondChanges.map(\.spelling)) == ["Haptel", "Samuel"],
+            "A second session confirms the candidate and removes the reverted spelling")
+        let reloaded = DictationCorrectionStore(fileURL: fileURL)
+        expect(DictationCorrection.applying(reloaded.entries, to: "Haptel said to ask about Samoa.")
+            == "Haptel said to ask about Samuel.",
+            "Both changes take effect together after reload")
+        expect(DictationCorrection.applying(reloaded.entries, to: "I live in Samoa.") == "I live in Samoa.",
+            "The confirmed candidate leaves unrelated uses of the original word unchanged")
+
+        let unscopedRevision = DictationCorrection(original: "Samoa", spelling: "Samual")
+        let revisionSession = UUID()
+        let revisionBaseline = store.entries
+        let revisionChanges = try store.learn([unscopedRevision], candidates: [], sessionID: revisionSession,
+            replacing: [], baseline: revisionBaseline)
+        expect(store.entries.first?.context == context, "Revising a contextual spelling retains its scope")
+        expect(DictationCorrection.applying(store.entries, to: "Ask about Samoa.") == "Ask about Samual.",
+            "The revised spelling applies in its original context")
+        expect(DictationCorrection.applying(store.entries, to: "I live in Samoa.") == "I live in Samoa.",
+            "A revised contextual spelling still leaves unrelated text alone")
+        _ = try store.learn([], candidates: [], sessionID: revisionSession,
+            replacing: revisionChanges, baseline: revisionBaseline)
+
+        _ = try store.learn([], candidates: [], sessionID: secondSession,
+            replacing: secondChanges, baseline: secondBaseline)
+        expect(DictationCorrection.applying(store.entries, to: "Haptel said to ask about Samoa.")
+            == "Hubtel said to ask about Samoa.",
+            "Undo restores the dictionary before the latest dictation")
+
+        let thirdSession = UUID()
+        let thirdBaseline = store.entries
+        let thirdChanges = try store.learn([original], candidates: [], sessionID: thirdSession,
+            replacing: [], baseline: thirdBaseline)
+        expect(thirdChanges.map(\.spelling) == ["Huptel"], "A new dictation can revise a previously undone correction")
+        let manual = DictationCorrection(original: "Haptel", spelling: "Manual", isManual: true)
+        try store.record(manual)
+        _ = try store.learn([], candidates: [], sessionID: thirdSession, replacing: thirdChanges, baseline: thirdBaseline)
+        _ = try store.learn([revised], candidates: [], sessionID: UUID(), replacing: [], baseline: store.entries)
+        expect(store.entries.count == 1 && store.entries.first?.isManual == true && store.entries.first?.spelling == "Manual",
+            "Learning and undo preserve a manual entry for the same word")
+    }
+
+    private static func testCorrectionWriteFailure() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "dictation-corrections-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let fileURL = folder.appending(path: "corrections.json")
+        let store = DictationCorrectionStore(fileURL: fileURL)
+        let correction = DictationCorrection(original: "Haptel", spelling: "Hubtel")
+        let candidate = DictationCorrection(original: "Samoa", spelling: "Samuel")
+        _ = try store.learn([], candidates: [candidate], sessionID: UUID(), replacing: [], baseline: [])
+        let secondSession = UUID()
+        do {
+            _ = try store.learn([correction], candidates: [candidate], sessionID: secondSession, replacing: [], baseline: [])
+            fatalError("Writing corrections should fail while the parent directory is missing")
+        } catch {
+            expect(store.entries.isEmpty, "A failed batch write publishes no partial dictionary changes")
+        }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        let saved = try store.learn([correction], candidates: [candidate], sessionID: secondSession,
+            replacing: [], baseline: [])
+        expect(Set(saved.map(\.spelling)) == ["Hubtel", "Samuel"], "A retry preserves the prior candidate observation")
     }
 
     private static func testShortcutOwnership() async throws {
@@ -302,19 +470,22 @@ struct DictationFieldTest {
         let queue = DeliveryQueue()
         var messages: [String] = []
         var transcripts: [String] = []
+        var originalTranscripts: [String?] = []
         var pasteAppIDs: [pid_t?] = []
         var focusedTarget: InjectionTarget?
+        let correctionFileURL = FileManager.default.temporaryDirectory
+            .appending(path: "dictation-corrections-\(UUID()).json")
         lazy var coordinator = DictationCoordinator(
             settings: settings, hotKeys: HotKeyManager(), models: models,
-            corrections: DictationCorrectionStore(fileURL: FileManager.default.temporaryDirectory
-                .appending(path: "dictation-corrections-\(UUID()).json")),
+            corrections: DictationCorrectionStore(fileURL: correctionFileURL),
             injector: TextInjector(
                 clipboardManager: ClipboardManager(), settings: settings, deliveryQueue: queue),
             focusedTarget: { [weak self] in self?.focusedTarget },
             confirmEnable: { false },
             showMessage: { [weak self] message, _ in self?.messages.append(message) },
-            recordTranscript: { [weak self] text, _, app in
+            recordTranscript: { [weak self] text, original, app in
                 self?.transcripts.append(text)
+                self?.originalTranscripts.append(original)
                 self?.pasteAppIDs.append(app?.processIdentifier)
             })
 
@@ -326,6 +497,10 @@ struct DictationFieldTest {
             try await wait { capture.isRecording }
             expect(coordinator.field?.editor == ObjectIdentifier(editor), "The session belongs to its editor")
         }
+    }
+
+    private final class CorrectionWindow: NSWindow {
+        override var isKeyWindow: Bool { true }
     }
 
     @MainActor

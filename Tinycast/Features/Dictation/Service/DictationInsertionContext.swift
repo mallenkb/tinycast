@@ -29,6 +29,7 @@ enum DictationInsertionContext {
         let inserted: String
         private let prefix: Substring
         private let suffix: Substring
+        private let replaced: Substring
         private let readField: () -> String?
 
         fileprivate init?(text: String, range: NSRange, inserted: String, readField: @escaping () -> String?) {
@@ -38,7 +39,12 @@ enum DictationInsertionContext {
             self.inserted = inserted
             prefix = text[..<selection.lowerBound]
             suffix = text[selection.upperBound...]
+            replaced = text[selection]
             self.readField = readField
+        }
+
+        func restoresSelection(_ text: String) -> Bool {
+            text != inserted && text == replaced
         }
 
         func readInsertion() -> String? {

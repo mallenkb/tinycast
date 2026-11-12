@@ -40,13 +40,25 @@ models use CPU/Neural Engine.
   and, like every Dictation preference, is excluded from backups so importing settings cannot arm
   a global recording shortcut.
 - Auto-learn words is active when Dictation is enabled. After a confirmed paste into a readable text
-  field, Tinycast watches the inserted text while the field remains focused. It learns similar word
-  replacements after each edit settles and stops watching when focus leaves the field or the surrounding text
-  changes. Add a word or phrase under Dictation Settings > Dictionary to keep its preferred spelling.
-  Enter a misspelling to replace the text Tinycast repeatedly hears. The dictionary stores up to 100
-  entries on this Mac and keeps manual entries when learned ones are dropped. All engines apply
-  dictionary entries to finished text. Apple Dictation also uses saved words as recognition hints.
-  Remove an entry in Dictation Settings to stop using it.
+  field, Tinycast watches that insertion while the field remains focused. After two seconds without
+  an edit, it aligns the original and edited words and learns multiple clear spelling corrections.
+  Starting another recording flushes readable pending edits before taking the next vocabulary snapshot.
+  The watcher stops when focus leaves, the surrounding text changes, the insertion is deleted,
+  Dictation is disabled, or its composer is closed or rebound. Stopping releases the field probe and
+  transcript snapshots. Fields over 8,192 UTF-16 units are not observed.
+  Numeric edits, recognized English number/date/negation words, and unrelated rewrites are excluded.
+  Word swaps and conflicting replacements of the same source are rejected. Ambiguous spelling candidates
+  require matching evidence from two distinct dictations in the same app session and only apply with
+  the same neighboring words. Up to 100 candidates
+  are kept in memory; they do not load a speech or cleanup model and are discarded on quit.
+  Revisions and undo update the original recognition mapping, rather than teaching a replacement chain.
+  A user's manual dictionary entries take priority. Add a word or phrase under Dictation Settings >
+  Dictionary to keep its preferred spelling, or enter a misspelling to replace it explicitly.
+  The dictionary stores up to 100 entries on this Mac and keeps manual entries when learned ones are
+  dropped. Learned entries persist across restarts and apply once to finished text after cleanup and
+  transforms. Apple Dictation also uses unscoped saved words as recognition hints. Remove an entry in Dictation
+  Settings to stop using it. Casing-only edits and edits to part of an already replaced multiword alias
+  are skipped. These rules infer spelling preferences, not changes to the speaker's intent.
 - Microphone status appears in Permissions and the Dictation pane. Neither pane prompts on display;
   only a user action requests access, while revoked access is refreshed from macOS.
 - Push to talk and Hands-free have separate global shortcuts and can both be assigned.
@@ -202,7 +214,11 @@ models use CPU/Neural Engine.
 `dictation-field-test` checks composer switching and teardown, scoped cancellation, delayed insertion
 and cue timing with synthetic capture and real AppKit editors, without recording audio or touching
 the shared clipboard.
-`dictation-test` checks formatting and model options; `dictation-inference-test` checks score selection,
+`dictation-test` checks formatting, model options, multi-edit alignment, confidence checks, source
+attribution, undo, debounce, input bounds and repeated inference. Hidden-editor checks in
+`dictation-field-test` also cover learning across dictations, persistence, candidate corroboration,
+manual-entry priority and correction watcher teardown. These fixtures do not activate windows,
+record audio or write to the shared clipboard. `dictation-inference-test` checks score selection,
 byte BPE, Fourier/mel features, listening bands and audio partitioning without downloading a model. `dictation-worker-test`
 exercises framed IPC, worker reuse/switching, removal, cancellation and broken pipes with a fixture.
 An in-process URLProtocol fixture checks byte progress before the first file completes, combined

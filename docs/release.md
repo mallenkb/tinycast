@@ -31,6 +31,7 @@ and refines scroll indicators and the light-mode palette border.
 Version 0.1.20 adds Unified and Cohere Q8 dictation support and improves model selection.
 Version 0.1.21 includes Parakeet Unified in the Live model filter.
 Version 0.1.22 reduces idle memory use and improves automatic dictation correction learning.
+Version 0.1.23 learns multiple dictation corrections and applies them to later transcripts.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
