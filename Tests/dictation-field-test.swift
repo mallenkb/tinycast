@@ -658,7 +658,7 @@ final class DictationPanelController {
     var onCancel: (() -> Void)?
     var onStart: (() -> Void)?
     var isVisible = false
-    init() { Self.latest = self }
+    init(settings: AppSettings) { Self.latest = self }
     func showStarting(style: DictationIndicatorStyle) { isVisible = true }
     func showListening() {}
     func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) { state.transcript = text }

@@ -17,6 +17,8 @@ final class DictationDisplayState {
     var animatesTranscript = true
     var twoLinePreview = false
     var idleHovered = false
+    var indicatorWidth: CGFloat = 0
+    var indicatorOffset: CGFloat = 0
     var levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
 }
 
@@ -525,6 +527,9 @@ private struct DictationPanelView: View {
     var style: DictationIndicatorStyle
     var phase: DictationIndicatorView.Phase
     var onStart: () -> Void = {}
+    var onDragBegan: () -> Void = {}
+    var onDragEnded: () -> Void = {}
+    var onDragMoved: (CGPoint) -> CGPoint = { $0 }
 
     var body: some View {
         VStack(spacing: Theme.Spacing.md) {
@@ -542,14 +547,35 @@ private struct DictationPanelView: View {
             }
             DictationIndicatorView(
                 style: style, phase: phase, levels: state.levels, idleHovered: state.idleHovered, onStart: onStart)
+                .overlay {
+                    WindowDragHandle(
+                        onBegan: onDragBegan, onEnded: onDragEnded,
+                        onClick: { if phase.isIdle { onStart() } }, onMoved: onDragMoved)
+                }
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { state.indicatorWidth = $0 }
+                .offset(x: state.indicatorOffset)
         }
-        .frame(minWidth: Theme.Size.dictationPreviewWidth, minHeight: Theme.Size.dictationIndicatorHeight, alignment: .bottom)
+        .frame(
+            minWidth: state.transcript.isEmpty ? 0 : Theme.Size.dictationPreviewWidth,
+            minHeight: Theme.Size.dictationIndicatorHeight, alignment: .bottom)
         .motionScope()
     }
 }
 
 private final class DictationPanel: NSPanel, AnimatedPanel {
     private let host: NSHostingView<DictationPanelView>
+    private let settings: AppSettings
+    private let guides = PaletteDropGuideController(forAllApplications: true)
+    private var dragging = false
+    private var guidesVisible = false
+    private var snappedX = false
+    private var snappedY = false
+    private var dragScreen: NSScreen?
+    private var dragBottom: CGFloat?
+    private var dragStartOffset: CGFloat = 0
+    private var dragOwner: pid_t?
+    private var dragSourceDisplay: String?
+    private var chosenDisplay: String?
     private var observers: [NotificationToken] = []
     private var presentationObservation: NSKeyValueObservation?
     private var placementTimer: Timer?
@@ -559,9 +585,10 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     var onAccept: (() -> Void)?
     var onStart: (() -> Void)?
 
-    init(rootView: DictationPanelView) {
+    init(rootView: DictationPanelView, settings: AppSettings) {
         let host = NSHostingView(rootView: rootView)
         self.host = host
+        self.settings = settings
         super.init(
             contentRect: NSRect(origin: .zero, size: host.fittingSize),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -575,6 +602,9 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         hidesOnDeactivate = false
         acceptsMouseMovedEvents = true
         isReleasedWhenClosed = false
+        host.rootView.onDragBegan = { [weak self] in self?.beginDrag() }
+        host.rootView.onDragEnded = { [weak self] in self?.endDrag() }
+        host.rootView.onDragMoved = { [weak self] point in self?.drag(to: point) ?? point }
         followMotion()
         observePlacementChanges()
     }
@@ -603,11 +633,30 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     }
 
     func position(on screen: NSScreen, refreshDock: Bool = true) {
-        let frame = screen.frame
+        let bounds = screen.frame
+        let bottom = minimumY(on: screen, refreshDock: refreshDock)
+        let centerX: CGFloat
+        let y: CGFloat
+        if let stored = settings.dictationIndicatorPositions[screen.displayKey], stored.count == 2,
+            stored.allSatisfy({ $0.isFinite && (0...1).contains($0) })
+        {
+            centerX = bounds.minX + bounds.width * stored[0]
+            y = bounds.minY + bounds.height * stored[1]
+        } else {
+            centerX = bounds.midX
+            y = bottom
+        }
+        let center = clampedCenter(centerX, on: screen)
+        let origin = clamped(CGPoint(x: center - frame.width / 2, y: y), on: screen, bottom: bottom)
+        let offset = center - (origin.x + frame.width / 2)
+        if host.rootView.state.indicatorOffset != offset { host.rootView.state.indicatorOffset = offset }
+        if frame.origin != origin { setFrameOrigin(origin) }
+    }
+
+    private func minimumY(on screen: NSScreen, refreshDock: Bool = true) -> CGFloat {
+        let bounds = screen.frame
         let visible = screen.visibleFrame
-        // A hidden Dock still reserves a narrow strip for revealing it.
-        let dockRevealMargin: CGFloat = 4
-        let reservesDockSpace = visible.minY - frame.minY > dockRevealMargin
+        let reservesDockSpace = visible.minY - bounds.minY > 4
         let presentation = NSApp.currentSystemPresentationOptions
         let hidesDock = !presentation.isDisjoint(with: [.fullScreen, .hideDock, .autoHideDock])
         let geometry = dockGeometry(on: screen)
@@ -617,15 +666,103 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         } else {
             if refreshDock { refreshDockAccessibilityBounds() }
             if let dockAccessibilityBounds {
-                bottom = bottomDockTop(for: dockAccessibilityBounds, on: screen) ?? frame.minY
+                bottom = bottomDockTop(for: dockAccessibilityBounds, on: screen) ?? bounds.minY
             } else {
-                bottom = reservesDockSpace && !hidesDock && !geometry.windowFillsDisplay ? visible.minY : frame.minY
+                bottom = reservesDockSpace && !hidesDock && !geometry.windowFillsDisplay ? visible.minY : bounds.minY
             }
         }
-        let origin = NSPoint(
-            x: frame.midX - self.frame.width / 2,
-            y: bottom + Theme.Spacing.dictationPanelBottomInset)
-        if self.frame.origin != origin { setFrameOrigin(origin) }
+        return bottom + Theme.Spacing.dictationPanelBottomInset
+    }
+
+    private func clamped(_ point: CGPoint, on screen: NSScreen, bottom: CGFloat) -> CGPoint {
+        let bounds = screen.frame
+        let inset = Theme.Spacing.dictationPanelBottomInset
+        let minX = bounds.minX + inset
+        let maxX = max(minX, bounds.maxX - frame.width - inset)
+        let maxY = max(bottom, bounds.maxY - frame.height - inset)
+        return CGPoint(x: min(max(point.x, minX), maxX), y: min(max(point.y, bottom), maxY))
+    }
+
+    private func clampedCenter(_ center: CGFloat, on screen: NSScreen) -> CGFloat {
+        let inset = Theme.Spacing.dictationPanelBottomInset
+        let half = min(max(host.rootView.state.indicatorWidth / 2, 1), frame.width / 2)
+        let minimum = screen.frame.minX + inset + half
+        let maximum = max(minimum, screen.frame.maxX - inset - half)
+        return min(max(center, minimum), maximum)
+    }
+
+    private func beginDrag() {
+        dragging = true
+        guidesVisible = false
+        snappedX = false
+        snappedY = false
+        dragScreen = nil
+        dragBottom = nil
+        dragStartOffset = host.rootView.state.indicatorOffset
+        dragOwner = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        dragSourceDisplay = Self.activeScreen?.displayKey
+    }
+
+    private func drag(to point: CGPoint) -> CGPoint {
+        guard dragging, let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
+                ?? self.screen ?? Self.activeScreen
+        else { return point }
+        let bottom: CGFloat
+        if dragScreen?.displayKey == screen.displayKey, let cached = dragBottom {
+            bottom = cached
+        } else {
+            bottom = minimumY(on: screen)
+            dragBottom = bottom
+        }
+        let bounded = clamped(point, on: screen, bottom: bottom)
+        let bounds = screen.frame
+        let inset = Theme.Spacing.dictationPanelBottomInset
+        let indicatorWidth = min(max(host.rootView.state.indicatorWidth, 1), frame.width)
+        let center = clampedCenter(point.x + frame.width / 2 + dragStartOffset, on: screen)
+        let xs = [bounds.minX + inset + indicatorWidth / 2, bounds.midX,
+                  bounds.maxX - inset - indicatorWidth / 2]
+        let ys = [bottom, bounds.midY - Theme.Size.dictationIndicatorHeight / 2,
+                  bounds.maxY - frame.height - inset]
+        let targetX = xs.min { abs($0 - center) < abs($1 - center) } ?? center
+        let targetY = ys.min { abs($0 - bounded.y) < abs($1 - bounded.y) } ?? bounded.y
+        let distance = Theme.Size.paletteSnapDistance
+        let hitX = abs(targetX - center) <= distance * (snappedX ? 2 : 1)
+        let hitY = abs(targetY - bounded.y) <= distance * (snappedY ? 2 : 1)
+        let resultCenter = clampedCenter(hitX ? targetX : center, on: screen)
+        let result = clamped(CGPoint(x: resultCenter - frame.width / 2, y: hitY ? targetY : bounded.y),
+                             on: screen, bottom: bottom)
+        host.rootView.state.indicatorOffset = resultCenter - (result.x + frame.width / 2)
+        let home = CGPoint(x: targetX - indicatorWidth / 2, y: targetY + Theme.Size.dictationIndicatorHeight)
+        let dragged = CGPoint(x: center - indicatorWidth / 2, y: bounded.y + Theme.Size.dictationIndicatorHeight)
+        if !guidesVisible {
+            guides.show(home: home, width: indicatorWidth, screenFrame: bounds, dragged: dragged)
+            guidesVisible = true
+        } else {
+            guides.move(home: home, screenFrame: bounds, dragged: dragged, width: indicatorWidth)
+        }
+        if (hitX && !snappedX) || (hitY && !snappedY) {
+            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .drawCompleted)
+            guides.flash(hitX && hitY ? .both : hitX ? .vertical : .horizontal)
+        }
+        snappedX = hitX
+        snappedY = hitY
+        dragScreen = screen
+        return result
+    }
+
+    private func endDrag() {
+        defer {
+            dragging = false
+            dragScreen = nil
+            guidesVisible = false
+            guides.hide()
+        }
+        guard dragging, isVisible, let screen = dragScreen else { return }
+        let bounds = screen.frame
+        let x = min(max((frame.midX + host.rootView.state.indicatorOffset - bounds.minX) / bounds.width, 0), 1)
+        let y = min(max((frame.minY - bounds.minY) / bounds.height, 0), 1)
+        settings.dictationIndicatorPositions[screen.displayKey] = [x, y]
+        chosenDisplay = screen.displayKey
     }
 
     private func dockGeometry(on screen: NSScreen) -> (top: CGFloat?, windowFillsDisplay: Bool) {
@@ -714,7 +851,11 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     }
 
     private func reposition(refreshDock: Bool = true) {
-        guard isVisible, let screen = Self.activeScreen else { return }
+        guard isVisible, !dragging, let active = Self.activeScreen else { return }
+        let sameContext = dragOwner == NSWorkspace.shared.frontmostApplication?.processIdentifier
+            && dragSourceDisplay == active.displayKey
+        if !sameContext { chosenDisplay = nil }
+        let screen = sameContext ? NSScreen.screens.first { $0.displayKey == chosenDisplay } ?? active : active
         position(on: screen, refreshDock: refreshDock)
         if host.rootView.phase.isIdle { updateIdleHover() }
     }
@@ -801,6 +942,11 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         placementTimer = nil
         clearDockAccessibilityBounds()
         stopWatchingIdleHover()
+        dragging = false
+        dragScreen = nil
+        dragBottom = nil
+        chosenDisplay = nil
+        guides.close()
     }
 
     func watchIdleHover() {
@@ -836,10 +982,6 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     }
 
     override func sendEvent(_ event: NSEvent) {
-        if event.type == .leftMouseDown, host.rootView.phase.isIdle, host.rootView.state.idleHovered {
-            onStart?()
-            return
-        }
         if event.type == .keyDown, !event.isARepeat {
             switch Int(event.keyCode) {
             case kVK_Return, kVK_ANSI_KeypadEnter: onAccept?(); return
@@ -853,12 +995,15 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
 @MainActor
 final class DictationPanelController {
     let state = DictationDisplayState()
+    private let settings: AppSettings
     private var panel: DictationPanel?
     private var escapeMonitors: [Any] = []
     private var previewPauseTask: Task<Void, Never>?
     var onAccept: (() -> Void)?
     var onCancel: (() -> Void)?
     var onStart: (() -> Void)?
+
+    init(settings: AppSettings) { self.settings = settings }
 
     func showStarting(style: DictationIndicatorStyle) {
         let screen = DictationPanel.activeScreen
@@ -879,7 +1024,7 @@ final class DictationPanelController {
             return
         }
         close()
-        let panel = DictationPanel(rootView: DictationPanelView(state: state, style: style, phase: .starting))
+        let panel = DictationPanel(rootView: DictationPanelView(state: state, style: style, phase: .starting), settings: settings)
         panel.onAccept = onAccept
         self.panel = panel
         watchForEscape()
@@ -906,7 +1051,7 @@ final class DictationPanelController {
             return
         }
         close()
-        let panel = DictationPanel(rootView: DictationPanelView(state: state, style: style, phase: .idle))
+        let panel = DictationPanel(rootView: DictationPanelView(state: state, style: style, phase: .idle), settings: settings)
         panel.ignoresMouseEvents = true
         panel.setStartAction(onStart)
         self.panel = panel

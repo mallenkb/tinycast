@@ -107,6 +107,8 @@ enum SettingsBackupCoverage {
             "Dictation history retention stays local to avoid pruning transcripts during a restore.",
         AppSettingsKey.dictationPlaysSounds.rawValue:
             "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationIndicatorPositions.rawValue:
+            "Machine-local geometry: each position belongs to a display on this Mac.",
         AppSettingsKey.dictationIndicatorStyle.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationLivePreview.rawValue:

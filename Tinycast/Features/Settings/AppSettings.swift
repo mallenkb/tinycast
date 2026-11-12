@@ -509,6 +509,10 @@ final class AppSettings {
         didSet { defaults.set(dictationIndicatorStyle.rawValue, forKey: Key.dictationIndicatorStyle.rawValue) }
     }
 
+    var dictationIndicatorPositions: [String: [Double]] {
+        didSet { defaults.set(dictationIndicatorPositions, forKey: Key.dictationIndicatorPositions.rawValue) }
+    }
+
     var dictationLivePreview: Bool {
         didSet { defaults.set(dictationLivePreview, forKey: Key.dictationLivePreview.rawValue) }
     }
@@ -964,6 +968,8 @@ final class AppSettings {
         dictationIndicatorStyle =
             defaults.string(forKey: Key.dictationIndicatorStyle.rawValue)
             .flatMap(DictationIndicatorStyle.init(rawValue:)) ?? .compact
+        dictationIndicatorPositions =
+            defaults.dictionary(forKey: Key.dictationIndicatorPositions.rawValue) as? [String: [Double]] ?? [:]
         dictationLivePreview = defaults.bool(forKey: Key.dictationLivePreview.rawValue)
         dictationTwoLinePreview = defaults.bool(forKey: Key.dictationTwoLinePreview.rawValue)
         dictationAnimateTranscript = defaults.object(forKey: Key.dictationAnimateTranscript.rawValue) == nil

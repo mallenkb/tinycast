@@ -98,8 +98,11 @@ models use CPU/Neural Engine.
   they also share the border color. Both appearances show an outline around the pill and transcript.
   The pill appears when the shortcut or composer mic starts a recording and shows Starting…
   until microphone setup completes off the main thread.
-  It sits 16 points above a visible bottom Dock, or above the screen edge when the Dock is hidden,
-  on another edge or display, or the active app is full-screen with the Dock hidden.
+  By default it sits 16 points above a visible bottom Dock, or above the screen edge when the Dock is hidden,
+  on another edge or display, or the active app is full-screen with the Dock hidden. Dragging the pill
+  shows alignment guides and snaps it to the display center and edges. A click on the idle pill still
+  starts dictation. Its position is remembered per display, and Indicator & feedback can restore the
+  default position. The transcript card follows the pill and stays within the display when it appears.
   Revealing a bottom Dock moves the indicator above it. It repositions when Spaces,
   display configuration or system presentation changes and checks visible Dock bounds twice per second.
   When the window list lacks the Dock's bounds, the indicator can use the Dock's accessibility

@@ -553,7 +553,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
 extension NSScreen {
     /// Survives a replug; the display ID is a session-only fallback.
-    fileprivate var displayKey: String {
+    var displayKey: String {
         let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
         guard let id = number?.uint32Value else { return "primary" }
         guard let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),

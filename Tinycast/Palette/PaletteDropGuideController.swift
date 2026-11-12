@@ -4,6 +4,7 @@ import SwiftUI
 /// Driven by the window controller: only a live drag has a home placement to point at.
 @MainActor
 final class PaletteDropGuideController {
+    private let forAllApplications: Bool
     private var panel: NSPanel?
     private var host: NSHostingView<PaletteDropGuideView>?
     private var screenFrame: CGRect = .zero
@@ -16,6 +17,10 @@ final class PaletteDropGuideController {
     private var hideTask: Task<Void, Never>?
 
     enum Axis { case vertical, horizontal, both }
+
+    init(forAllApplications: Bool = false) {
+        self.forAllApplications = forAllApplications
+    }
 
     /// Reveal the guides, with `home` the default placement's top-left in screen coordinates.
     func show(home: CGPoint, width: CGFloat, screenFrame: CGRect, dragged: CGPoint) {
@@ -39,14 +44,16 @@ final class PaletteDropGuideController {
     }
 
     /// Re-point mid-drag. `windowDidMove` fires continuously, so an unchanged move costs nothing.
-    func move(home: CGPoint, screenFrame: CGRect, dragged: CGPoint) {
-        guard self.home != home || self.screenFrame != screenFrame || self.dragged != dragged else {
+    func move(home: CGPoint, screenFrame: CGRect, dragged: CGPoint, width: CGFloat? = nil) {
+        let width = width ?? self.width
+        guard self.home != home || self.screenFrame != screenFrame || self.dragged != dragged || self.width != width else {
             return
         }
         let crossedScreens = self.screenFrame != screenFrame
         self.home = home
         self.screenFrame = screenFrame
         self.dragged = dragged
+        self.width = width
         if crossedScreens { panel?.setFrame(screenFrame, display: false) }
         render()
     }
@@ -82,7 +89,21 @@ final class PaletteDropGuideController {
             guard !Task.isCancelled, let self else { return }
             panel.orderOut(nil)
             hideTask = nil
+            if forAllApplications {
+                self.panel = nil
+                host = nil
+            }
         }
+    }
+
+    func close() {
+        flashTask?.cancel()
+        hideTask?.cancel()
+        flashTask = nil
+        hideTask = nil
+        panel?.orderOut(nil)
+        panel = nil
+        host = nil
     }
 
     // MARK: - Private
@@ -92,7 +113,7 @@ final class PaletteDropGuideController {
         let host = NSHostingView(rootView: guides)
         // The controller owns the frame; without this the hosting view would size the window.
         host.sizingOptions = []
-        let panel = PaletteDropGuidePanel()
+        let panel = PaletteDropGuidePanel(forAllApplications: forAllApplications)
         panel.contentView = host
         self.host = host
         self.panel = panel
@@ -115,7 +136,7 @@ final class PaletteDropGuideController {
 
 /// Borderless, click-through, never key: the guides are a readout, not a surface.
 private final class PaletteDropGuidePanel: NSPanel {
-    init() {
+    init(forAllApplications: Bool) {
         super.init(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -129,6 +150,10 @@ private final class PaletteDropGuidePanel: NSPanel {
         hidesOnDeactivate = false
         animationBehavior = .none
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        if forAllApplications {
+            collectionBehavior.insert(.canJoinAllApplications)
+            level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue - 1)
+        }
         isReleasedWhenClosed = false
     }
 

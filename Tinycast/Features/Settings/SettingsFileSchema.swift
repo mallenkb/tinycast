@@ -123,6 +123,22 @@ enum SettingsFileSchema {
                 for: key, action: .dictationToggleAlternate, name: String(localized: "Hands-free"))
         case .dictationPlaysSounds: return bind(settings, \.dictationPlaysSounds)
         case .dictationIndicatorStyle: return bind(settings, \.dictationIndicatorStyle)
+        case .dictationIndicatorPositions:
+            return SettingsFileBinding(key, read: {
+                SettingsFileJSON(jsonObject: settings.dictationIndicatorPositions)
+            }, write: { json in
+                guard let members = json.members, members.count <= 32 else { return [.invalidValue(key)] }
+                var positions: [String: [Double]] = [:]
+                for member in members {
+                    guard !member.key.isEmpty, let items = member.value.items, items.count == 2,
+                        let x = items[0].number, let y = items[1].number,
+                        (0...1).contains(x), (0...1).contains(y), positions[member.key] == nil
+                    else { return [.invalidValue(key)] }
+                    positions[member.key] = [x, y]
+                }
+                if settings.dictationIndicatorPositions != positions { settings.dictationIndicatorPositions = positions }
+                return []
+            })
         case .dictationLivePreview: return bind(settings, \.dictationLivePreview)
         case .dictationTwoLinePreview: return bind(settings, \.dictationTwoLinePreview)
         case .dictationAnimateTranscript: return bind(settings, \.dictationAnimateTranscript)

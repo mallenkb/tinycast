@@ -4,11 +4,13 @@ import SwiftUI
 struct WindowDragHandle: NSViewRepresentable {
     var onBegan: () -> Void
     var onEnded: () -> Void
+    var onClick: (() -> Void)?
+    var onMoved: ((CGPoint) -> CGPoint)?
 
     func makeNSView(context: Context) -> NSView { DragView() }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? DragView)?.bind(onBegan: onBegan, onEnded: onEnded)
+        (nsView as? DragView)?.bind(onBegan: onBegan, onEnded: onEnded, onClick: onClick, onMoved: onMoved)
     }
 }
 
@@ -58,16 +60,18 @@ private class DragView: NSView {
     private var onBegan: (() -> Void)?
     private var onEnded: (() -> Void)?
     private var onClick: (() -> Void)?
+    private var onMoved: ((CGPoint) -> CGPoint)?
     /// Slop before a press is a drag, so a click that never moves stays a click.
     private static let dragSlop: CGFloat = 3
 
     func bind(
         onBegan: @escaping () -> Void, onEnded: @escaping () -> Void,
-        onClick: (() -> Void)? = nil
+        onClick: (() -> Void)? = nil, onMoved: ((CGPoint) -> CGPoint)? = nil
     ) {
         self.onBegan = onBegan
         self.onEnded = onEnded
         self.onClick = onClick
+        self.onMoved = onMoved
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -92,8 +96,8 @@ private class DragView: NSView {
                 dragging = true
                 self.onBegan?()
             }
-            window.setFrameOrigin(
-                CGPoint(x: origin.x + mouse.x - start.x, y: origin.y + mouse.y - start.y))
+            let point = CGPoint(x: origin.x + mouse.x - start.x, y: origin.y + mouse.y - start.y)
+            window.setFrameOrigin(self.onMoved?(point) ?? point)
         }
         // A press that never moved was a click on whatever the handle covers, not a drag.
         if dragging { onEnded?() } else { onClick?() }

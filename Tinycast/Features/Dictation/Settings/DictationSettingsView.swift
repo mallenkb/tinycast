@@ -574,6 +574,10 @@ struct DictationSettingsView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
             }
+            SettingsRow(title: "Position", anchor: .dictationOutput) {
+                Button("Restore Defaults") { settings.dictationIndicatorPositions = [:] }
+                    .disabled(settings.dictationIndicatorPositions.isEmpty)
+            }
             SettingsRow(title: String(localized: "Preview")) {
                 DictationIndicatorPreviews(
                     style: settings.dictationIndicatorStyle,

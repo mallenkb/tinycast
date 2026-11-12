@@ -13,7 +13,7 @@ final class DictationCoordinator {
     let corrections: DictationCorrectionStore
     private let capture = DictationCapture()
     @ObservationIgnored private lazy var cues = DictationCueRunner()
-    private let panel = DictationPanelController()
+    private let panel: DictationPanelController
     private let injector: TextInjector
     private let focusedTarget: @MainActor () -> InjectionTarget?
     private let showMessage: (String, DialogTone) -> Void
@@ -63,6 +63,7 @@ final class DictationCoordinator {
         recordTranscript: @escaping (String, String?, NSRunningApplication?) -> Void
     ) {
         self.settings = settings
+        self.panel = DictationPanelController(settings: settings)
         self.hotKeys = hotKeys
         self.models = models
         self.corrections = corrections
