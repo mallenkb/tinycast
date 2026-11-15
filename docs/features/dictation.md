@@ -192,9 +192,10 @@ models use CPU/Neural Engine.
 - The Apple Dictation engine uses Apple's on-device `DictationTranscriber` and the Mac's preferred
   language. Tinycast starts preparation when recording begins. macOS installs missing speech assets,
   then manages those assets and their memory. The analyzer lives for one recording.
-- Dev and release share Core ML models under `~/Library/Caches/com.tinycast.app/Dictation/`. By default, the store terminates and reaps
-  the helper as soon as speech recognition finishes, so cleanup can run without keeping the speech
-  model resident. Choose a delay or Never to keep it warm between recordings. Switching models
+- Dev and release share Core ML models under `~/Library/Caches/com.tinycast.app/Dictation/`. By default, the store reaps
+  the helper one minute after the last recording, so back-to-back dictation finds the model warm.
+  After each dictation reaps it as soon as speech recognition finishes; a longer delay or Never keeps
+  it longer. Switching models
   reaps the old helper before loading the next. Removing a loaded model
   stops its helper before deleting the directory and blocks new requests for that model meanwhile.
   Cancelling an in-flight load or transcription, failed inference and normal quit stop the helper.

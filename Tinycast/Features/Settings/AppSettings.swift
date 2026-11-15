@@ -868,7 +868,7 @@ private enum Stored {
         Key.dictationAnimateTranscript.rawValue, default: true)
     static let dictationIdleIndicator = Preference<Bool>(Key.dictationIdleIndicator.rawValue, default: false)
     static let dictationIdleRelease = Preference<DictationIdleRelease>(
-        Key.dictationIdleRelease.rawValue, default: .afterDictation)
+        Key.dictationIdleRelease.rawValue, default: .oneMinute)
     /// A language Tinycast no longer offers reads as nil, so the system language applies.
     static let dictationLanguage = Preference<String?>(
         Key.dictationLanguage.rawValue, default: nil,
