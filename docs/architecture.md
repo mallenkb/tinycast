@@ -25,7 +25,7 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │ Uninstall{Target,SearchRoot,Rules,Protection,Plan} ·                       │
 │ Quicklink{,Destination,Store,Archive} · AppleShortcut · Notes/Model/* ·    │
 │ Snippets/Model/* ·                                                         │
-│ ShellCommandRunner · DoubleTap{Modifier,Detector} · ClipboardStore ·       │
+│ ShellCommandRunner · DoubleTap{Modifier,Detector} · ClipboardItem ·        │
 │ RaycastDecoder · Scrypt · AppSettingsKey · SettingsBackupCoverage          │
 │ SettingsFile{JSON,Key,Value,Format,Binding,Issue,Identity} ·               │
 │ HotKeySpelling · WindowManagementFileFormat ·                              │
@@ -41,7 +41,8 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │ AXWindowAccess · AXScreens · WindowInventory · WindowLayoutRunner ·        │
 │ RoomWindowSweep · RoomRunner ·                                             │
 │ IconCache · WindowMover · UninstallScanner · UninstallRunner ·             │
-│ SystemActionRunner · QuicklinkLauncher · TextInjector ·             │
+│ SystemActionRunner · QuicklinkLauncher · TextInjector ·                    │
+│ ClipboardDatabase ·                                                        │
 │ SnippetKeywordListener · NotesRepository · CurrencyRateStore · Paster ·    │
 │ HotKeyCenter · HyperKeyTap · KeyboardRemapper · ModifierTapMonitor ·       │
 │ SecureInputMonitor · RunningAppsMonitor ·                                  │
@@ -237,7 +238,7 @@ House idioms for the sharp edges:
 
 - Block-observer lifetimes go through the RAII `NotificationToken` (`Platform/NotificationToken.swift`)
   rather than removal in a `deinit`.
-- `ClipboardStore` uses `isolated deinit` for its SQLite teardown.
+- `ClipboardDatabase` uses `isolated deinit` for its SQLite teardown.
 - Raw Carbon and C pointers are decoded to plain values before crossing into actor code (see
   `hotKeyCarbonEventHandler`).
 - `HealthTicker` (`Platform/HealthTicker.swift`) is the one shared timer for periodic health checks, so
