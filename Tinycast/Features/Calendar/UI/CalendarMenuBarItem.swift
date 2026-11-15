@@ -3,9 +3,12 @@ import SwiftUI
 /// Reading the coordinator here scopes Observation to the calendar label rather than either scene.
 struct CalendarMenuBarLabel: View {
     let appName: String
+    let settings: AppSettings
+    let coordinator: CalendarCoordinator
+    let clock: MeetingClock
 
-    private var display: CalendarMenuBarDisplay { AppCore.shared.settings.calendarMenuBarDisplay }
-    private var meeting: MeetingEvent? { AppCore.shared.calendarCoordinator.menuBarEvent }
+    private var display: CalendarMenuBarDisplay { settings.calendarMenuBarDisplay }
+    private var meeting: MeetingEvent? { coordinator.menuBarEvent }
 
     var body: some View {
         switch (display, meeting) {
@@ -21,7 +24,7 @@ struct CalendarMenuBarLabel: View {
                 title(summary(for: meeting))
             }
         case (.meetingTitle, nil)
-        where !AppCore.shared.calendarCoordinator.hasUpcomingMenuBarEvent:
+        where !coordinator.hasUpcomingMenuBarEvent:
             title(String(localized: "No upcoming events"))
         case (_, nil):
             icon("calendar", describing: String(localized: "no current meeting"))
@@ -38,17 +41,20 @@ struct CalendarMenuBarLabel: View {
 
     private func summary(for meeting: MeetingEvent) -> String {
         let countdown = UpcomingWindow.menuBarCountdown(
-            for: meeting, now: AppCore.shared.meetingClock.now, locale: .current)
+            for: meeting, now: clock.now, locale: .current)
         return "\(MenuBarSummary.title(meeting.title)) • \(countdown)"
     }
 }
 
 /// Calendar actions only: the launcher item carries the app's menu, and neither repeats the other.
 struct CalendarMenuBarMenu: View {
+    let coordinator: CalendarCoordinator
+    let clock: MeetingClock
+    let openSettings: () -> Void
+
     var body: some View {
         // A macOS menu drops a label's icon unless the style asks for it.
         Group {
-            let coordinator = AppCore.shared.calendarCoordinator
             if let meeting = coordinator.menuBarEvent {
                 Section {
                     if let link = meeting.link {
@@ -64,14 +70,14 @@ struct CalendarMenuBarMenu: View {
                     }
                 }
             }
-            MenuBarAgenda()
+            MenuBarAgenda(coordinator: coordinator, clock: clock)
             Section {
                 Button("My Schedule", systemImage: "calendar.day.timeline.left") {
                     coordinator.showSchedule()
                 }
                 .keyboardShortcut("o")
                 Button("Calendar Settings…", systemImage: "gearshape") {
-                    AppCore.shared.settingsCoordinator.showSettings(tab: .calendar)
+                    openSettings()
                 }
                 .keyboardShortcut(",")
             }
@@ -81,13 +87,16 @@ struct CalendarMenuBarMenu: View {
 }
 
 private struct MenuBarAgenda: View {
+    let coordinator: CalendarCoordinator
+    let clock: MeetingClock
+
     var body: some View {
-        let now = AppCore.shared.meetingClock.now
-        ForEach(AppCore.shared.calendarCoordinator.menuBarAgenda) { group in
+        let now = clock.now
+        ForEach(coordinator.menuBarAgenda) { group in
             Section(group.day.title(calendar: .current)) {
                 ForEach(group.meetings) { meeting in
                     Button {
-                        AppCore.shared.calendarCoordinator.join(meeting)
+                        coordinator.join(meeting)
                     } label: {
                         Label {
                             Text(verbatim: "\(MeetingTimeFormat.range(of: meeting)) \(meeting.title)")

@@ -55,9 +55,9 @@ struct TinycastApp: App {
         .commands { menuBarCommands }
 
         MenuBarExtra(isInserted: calendarMenuBarInsertion) {
-            CalendarMenuBarMenu()
+            CalendarMenuBarContent()
         } label: {
-            CalendarMenuBarLabel(appName: appName)
+            CalendarMenuBarStatus(appName: appName)
         }
     }
 
@@ -117,5 +117,26 @@ struct TinycastApp: App {
             }
             .keyboardShortcut("q")
         }
+    }
+}
+
+/// Resolves the calendar's collaborators in `body`, so the scene never builds them early.
+private struct CalendarMenuBarStatus: View {
+    let appName: String
+
+    var body: some View {
+        let core = AppCore.shared
+        CalendarMenuBarLabel(
+            appName: appName, settings: core.settings, coordinator: core.calendarCoordinator,
+            clock: core.meetingClock)
+    }
+}
+
+private struct CalendarMenuBarContent: View {
+    var body: some View {
+        let core = AppCore.shared
+        CalendarMenuBarMenu(
+            coordinator: core.calendarCoordinator, clock: core.meetingClock,
+            openSettings: { AppCore.shared.settingsCoordinator.showSettings(tab: .calendar) })
     }
 }
