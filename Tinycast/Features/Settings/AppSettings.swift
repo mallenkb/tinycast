@@ -835,6 +835,27 @@ final class AppSettings {
                 as? [String], systemPreferences: SystemLanguages.preferred)
     }
 
+
+    /// Whether this Mac syncs through iCloud; `AppCore` starts and stops the manager.
+    var cloudSyncEnabled: Bool {
+        didSet { defaults.set(cloudSyncEnabled, forKey: Key.cloudSyncEnabled.rawValue) }
+    }
+
+    /// Whether API keys and tokens travel too; each Mac decides for itself, and off sends none.
+    var cloudSyncIncludesSecrets: Bool {
+        didSet {
+            defaults.set(cloudSyncIncludesSecrets, forKey: Key.cloudSyncIncludesSecrets.rawValue)
+        }
+    }
+
+    var cloudSyncCategories: Set<SyncCategory> {
+        didSet {
+            defaults.set(
+                SyncCategory.ordered(cloudSyncCategories).map(\.rawValue),
+                forKey: Key.cloudSyncCategories.rawValue)
+        }
+    }
+
     init() {
         // The only feature switch that defaults on, so absence has to outrank a stored `false`.
         clipboardEnabled =
@@ -1092,5 +1113,10 @@ final class AppSettings {
             || defaults.bool(forKey: Key.supportReminders.rawValue)
         settingsFileEnabled = defaults.bool(forKey: Key.settingsFileEnabled.rawValue)
         allowedDeepLinks = defaults.stringArray(forKey: Key.allowedDeepLinks.rawValue) ?? []
+        cloudSyncEnabled = defaults.bool(forKey: Key.cloudSyncEnabled.rawValue)
+        cloudSyncCategories =
+            defaults.stringArray(forKey: Key.cloudSyncCategories.rawValue)
+            .map { Set($0.compactMap(SyncCategory.init)) } ?? SyncCategory.defaultSelection
+        cloudSyncIncludesSecrets = defaults.bool(forKey: Key.cloudSyncIncludesSecrets.rawValue)
     }
 }

@@ -210,6 +210,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `settings-file-test` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |
 | `window-file-test` | `WindowManagement/Model/WindowManagementFileFormat.swift` — command shortcuts, custom sizes, layouts and rooms as settings.json spells them, hand edits and bad records |
 | `launcher-settings-file-test` | Launcher settings application — invalid records, partial edits, deferred bundles, shortcut moves and records outside search scopes; isolated preferences and in-memory scan/Carbon effects |
+| `sync-test` | `Sync/Model/` — record names, the ledger's sends, deletes and holds, the merge policy and keeping both, file names, that no secret reaches the ledger, the round trip, and which settings.json keys sync |
 | `backup-archive-test` | all of `Backup/Model/`, plus `Backup/Service/BackupStaging.swift` |
 | `updates-test` | `Updates/Model/` — version precedence, channel filtering, install route, readiness |
 | `update-check-test` | `UpdateCheckStore` — stopping, in-flight cancellation, cached prompt suppression, restart and independent manual checking |
@@ -1019,6 +1020,25 @@ Debug answers `tinycast-dev://`; use that scheme for every link below.
 - Cancelling the save panel leaves nothing in `~/Library/Caches/com.tinycast.app/backup-staging/`
 - **`snippetsEnabled` is not in the exported file**, and importing does not enable snippets
 - Nothing in the extracted tree names a Keychain item, an extension, or an AI conversation
+
+### iCloud Sync
+
+Needs the team-signed Dev build in [development.md](development.md#icloud-sync), on two Macs or two
+macOS accounts signed in to the same iCloud account.
+
+- The Debug build's pane says it isn't signed for iCloud, and its switch stays off
+- An edit on either Mac shows up on the other, in every category; a delete does too
+- Unticking a category on one Mac stops it there and leaves the other Mac's copy alone
+- A shortcut for an app the other Mac lacks is held there, and its owner keeps it
+- Editing the same note on both Macs leaves the note and a "(conflicted copy)" beside it
+- A note open with unsaved typing is never replaced by the other Mac's version
+- Custom Commands, MCP Servers and Extensions each ask before switching on
+- An extension installed on one Mac installs on the other from a registry it has enabled
+- API keys arrive only on a Mac with **Include API keys and tokens** on; `cloud-sync.plist` holds none
+- Changing the notes folder merges the new folder with iCloud and deletes nothing
+- Turning sync on beside existing data asks once; **Keep This Mac's** wins the keys both had
+- **Remove** drops another Mac from the list; **Delete iCloud Data** turns sync off on both Macs
+- The CloudKit Console shows every field of a record as encrypted
 
 ### Clean install
 

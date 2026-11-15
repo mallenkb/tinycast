@@ -109,7 +109,7 @@ enum SettingsSearchCatalog {
         general + applications + systemSettings + systemActions + commands + quicklinks
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions + permissions
-        + backup + about
+        + iCloudSync + backup + about
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),
@@ -666,6 +666,30 @@ enum SettingsSearchCatalog {
         .init(
             .permissionsMicrophone, "Microphone",
             keywords: ["dictation", "recording", "privacy", "grant"])
+    ]
+
+    private static let iCloudSync: [SettingsSearchEntry] = [
+        .init(
+            pane: .iCloudSync,
+            keywords: ["cloudkit", "devices", "another mac", "sync"]),
+        .init(
+            .iCloudSyncICloudSync, "Sync across your Macs",
+            keywords: ["icloud", "cloud", "enable", "turn on"]),
+        .init(
+            group: .iCloudSyncWhatSyncs, "What Syncs",
+            keywords: ["categories", "notes", "snippets", "quicklinks", "extensions", "commands"]),
+        .init(
+            .iCloudSyncWhatSyncs, "Include API keys and tokens",
+            keywords: ["secrets", "passwords", "keychain", "credentials"]),
+        .init(
+            group: .iCloudSyncStatus, "Sync Status",
+            keywords: ["last synced", "sync now", "error"]),
+        .init(
+            group: .iCloudSyncMacs, "Macs",
+            keywords: ["devices", "computers", "remove mac"]),
+        .init(
+            .iCloudSyncMacs, "Delete iCloud Data",
+            keywords: ["erase", "reset", "remove", "privacy"])
     ]
 
     private static let backup: [SettingsSearchEntry] = [

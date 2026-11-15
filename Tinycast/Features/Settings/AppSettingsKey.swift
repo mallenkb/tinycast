@@ -142,4 +142,7 @@ enum AppSettingsKey: String, CaseIterable {
     case supportReminders = "supportReminders"
     case settingsFileEnabled = "settingsFileEnabled"
     case allowedDeepLinks = "allowedDeepLinks"
+    case cloudSyncEnabled = "cloudSyncEnabled"
+    case cloudSyncCategories = "cloudSyncCategories"
+    case cloudSyncIncludesSecrets = "cloudSyncIncludesSecrets"
 }

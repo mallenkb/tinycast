@@ -1,7 +1,7 @@
 enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, appleShortcuts,
         fallbacks, clipboard, snippets, fileSearch, windowManagement, navigation, notes, calendar, emoji,
-        dictation, ai, quickActions, extensions, permissions, backup, about
+        dictation, ai, quickActions, extensions, permissions, iCloudSync, backup, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
@@ -34,6 +34,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .quickActions: "quick-actions"
         case .extensions: "extensions"
         case .permissions: "permissions"
+        case .iCloudSync: "icloud-sync"
         case .backup: "backup"
         case .about: "about"
         }
@@ -62,6 +63,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .quickActions: "FeatureQuickActions"
         case .extensions: "FeatureExtensions"
         case .permissions: "FeaturePermissions"
+        case .iCloudSync: "FeatureBackup"
         case .backup: "FeatureBackup"
         case .about: "FeatureAbout"
         }
@@ -92,6 +94,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .permissions: return String(localized: "Permissions")
         case .backup: return String(localized: "Backup")
         case .about: return String(localized: "About")
+        case .iCloudSync: return String(localized: "iCloud Sync")
         }
     }
 
@@ -118,6 +121,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .calendar: return "calendar"
         case .extensions: return "puzzlepiece.extension"
         case .permissions: return "lock.shield"
+        case .iCloudSync: return "icloud"
         case .backup: return "arrow.up.arrow.down.circle"
         case .about: return "info.circle"
         }
@@ -141,7 +145,7 @@ enum SettingsSection: CaseIterable, Identifiable {
 
     var tabs: [SettingsTab] {
         switch self {
-        case .appSettings: [.general, .permissions, .backup, .about]
+        case .appSettings: [.general, .permissions, .iCloudSync, .backup, .about]
         case .searchLaunch: [.applications, .fileSearch, .quicklinks, .fallbacks]
         case .everydayTools: [.clipboard, .snippets, .notes, .calendar, .emoji, .dictation]
         case .automationAI: [.commands, .appleShortcuts, .quickActions, .ai, .extensions]
