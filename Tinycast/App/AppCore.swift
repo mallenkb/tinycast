@@ -324,7 +324,7 @@ final class AppCore {
         paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
         core: self)
 
-    @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
+    @ObservationIgnored private(set) lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
     private(set) var isShowingDialog = false
     /// A link that launched the app can arrive before `start` wires anything; it waits, then runs.
@@ -777,7 +777,7 @@ final class AppCore {
     }
 
     /// Only the tool whose own path or variables changed is checked again; the rest keep running.
-    private func applyInstalledLaunches() {
+    func applyInstalledLaunches() {
         let revisions = aiSettings.launchRevisions
         let enabled =
             settings.aiEnabled || settings.quickActionsEnabled
@@ -827,159 +827,13 @@ final class AppCore {
             guardrails: .permissiveContentTransformations)
     }
 
-    // MARK: - Feature switches
-
-    private func observeFeatureSwitches() {
-        track(
-            { _ = $0.automaticallyCheckForUpdates },
-            reproject: { $0.updateCoordinator.applyAutomaticChecking() })
-        track(
-            {
-                _ = $0.windowManagementEnabled
-                _ = $0.windowManagementShowInLauncher
-            },
-            reproject: {
-                $0.applyWindowCommandsPresence()
-                $0.customWindowSizeCoordinator.applyCustomWindowSizesPresence()
-            })
-        track(
-            {
-                _ = $0.windowManagementEnabled
-                _ = $0.windowLayoutsShowInLauncher
-            }, reproject: { $0.windowLayoutCoordinator.applyWindowLayoutsPresence() })
-        track(
-            {
-                _ = $0.windowManagementEnabled
-                _ = $0.windowRoomsShowInLauncher
-            }, reproject: { $0.roomCoordinator.applyEnabled() })
-        track(
-            {
-                _ = $0.customCommandsEnabled
-                _ = $0.customCommandsShowInLauncher
-            }, reproject: { $0.customCommandCoordinator.applyCustomCommandsPresence() })
-        track(
-            {
-                _ = $0.quicklinksEnabled
-                _ = $0.quicklinksShowInLauncher
-            }, reproject: { $0.quicklinkCoordinator.applyQuicklinksPresence() })
-        track(
-            { _ = $0.appleShortcutsEnabled },
-            reproject: { $0.appleShortcutCoordinator.applyPresence() })
-        track(
-            { _ = $0.clipboardEnabled }, reproject: { $0.clipboardCoordinator.applyEnabled() })
-        track(
-            { _ = $0.clipboardTextSearchEnabled }, reproject: { $0.applyClipboardTextSearch() })
-        track({ _ = $0.fileSearchEnabled }, reproject: { $0.fileSearchCoordinator.applyEnabled() })
-        track({ _ = $0.fileSearchImageContentEnabled }, reproject: { $0.fileSearchCoordinator.applyImageContent() })
-        track(
-            { _ = $0.fileSearchDocumentContentEnabled },
-            reproject: { $0.fileSearchCoordinator.applyDocumentContent() })
-        track(
-            { _ = $0.fileSearchShowInLauncher },
-            reproject: { $0.fileSearchCoordinator.applyLauncherFiles() })
-        // Two features, one switch: each coordinator gates only its own command and mode.
-        track(
-            { _ = $0.navigationEnabled },
-            reproject: {
-                $0.windowSwitchCoordinator.applyEnabled()
-                $0.menuSearchCoordinator.applyEnabled()
-            })
-        track({ _ = $0.notesEnabled }, reproject: { $0.notesCoordinator.applyEnabled() })
-        track(
-            { _ = $0.notesShowsInMenuBar }, reproject: { $0.notesCoordinator.applyMenuBarItem() })
-        track({ _ = $0.aiEnabled }, reproject: { $0.aiChatCoordinator.applyEnabled() })
-        track(
-            { _ = $0.dictationIdleRelease },
-            reproject: {
-                $0.dictationModels.setIdleRelease($0.settings.dictationIdleRelease)
-            })
-        track(
-            {
-                _ = $0.dictationEnabled
-                _ = $0.dictationIdleIndicator
-                _ = $0.dictationIndicatorStyle
-            },
-            reproject: {
-                $0.hotKeys.dictationEnabled = $0.settings.dictationEnabled
-                $0.dictationCoordinator.applyIdleIndicator()
-            })
-        track(
-            {
-                _ = $0.aiEnabled
-                _ = $0.mcpEnabled
-            }, reproject: { $0.mcpCoordinator.applyEnabled() })
-        track(
-            { _ = $0.quickActionsEnabled },
-            reproject: { $0.quickActionCoordinator.applyEnabled() })
-        track({ _ = $0.calendarEnabled }, reproject: { $0.calendarCoordinator.applyEnabled() })
-        track(
-            {
-                _ = $0.calendarShowInLauncher
-                _ = $0.calendarLauncherLimit
-            }, reproject: { $0.calendarCoordinator.publishEntries() })
-        track(
-            { _ = $0.calendarSpan },
-            reproject: { $0.calendarCoordinator.applySpan() })
-        track(
-            {
-                _ = $0.autoJoinMeetings
-                _ = $0.menuBarEvents
-                _ = $0.calendarMenuBarDisplay
-                _ = $0.menuBarLinkedEventsOnly
-                _ = $0.hideCurrentEvent
-            }, reproject: { $0.calendarCoordinator.applyClock() })
-        track(
-            {
-                _ = $0.fileSearchScopes
-                _ = $0.fileSearchIgnorePatterns
-                _ = $0.fileSearchRemovedDefaultPatterns
-            }, reproject: { $0.fileSearchCoordinator.applyPolicy() })
-        track({ _ = $0.snippetsEnabled }, reproject: { $0.snippetCoordinator.applySnippetsEnabled() })
-        // Not a feature switch, but the same re-projection: a combo has the chord's ⇧ bit baked in.
-        track({ _ = $0.hyperKeyIncludesShift }, reproject: { $0.applyHyperChord() })
-        track(
-            { _ = $0.snippetsShowInLauncher },
-            reproject: { $0.snippetCoordinator.applySnippetsLauncherPresence() })
-        track({ _ = $0.appearance }, reproject: { $0.applyAppearance() })
-        track({ _ = $0.animationsEnabled }, reproject: { $0.applyMotion() })
-        track({ _ = $0.language }, reproject: { $0.offerLanguageRelaunch() })
-        track({ _ = $0.interfaceSize }, reproject: { $0.windowController.applyInterfaceSize() })
-        // Settings panes did these on change; settings.json can change them with no pane open.
-        track(
-            { _ = $0.clipboardRetention },
-            reproject: { $0.clipboardCoordinator.applyRetention($0.settings.clipboardRetention) })
-        track(
-            {
-                _ = $0.dictationEnabled
-                _ = $0.dictationCleanupEngine
-            }, reproject: {
-                if !$0.settings.dictationEnabled { $0.dictationWriting.cancel() }
-                if $0.settings.dictationEnabled {
-                    $0.dictationCleanup.stopIfModelChanged(to: $0.dictationWriting.selectedLocalModel)
-                } else {
-                    $0.dictationCleanup.stop()
-                }
-            })
-        track(
-            { _ = $0.dictationHistoryRetention },
-            reproject: { $0.dictationHistory.setRetention($0.settings.dictationHistoryRetention) })
-        track(aiSettings, { _ = $0.retention }, reproject: { $0.aiChatCoordinator.applyRetention() })
-        track(aiSettings, { _ = $0.launchRevisions }, reproject: { $0.applyInstalledLaunches() })
-        track(
-            { _ = $0.extensionsShowInLauncher },
-            reproject: { $0.extensionCoordinator.applyExtensionsLauncherPresence() })
-        track({ _ = $0.snippetsFolder }, reproject: { $0.applySnippetsFolder() })
-        track({ _ = $0.notesFolder }, reproject: { $0.applyNotesFolder() })
-        trackChatRoute()
-    }
-
     /// `.system` resolves to `nil`, so AppKit follows macOS with nothing polling.
-    private func applyAppearance() {
+    func applyAppearance() {
         NSApp.appearance = settings.appearance.nsAppearance
     }
 
     /// A built panel keeps the behaviour it was made with, so the live ones are re-pointed.
-    private func applyMotion() {
+    func applyMotion() {
         Motion.isEnabled = settings.animationsEnabled
         for case let panel as any AnimatedPanel in NSApp.windows {
             panel.followMotion()
@@ -988,7 +842,7 @@ final class AppCore {
 
     private var isLanguagePending: Bool { settings.language.rawValue != launchLocalization }
 
-    private func offerLanguageRelaunch() {
+    func offerLanguageRelaunch() {
         guard isLanguagePending else { return }
         Task {
             guard
@@ -1011,7 +865,7 @@ final class AppCore {
         }
     }
 
-    private func track(
+    func track(
         _ reads: @escaping @Sendable @MainActor (AppSettings) -> Void,
         reproject: @escaping @Sendable @MainActor (AppCore) -> Void
     ) {
@@ -1019,7 +873,7 @@ final class AppCore {
     }
 
     /// Fires synchronously on main before the write lands, so the task re-arms and re-reads.
-    private func track<Store: AnyObject & Sendable>(
+    func track<Store: AnyObject & Sendable>(
         _ store: Store,
         _ reads: @escaping @Sendable @MainActor (Store) -> Void,
         reproject: @escaping @Sendable @MainActor (AppCore) -> Void
@@ -1036,7 +890,7 @@ final class AppCore {
     }
 
     /// A chat route that runs its own MCP client decides which servers Tinycast runs itself.
-    private func trackChatRoute() {
+    func trackChatRoute() {
         let runsOwnTools = withObservationTracking {
             aiChatCoordinator.everyChatRunsItsOwnTools
         } onChange: { [weak self] in
@@ -1049,17 +903,17 @@ final class AppCore {
     }
 
     /// Without a Hyper key the chord means nothing, so a literal ⌃⌥⌘ combo is left as recorded.
-    private func applyHyperChord() {
+    func applyHyperChord() {
         guard settings.hyperKey != .none else { return }
         hotKeys.retargetHyperBindings(includesShift: settings.hyperKeyIncludesShift)
     }
 
-    private func applySnippetsFolder() {
+    func applySnippetsFolder() {
         let repository = Self.snippetsRepository(for: settings)
         Task { await snippetsStore.relocate(to: repository) }
     }
 
-    private func applyNotesFolder() {
+    func applyNotesFolder() {
         let repository = Self.notesRepository(for: settings)
         Task { await notesStore.relocate(to: repository) }
     }
@@ -1074,7 +928,7 @@ final class AppCore {
         NotesRepository(notesDirectory: AppPaths.contentFolder(settings.notesFolder, named: "Notes"))
     }
 
-    private func applyWindowCommandsPresence() {
+    func applyWindowCommandsPresence() {
         let visible = settings.windowManagementEnabled && settings.windowManagementShowInLauncher
         appIndex.setWindowCommandsVisible(visible)
     }

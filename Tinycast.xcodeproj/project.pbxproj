@@ -51,6 +51,7 @@
 		0B57F477B21A81B22DAA5513 /* AppleShortcutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E4C6445202F80D6756AF1A /* AppleShortcutRunner.swift */; };
 		0B9C941402B85C69A33200C2 /* UninstallProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A48095F6487DEE76663F88 /* UninstallProtection.swift */; };
 		0C1CACEF014462D3F581CE54 /* EmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B42664C60B760276FBAAD61 /* EmojiSettingsView.swift */; };
+		0C3036C8D82A1E61B39FB2DE /* AppCore+FeatureSwitches.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B9E8B987020451BEEFA407 /* AppCore+FeatureSwitches.swift */; };
 		0CC2291DE8806FDFB478F8A0 /* FileSearchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90831A25F96F3563BEC60FCC /* FileSearchSurface.swift */; };
 		0CD06036347A6D96B1F7947F /* AppleShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A379CB384B76FF70AC72E235 /* AppleShortcut.swift */; };
 		0D509E0E71CBCBB72EF0BDFE /* CustomWindowSizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE31A7F41EDA33E7E574F62D /* CustomWindowSizeStore.swift */; };
@@ -475,6 +476,7 @@
 		7B32E6EE86458C854D76B0AF /* RoomWindowSweep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1BD03E0327890BD4E68988 /* RoomWindowSweep.swift */; };
 		7BDB7CF7F1352015F6AC96C3 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 375734577C888260A8023181 /* SnippetsStore.swift */; };
 		7C2AA1D827EC87533021BD74 /* SpaceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C021D578082B4FE98D27CAC /* SpaceSwitcher.swift */; };
+		7C86A3A7BAB518EFAEEE1950 /* HotKeyRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97906387A5A15996864F2CD /* HotKeyRoutes.swift */; };
 		7C8FC2CA46CE4CDF13F2F566 /* SpotlightContentHelper in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = DA6D3D7466CDFD28B4B5D272 /* SpotlightContentHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7C9A5A09B871FC42F3195AC8 /* AIScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27021D72339800AA6DA3D3FF /* AIScreen.swift */; };
 		7CC503824FDF49F788C85BB3 /* SettingsBackupCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5FFE395B9164BDC77B3470 /* SettingsBackupCoverage.swift */; };
@@ -1697,6 +1699,7 @@
 		AF815AC6BE00722DB83B15CD /* MCPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPTransport.swift; sourceTree = "<group>"; };
 		AFF7FC0E52E9082006614E0D /* WindowLayoutGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutGeometry.swift; sourceTree = "<group>"; };
 		B07F172974DA662EBE25422E /* EntryNaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryNaming.swift; sourceTree = "<group>"; };
+		B0B9E8B987020451BEEFA407 /* AppCore+FeatureSwitches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppCore+FeatureSwitches.swift"; sourceTree = "<group>"; };
 		B117F11E9B15D1B1919B7FB1 /* MeetingLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingLink.swift; sourceTree = "<group>"; };
 		B15F208C809EB61B8E6D3B83 /* QuicklinkEditorSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuicklinkEditorSession.swift; sourceTree = "<group>"; };
 		B1F749283370AC9B506E6529 /* RoomGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomGrid.swift; sourceTree = "<group>"; };
@@ -1853,6 +1856,7 @@
 		D7FCA9FA81B1CF8B8C37E48A /* BackupApplier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupApplier.swift; sourceTree = "<group>"; };
 		D817AF0E23DDCC95147B5AFB /* InstalledAIStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAIStream.swift; sourceTree = "<group>"; };
 		D8B10DA3A9B1CBD9A03F3DE5 /* NoteDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDocument.swift; sourceTree = "<group>"; };
+		D97906387A5A15996864F2CD /* HotKeyRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyRoutes.swift; sourceTree = "<group>"; };
 		D984FBD9A0A8F8317ACD523C /* DeepLinkInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkInput.swift; sourceTree = "<group>"; };
 		DA0AD89CB2C805C50D2C80E1 /* AliasStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AliasStore.swift; sourceTree = "<group>"; };
 		DA6D3D7466CDFD28B4B5D272 /* SpotlightContentHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = SpotlightContentHelper; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3425,6 +3429,7 @@
 				464CB2558A5F239E5D8808E6 /* DictationKeyManager.swift */,
 				26AD346C8FD5F2D4F00FF2B6 /* HotKeyCenter.swift */,
 				F0311153A4A3557C6FFEAAAB /* HotKeyManager.swift */,
+				D97906387A5A15996864F2CD /* HotKeyRoutes.swift */,
 				7D56AE79EFBE8B3D79CAF6A4 /* HotKeySettingsFile.swift */,
 				2BF8A60B3C0F4CF45B84F315 /* HyperKeyConflictScanner.swift */,
 				C9673B19FC688CAC36F38032 /* HyperKeyManager.swift */,
@@ -3699,6 +3704,7 @@
 			isa = PBXGroup;
 			children = (
 				2BECF24B674F9458E4A876DA /* AppCore.swift */,
+				B0B9E8B987020451BEEFA407 /* AppCore+FeatureSwitches.swift */,
 				9C37CCD024267EB21876C7E9 /* AppDelegate.swift */,
 				2902B904C7BD2FC23856EDB9 /* MenuBarItem.swift */,
 				2B629EC3B716FEE881BB0075 /* TinycastApp.swift */,
@@ -4665,6 +4671,7 @@
 				76D39035109BC58859D2BB62 /* AnimatedPanel.swift in Sources */,
 				EA89498DA03BDFA3858144BF /* AppActionsMenu.swift in Sources */,
 				5E7ABF41CE97983E05653D69 /* AppAppearance.swift in Sources */,
+				0C3036C8D82A1E61B39FB2DE /* AppCore+FeatureSwitches.swift in Sources */,
 				E8CB7624CCA5905AF1A4FAD9 /* AppCore.swift in Sources */,
 				C0642512B709EF0517ABF4CB /* AppDelegate.swift in Sources */,
 				CE15888F3C15EE2706E108A0 /* AppDisplayName.swift in Sources */,
@@ -5050,6 +5057,7 @@
 				B2404EBFB52B8199DC2536F6 /* HotKeyBinding.swift in Sources */,
 				ACD8CAE659B1C49EC8652576 /* HotKeyCenter.swift in Sources */,
 				CC9A286B77E32C22B21A22BE /* HotKeyManager.swift in Sources */,
+				7C86A3A7BAB518EFAEEE1950 /* HotKeyRoutes.swift in Sources */,
 				DB6DD4D14260500D36E18315 /* HotKeySettingsFile.swift in Sources */,
 				84356D3E6A0535895C51923E /* HotKeySpelling.swift in Sources */,
 				8453CF4C0D8D015A66C9B400 /* HoverArming.swift in Sources */,
