@@ -35,6 +35,8 @@ Version 0.1.23 learns multiple dictation corrections and applies them to later t
 Version 0.1.24 adds draggable dictation indicator positioning and alignment guides.
 Version 0.1.25 adds dictation processing during pauses, defaults Smart cleanup to Emberon-2, and
 improves currency formatting, including Ghanaian cedis and pesewas.
+Version 0.1.26 keeps the live dictation preview visible near screen edges and adds clipboard color
+previews for hex values copied from supported design apps.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
