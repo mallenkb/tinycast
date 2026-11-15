@@ -8,53 +8,44 @@ final class AppSettings {
 
     /// What `AppIndex` scans, in scan order; editing it re-indexes, being observed.
     var searchScopes: [String] {
-        didSet { defaults.set(searchScopes, forKey: Key.searchScopes.rawValue) }
+        didSet { Stored.searchScopes.store(searchScopes, in: defaults) }
     }
 
     var launcherShowsSuggestions: Bool {
-        didSet {
-            defaults.set(launcherShowsSuggestions, forKey: Key.launcherShowsSuggestions.rawValue)
-        }
+        didSet { Stored.launcherShowsSuggestions.store(launcherShowsSuggestions, in: defaults) }
     }
 
     /// How loose a fuzzy root-search hit may be and still show.
     var rootSearchSensitivity: SearchSensitivity {
-        didSet {
-            defaults.set(rootSearchSensitivity.rawValue, forKey: Key.rootSearchSensitivity.rawValue)
-        }
+        didSet { Stored.rootSearchSensitivity.store(rootSearchSensitivity, in: defaults) }
     }
 
     /// Ships on, unlike every other feature switch: a launcher is expected to keep history.
     var clipboardEnabled: Bool {
-        didSet { defaults.set(clipboardEnabled, forKey: Key.clipboardEnabled.rawValue) }
+        didSet { Stored.clipboardEnabled.store(clipboardEnabled, in: defaults) }
     }
 
     var clipboardTextSearchEnabled: Bool {
-        didSet { defaults.set(clipboardTextSearchEnabled, forKey: Key.clipboardTextSearchEnabled.rawValue) }
+        didSet { Stored.clipboardTextSearchEnabled.store(clipboardTextSearchEnabled, in: defaults) }
     }
 
     var clipboardRetention: ClipboardRetention {
-        didSet {
-            defaults.set(clipboardRetention.rawValue, forKey: Key.clipboardRetention.rawValue)
-        }
+        didSet { Stored.clipboardRetention.store(clipboardRetention, in: defaults) }
     }
 
     /// Bundle IDs never recorded from; ordered, so the Settings list stays stable.
     var clipboardDisabledApps: [String] {
-        didSet { defaults.set(clipboardDisabledApps, forKey: Key.clipboardDisabledApps.rawValue) }
+        didSet { Stored.clipboardDisabledApps.store(clipboardDisabledApps, in: defaults) }
     }
 
     /// What ↵ does on a clipboard entry; Paste takes the chord the chosen action leaves free.
     var clipboardDefaultAction: ClipboardDefaultAction {
-        didSet {
-            defaults.set(
-                clipboardDefaultAction.rawValue, forKey: Key.clipboardDefaultAction.rawValue)
-        }
+        didSet { Stored.clipboardDefaultAction.store(clipboardDefaultAction, in: defaults) }
     }
 
     var launchAtLogin: Bool {
         didSet {
-            defaults.set(launchAtLogin, forKey: Key.launchAtLogin.rawValue)
+            Stored.launchAtLogin.store(launchAtLogin, in: defaults)
             applyLaunchAtLogin()
         }
     }
@@ -107,61 +98,52 @@ final class AppSettings {
 
     /// The launcher icon's visibility; dragging the icon out of the menu bar turns it off.
     var showInMenuBar: Bool {
-        didSet { defaults.set(showInMenuBar, forKey: Key.showInMenuBar.rawValue) }
+        didSet { Stored.showInMenuBar.store(showInMenuBar, in: defaults) }
     }
 
     var automaticallyCheckForUpdates: Bool {
-        didSet {
-            defaults.set(
-                automaticallyCheckForUpdates, forKey: Key.automaticallyCheckForUpdates.rawValue)
-        }
+        didSet { Stored.automaticallyCheckForUpdates.store(automaticallyCheckForUpdates, in: defaults) }
     }
 
     /// The physical key remapped to the Hyper chord; `HyperKeyManager` reacts via its observer.
     var hyperKey: HyperKeyPhysicalKey {
-        didSet { defaults.set(hyperKey.rawValue, forKey: Key.hyperKey.rawValue) }
+        didSet { Stored.hyperKey.store(hyperKey, in: defaults) }
     }
 
     var hyperKeyIncludesShift: Bool {
-        didSet { defaults.set(hyperKeyIncludesShift, forKey: Key.hyperKeyIncludesShift.rawValue) }
+        didSet { Stored.hyperKeyIncludesShift.store(hyperKeyIncludesShift, in: defaults) }
     }
 
     var hyperKeyQuickPress: HyperKeyQuickPress {
-        didSet {
-            defaults.set(hyperKeyQuickPress.rawValue, forKey: Key.hyperKeyQuickPress.rawValue)
-        }
+        didSet { Stored.hyperKeyQuickPress.store(hyperKeyQuickPress, in: defaults) }
     }
 
     var hyperKeySecureInputCompatibility: Bool {
-        didSet {
-            defaults.set(
-                hyperKeySecureInputCompatibility,
-                forKey: Key.hyperKeySecureInputCompatibility.rawValue)
-        }
+        didSet { Stored.hyperKeySecureInputCompatibility.store(hyperKeySecureInputCompatibility, in: defaults) }
     }
 
     /// Preferred skin tone applied to modifier-capable emoji at render and copy time.
     var emojiSkinTone: EmojiSkinTone {
-        didSet { defaults.set(emojiSkinTone.rawValue, forKey: Key.emojiSkinTone.rawValue) }
+        didSet { Stored.emojiSkinTone.store(emojiSkinTone, in: defaults) }
     }
 
     /// Grid density used when the emoji picker opens; in-session zoom remains temporary.
     var emojiGridColumns: EmojiGridColumns {
-        didSet { defaults.set(emojiGridColumns.rawValue, forKey: Key.emojiGridColumns.rawValue) }
+        didSet { Stored.emojiGridColumns.store(emojiGridColumns, in: defaults) }
     }
 
     /// How long a closed palette keeps its state before popping back to the root launcher.
     var popToRootTimeout: PopToRootTimeout {
-        didSet { defaults.set(popToRootTimeout.rawValue, forKey: Key.popToRootTimeout.rawValue) }
+        didSet { Stored.popToRootTimeout.store(popToRootTimeout, in: defaults) }
     }
 
     var escapeKeyBehavior: EscapeKeyBehavior {
-        didSet { defaults.set(escapeKeyBehavior.rawValue, forKey: Key.escapeKeyBehavior.rawValue) }
+        didSet { Stored.escapeKeyBehavior.store(escapeKeyBehavior, in: defaults) }
     }
 
     /// Follow macOS, or pin Tinycast to one appearance. Applied by `AppCore.applyAppearance()`.
     var appearance: AppAppearance {
-        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance.rawValue) }
+        didSet { Stored.appearance.store(appearance, in: defaults) }
     }
 
     /// The per-app key System Settings writes too, so the two never disagree.
@@ -171,11 +153,11 @@ final class AppSettings {
 
     /// Which separators the calculator reads and writes; `.system` follows Language & Region.
     var calcNumberStyle: CalcNumberStyle {
-        didSet { defaults.set(calcNumberStyle.rawValue, forKey: Key.calcNumberStyle.rawValue) }
+        didSet { Stored.calcNumberStyle.store(calcNumberStyle, in: defaults) }
     }
 
     var typography: AppTypography {
-        didSet { defaults.set(typography.rawValue, forKey: Key.typography.rawValue) }
+        didSet { Stored.typography.store(typography, in: defaults) }
     }
 
     var interfaceMetrics: InterfaceMetrics {
@@ -184,7 +166,7 @@ final class AppSettings {
 
     var interfaceSize: InterfaceSize {
         didSet {
-            defaults.set(interfaceSize.rawValue, forKey: Key.interfaceSize.rawValue)
+            Stored.interfaceSize.store(interfaceSize, in: defaults)
             let shift = Double(
                 (oldValue.metrics.size.panelWidth - interfaceSize.metrics.size.panelWidth) / 2)
             if shift != 0 {
@@ -197,73 +179,63 @@ final class AppSettings {
 
     /// Summon the launcher as a slim search bar that expands into the full list on typing.
     var compactMode: Bool {
-        didSet { defaults.set(compactMode, forKey: Key.compactMode.rawValue) }
+        didSet { Stored.compactMode.store(compactMode, in: defaults) }
     }
 
     var compactBarCommands: [CommandID] {
-        didSet { defaults.set(compactBarCommands.map(\.rawValue), forKey: Key.compactBarCommands.rawValue) }
+        didSet { Stored.compactBarCommands.store(compactBarCommands, in: defaults) }
     }
 
     /// Summon the palette on the display under the pointer instead of the one holding the menu bar.
     var openOnCursorScreen: Bool {
-        didSet { defaults.set(openOnCursorScreen, forKey: Key.openOnCursorScreen.rawValue) }
+        didSet { Stored.openOnCursorScreen.store(openOnCursorScreen, in: defaults) }
     }
 
     var dictionaryRecentSources: [String] {
-        didSet { defaults.set(dictionaryRecentSources, forKey: Key.dictionaryRecentSources.rawValue) }
+        didSet { Stored.dictionaryRecentSources.store(dictionaryRecentSources, in: defaults) }
     }
 
     var dictionaryPreferredSource: String {
-        didSet { defaults.set(dictionaryPreferredSource, forKey: Key.dictionaryPreferredSource.rawValue) }
+        didSet { Stored.dictionaryPreferredSource.store(dictionaryPreferredSource, in: defaults) }
     }
 
     var dictionaryPronunciationSource: String {
-        didSet { defaults.set(dictionaryPronunciationSource, forKey: Key.dictionaryPronunciationSource.rawValue) }
+        didSet { Stored.dictionaryPronunciationSource.store(dictionaryPronunciationSource, in: defaults) }
     }
 
     var dictionaryPronunciationSlow: Bool {
-        didSet { defaults.set(dictionaryPronunciationSlow, forKey: Key.dictionaryPronunciationSlow.rawValue) }
+        didSet { Stored.dictionaryPronunciationSlow.store(dictionaryPronunciationSlow, in: defaults) }
     }
 
     var dictionaryPronunciationVoice: String {
-        didSet { defaults.set(dictionaryPronunciationVoice, forKey: Key.dictionaryPronunciationVoice.rawValue) }
+        didSet { Stored.dictionaryPronunciationVoice.store(dictionaryPronunciationVoice, in: defaults) }
     }
 
     var dictionaryPronunciationAccent: String {
-        didSet { defaults.set(dictionaryPronunciationAccent, forKey: Key.dictionaryPronunciationAccent.rawValue) }
+        didSet { Stored.dictionaryPronunciationAccent.store(dictionaryPronunciationAccent, in: defaults) }
     }
 
     var autoSwitchInputSourceID: String? {
-        didSet {
-            guard let autoSwitchInputSourceID else {
-                defaults.removeObject(forKey: Key.autoSwitchInputSource.rawValue)
-                return
-            }
-            defaults.set(autoSwitchInputSourceID, forKey: Key.autoSwitchInputSource.rawValue)
-        }
+        didSet { Stored.autoSwitchInputSourceID.store(autoSwitchInputSourceID, in: defaults) }
     }
 
     /// Lets the panel be dragged by its top edge; off by default, so most launches never grab it.
     var paletteDraggable: Bool {
-        didSet { defaults.set(paletteDraggable, forKey: Key.paletteDraggable.rawValue) }
+        didSet { Stored.paletteDraggable.store(paletteDraggable, in: defaults) }
     }
 
     /// Off, every surface changes at once; on, Reduce Motion still trims movement where it did.
     var animationsEnabled: Bool {
-        didSet { defaults.set(animationsEnabled, forKey: Key.animationsEnabled.rawValue) }
+        didSet { Stored.animationsEnabled.store(animationsEnabled, in: defaults) }
     }
 
     /// Where a drag left the panel's top-left, per display and relative to it.
     var palettePositions: [String: [Double]] {
-        didSet { defaults.set(palettePositions, forKey: Key.palettePosition.rawValue) }
+        didSet { Stored.palettePositions.store(palettePositions, in: defaults) }
     }
 
     var paletteExpandedCenterDisplays: Set<String> {
-        didSet {
-            defaults.set(
-                Array(paletteExpandedCenterDisplays),
-                forKey: Key.paletteExpandedCenterDisplays.rawValue)
-        }
+        didSet { Stored.paletteExpandedCenterDisplays.store(paletteExpandedCenterDisplays, in: defaults) }
     }
 
     func palettePosition(on display: String) -> CGPoint? {
@@ -285,27 +257,21 @@ final class AppSettings {
 
     // Feature switches, off out of the box, and off means fully off.
     var fileSearchEnabled: Bool {
-        didSet { defaults.set(fileSearchEnabled, forKey: Key.fileSearchEnabled.rawValue) }
+        didSet { Stored.fileSearchEnabled.store(fileSearchEnabled, in: defaults) }
     }
 
     /// Tilde-abbreviated, so a backup taken on one machine still points somewhere on another.
     var fileSearchScopes: [String] {
-        didSet { defaults.set(fileSearchScopes, forKey: Key.fileSearchScopes.rawValue) }
+        didSet { Stored.fileSearchScopes.store(fileSearchScopes, in: defaults) }
     }
 
     /// Only what the user added; the shipped rules are compiled into `FileSearchIgnoreList`.
     var fileSearchIgnorePatterns: [String] {
-        didSet {
-            defaults.set(fileSearchIgnorePatterns, forKey: Key.fileSearchIgnorePatterns.rawValue)
-        }
+        didSet { Stored.fileSearchIgnorePatterns.store(fileSearchIgnorePatterns, in: defaults) }
     }
 
     var fileSearchRemovedDefaultPatterns: [String] {
-        didSet {
-            defaults.set(
-                fileSearchRemovedDefaultPatterns,
-                forKey: Key.fileSearchRemovedDefaultPatterns.rawValue)
-        }
+        didSet { Stored.fileSearchRemovedDefaultPatterns.store(fileSearchRemovedDefaultPatterns, in: defaults) }
     }
 
     var fileSearchEffectiveIgnorePatterns: [String] {
@@ -314,48 +280,46 @@ final class AppSettings {
     }
 
     var fileSearchDocumentContentEnabled: Bool {
-        didSet { defaults.set(fileSearchDocumentContentEnabled, forKey: Key.fileSearchDocumentContentEnabled.rawValue) }
+        didSet { Stored.fileSearchDocumentContentEnabled.store(fileSearchDocumentContentEnabled, in: defaults) }
     }
 
     var fileSearchImageContentEnabled: Bool {
-        didSet { defaults.set(fileSearchImageContentEnabled, forKey: Key.fileSearchImageContentEnabled.rawValue) }
+        didSet { Stored.fileSearchImageContentEnabled.store(fileSearchImageContentEnabled, in: defaults) }
     }
     var fileSearchShowInLauncher: Bool {
-        didSet {
-            defaults.set(fileSearchShowInLauncher, forKey: Key.fileSearchShowInLauncher.rawValue)
-        }
+        didSet { Stored.fileSearchShowInLauncher.store(fileSearchShowInLauncher, in: defaults) }
     }
 
     var notesEnabled: Bool {
-        didSet { defaults.set(notesEnabled, forKey: Key.notesEnabled.rawValue) }
+        didSet { Stored.notesEnabled.store(notesEnabled, in: defaults) }
     }
 
     var dictationEnabled: Bool {
-        didSet { defaults.set(dictationEnabled, forKey: Key.dictationEnabled.rawValue) }
+        didSet { Stored.dictationEnabled.store(dictationEnabled, in: defaults) }
     }
 
     var dictationModel: DictationModel {
-        didSet { defaults.set(dictationModel.rawValue, forKey: Key.dictationModel.rawValue) }
+        didSet { Stored.dictationModel.store(dictationModel, in: defaults) }
     }
 
     var dictationUsesApple: Bool {
-        didSet { defaults.set(dictationUsesApple, forKey: Key.dictationUsesApple.rawValue) }
+        didSet { Stored.dictationUsesApple.store(dictationUsesApple, in: defaults) }
     }
 
     var dictationRemovesFillerWords: Bool {
-        didSet { defaults.set(dictationRemovesFillerWords, forKey: Key.dictationRemovesFillerWords.rawValue) }
+        didSet { Stored.dictationRemovesFillerWords.store(dictationRemovesFillerWords, in: defaults) }
     }
 
     var dictationCleanupEngine: String {
-        didSet { defaults.set(dictationCleanupEngine, forKey: Key.dictationCleanupEngine.rawValue) }
+        didSet { Stored.dictationCleanupEngine.store(dictationCleanupEngine, in: defaults) }
     }
 
     var dictationSmartCleanup: Bool {
-        didSet { defaults.set(dictationSmartCleanup, forKey: Key.dictationSmartCleanup.rawValue) }
+        didSet { Stored.dictationSmartCleanup.store(dictationSmartCleanup, in: defaults) }
     }
 
     var dictationAdvancedCleanup: Bool {
-        didSet { defaults.set(dictationAdvancedCleanup, forKey: Key.dictationAdvancedCleanup.rawValue) }
+        didSet { Stored.dictationAdvancedCleanup.store(dictationAdvancedCleanup, in: defaults) }
     }
 
     var dictationCleanupMode: DictationCleanupMode {
@@ -372,350 +336,288 @@ final class AppSettings {
     }
 
     var dictationAutoTransform: Bool {
-        didSet { defaults.set(dictationAutoTransform, forKey: Key.dictationAutoTransform.rawValue) }
+        didSet { Stored.dictationAutoTransform.store(dictationAutoTransform, in: defaults) }
     }
 
     var dictationTransformID: String {
-        didSet { defaults.set(dictationTransformID, forKey: Key.dictationTransformID.rawValue) }
+        didSet { Stored.dictationTransformID.store(dictationTransformID, in: defaults) }
     }
 
     /// Nil lets macOS follow the system input device as it changes.
     var dictationMicrophone: String? {
-        didSet { defaults.set(dictationMicrophone, forKey: Key.dictationMicrophone.rawValue) }
+        didSet { Stored.dictationMicrophone.store(dictationMicrophone, in: defaults) }
     }
 
     var dictationAdaptsCapitalization: Bool {
-        didSet {
-            defaults.set(dictationAdaptsCapitalization, forKey: Key.dictationAdaptsCapitalization.rawValue)
-        }
+        didSet { Stored.dictationAdaptsCapitalization.store(dictationAdaptsCapitalization, in: defaults) }
     }
 
     var dictationHistoryRetention: ClipboardRetention {
-        didSet {
-            defaults.set(dictationHistoryRetention.rawValue, forKey: Key.dictationHistoryRetention.rawValue)
-        }
+        didSet { Stored.dictationHistoryRetention.store(dictationHistoryRetention, in: defaults) }
     }
 
     var dictationPlaysSounds: Bool {
-        didSet { defaults.set(dictationPlaysSounds, forKey: Key.dictationPlaysSounds.rawValue) }
+        didSet { Stored.dictationPlaysSounds.store(dictationPlaysSounds, in: defaults) }
     }
 
     var dictationIndicatorStyle: DictationIndicatorStyle {
-        didSet { defaults.set(dictationIndicatorStyle.rawValue, forKey: Key.dictationIndicatorStyle.rawValue) }
+        didSet { Stored.dictationIndicatorStyle.store(dictationIndicatorStyle, in: defaults) }
     }
 
     var dictationIndicatorPositions: [String: [Double]] {
-        didSet { defaults.set(dictationIndicatorPositions, forKey: Key.dictationIndicatorPositions.rawValue) }
+        didSet { Stored.dictationIndicatorPositions.store(dictationIndicatorPositions, in: defaults) }
     }
 
     var dictationLivePreview: Bool {
-        didSet { defaults.set(dictationLivePreview, forKey: Key.dictationLivePreview.rawValue) }
+        didSet { Stored.dictationLivePreview.store(dictationLivePreview, in: defaults) }
     }
 
     var dictationTwoLinePreview: Bool {
-        didSet { defaults.set(dictationTwoLinePreview, forKey: Key.dictationTwoLinePreview.rawValue) }
+        didSet { Stored.dictationTwoLinePreview.store(dictationTwoLinePreview, in: defaults) }
     }
 
     var dictationAnimateTranscript: Bool {
-        didSet { defaults.set(dictationAnimateTranscript, forKey: Key.dictationAnimateTranscript.rawValue) }
+        didSet { Stored.dictationAnimateTranscript.store(dictationAnimateTranscript, in: defaults) }
     }
 
     var dictationIdleIndicator: Bool {
-        didSet { defaults.set(dictationIdleIndicator, forKey: Key.dictationIdleIndicator.rawValue) }
+        didSet { Stored.dictationIdleIndicator.store(dictationIdleIndicator, in: defaults) }
     }
 
     var dictationIdleRelease: DictationIdleRelease {
-        didSet { defaults.set(dictationIdleRelease.rawValue, forKey: Key.dictationIdleRelease.rawValue) }
+        didSet { Stored.dictationIdleRelease.store(dictationIdleRelease, in: defaults) }
     }
 
     var dictationLanguage: String? {
-        didSet { defaults.set(dictationLanguage, forKey: Key.dictationLanguage.rawValue) }
+        didSet { Stored.dictationLanguage.store(dictationLanguage, in: defaults) }
     }
 
     var notesRendersMarkdown: Bool {
-        didSet { defaults.set(notesRendersMarkdown, forKey: Key.notesRendersMarkdown.rawValue) }
+        didSet { Stored.notesRendersMarkdown.store(notesRendersMarkdown, in: defaults) }
     }
 
     var notesShowsFormattingBar: Bool {
-        didSet { defaults.set(notesShowsFormattingBar, forKey: Key.notesShowsFormattingBar.rawValue) }
+        didSet { Stored.notesShowsFormattingBar.store(notesShowsFormattingBar, in: defaults) }
     }
 
     var notesShowsInMenuBar: Bool {
-        didSet { defaults.set(notesShowsInMenuBar, forKey: Key.notesShowsInMenuBar.rawValue) }
+        didSet { Stored.notesShowsInMenuBar.store(notesShowsInMenuBar, in: defaults) }
     }
 
     /// The notes folder as the user wrote it, `~` allowed; nil keeps it in Application Support.
     var notesFolder: String? {
-        didSet { defaults.set(notesFolder, forKey: Key.notesFolder.rawValue) }
+        didSet { Stored.notesFolder.store(notesFolder, in: defaults) }
     }
 
     /// Off by default: connecting a server is consent to run code Tinycast did not write.
     var mcpEnabled: Bool {
-        didSet { defaults.set(mcpEnabled, forKey: Key.mcpEnabled.rawValue) }
+        didSet { Stored.mcpEnabled.store(mcpEnabled, in: defaults) }
     }
     var aiEnabled: Bool {
-        didSet { defaults.set(aiEnabled, forKey: Key.aiEnabled.rawValue) }
+        didSet { Stored.aiEnabled.store(aiEnabled, in: defaults) }
     }
 
     var customCommandsEnabled: Bool {
-        didSet { defaults.set(customCommandsEnabled, forKey: Key.customCommandsEnabled.rawValue) }
+        didSet { Stored.customCommandsEnabled.store(customCommandsEnabled, in: defaults) }
     }
 
     /// With the feature on, controls only whether its launcher section appears.
     var customCommandsShowInLauncher: Bool {
-        didSet {
-            defaults.set(
-                customCommandsShowInLauncher, forKey: Key.customCommandsShowInLauncher.rawValue)
-        }
+        didSet { Stored.customCommandsShowInLauncher.store(customCommandsShowInLauncher, in: defaults) }
     }
 
     /// Also keyword-expansion consent, so it confirms first and never rides a backup.
     var snippetsEnabled: Bool {
-        didSet { defaults.set(snippetsEnabled, forKey: Key.snippetsEnabled.rawValue) }
+        didSet { Stored.snippetsEnabled.store(snippetsEnabled, in: defaults) }
     }
 
     /// Off out of the box: on means Tinycast may read a selection anywhere and type over it.
     var quickActionsEnabled: Bool {
-        didSet { defaults.set(quickActionsEnabled, forKey: Key.quickActionsEnabled.rawValue) }
+        didSet { Stored.quickActionsEnabled.store(quickActionsEnabled, in: defaults) }
     }
 
     var snippetsShowInLauncher: Bool {
-        didSet { defaults.set(snippetsShowInLauncher, forKey: Key.snippetsShowInLauncher.rawValue) }
+        didSet { Stored.snippetsShowInLauncher.store(snippetsShowInLauncher, in: defaults) }
     }
 
     /// The snippets folder as the user wrote it, `~` allowed; nil keeps it in Application Support.
     var snippetsFolder: String? {
-        didSet { defaults.set(snippetsFolder, forKey: Key.snippetsFolder.rawValue) }
+        didSet { Stored.snippetsFolder.store(snippetsFolder, in: defaults) }
     }
 
     var navigationEnabled: Bool {
-        didSet { defaults.set(navigationEnabled, forKey: Key.navigationEnabled.rawValue) }
+        didSet { Stored.navigationEnabled.store(navigationEnabled, in: defaults) }
     }
 
     var menuSearchDisabledApps: [String] {
-        didSet { defaults.set(menuSearchDisabledApps, forKey: Key.menuSearchDisabledApps.rawValue) }
+        didSet { Stored.menuSearchDisabledApps.store(menuSearchDisabledApps, in: defaults) }
     }
 
     /// Off: the Apple menu is the same on every app, so it would only pad every snapshot.
     var menuSearchShowsAppleMenu: Bool {
-        didSet {
-            defaults.set(menuSearchShowsAppleMenu, forKey: Key.menuSearchShowsAppleMenu.rawValue)
-        }
+        didSet { Stored.menuSearchShowsAppleMenu.store(menuSearchShowsAppleMenu, in: defaults) }
     }
 
     /// Consent to run third-party JavaScript: it confirms, defaults off, rides no backup.
     var extensionsEnabled: Bool {
-        didSet { defaults.set(extensionsEnabled, forKey: Key.extensionsEnabled.rawValue) }
+        didSet { Stored.extensionsEnabled.store(extensionsEnabled, in: defaults) }
     }
 
     var extensionsShowInLauncher: Bool {
-        didSet {
-            defaults.set(extensionsShowInLauncher, forKey: Key.extensionsShowInLauncher.rawValue)
-        }
+        didSet { Stored.extensionsShowInLauncher.store(extensionsShowInLauncher, in: defaults) }
     }
 
     /// Only an install from GitHub needs one — the store serves extensions already built.
     var extensionPackageManager: ExtensionPackageManager {
-        didSet {
-            defaults.set(
-                extensionPackageManager.rawValue, forKey: Key.extensionPackageManager.rawValue)
-        }
+        didSet { Stored.extensionPackageManager.store(extensionPackageManager, in: defaults) }
     }
 
     /// For a toolchain Tinycast doesn't know — mise or Nix shims are the common case.
     var extensionCustomSearchPaths: [String] {
-        didSet {
-            defaults.set(
-                extensionCustomSearchPaths, forKey: Key.extensionCustomSearchPaths.rawValue)
-        }
+        didSet { Stored.extensionCustomSearchPaths.store(extensionCustomSearchPaths, in: defaults) }
     }
 
     /// Doubles as calendar-access consent, so only `CalendarCoordinator` may write it.
     var calendarEnabled: Bool {
-        didSet { defaults.set(calendarEnabled, forKey: Key.calendarEnabled.rawValue) }
+        didSet { Stored.calendarEnabled.store(calendarEnabled, in: defaults) }
     }
 
     var calendarShowInLauncher: Bool {
-        didSet {
-            defaults.set(calendarShowInLauncher, forKey: Key.calendarShowInLauncher.rawValue)
-        }
+        didSet { Stored.calendarShowInLauncher.store(calendarShowInLauncher, in: defaults) }
     }
 
     var calendarLauncherLimit: CalendarLauncherLimit {
-        didSet {
-            defaults.set(calendarLauncherLimit.rawValue, forKey: Key.calendarLauncherLimit.rawValue)
-        }
+        didSet { Stored.calendarLauncherLimit.store(calendarLauncherLimit, in: defaults) }
     }
 
     /// Narrows the fetch itself rather than what is shown, so every surface reads the same days.
     var calendarSpan: MeetingSpan {
-        didSet { defaults.set(calendarSpan.rawValue, forKey: Key.calendarSpan.rawValue) }
+        didSet { Stored.calendarSpan.store(calendarSpan, in: defaults) }
     }
 
     var joinWindowMinutes: JoinWindow {
-        didSet { defaults.set(joinWindowMinutes.rawValue, forKey: Key.joinWindowMinutes.rawValue) }
+        didSet { Stored.joinWindowMinutes.store(joinWindowMinutes, in: defaults) }
     }
 
     /// Arms the app to open meeting links unattended, so only the Calendar pane's switch writes it.
     var autoJoinMeetings: Bool {
-        didSet { defaults.set(autoJoinMeetings, forKey: Key.autoJoinMeetings.rawValue) }
+        didSet { Stored.autoJoinMeetings.store(autoJoinMeetings, in: defaults) }
     }
 
     var autoJoinConfirms: Bool {
-        didSet { defaults.set(autoJoinConfirms, forKey: Key.autoJoinConfirms.rawValue) }
+        didSet { Stored.autoJoinConfirms.store(autoJoinConfirms, in: defaults) }
     }
 
     var autoJoinNamedProvidersOnly: Bool {
-        didSet {
-            defaults.set(
-                autoJoinNamedProvidersOnly, forKey: Key.autoJoinNamedProvidersOnly.rawValue)
-        }
+        didSet { Stored.autoJoinNamedProvidersOnly.store(autoJoinNamedProvidersOnly, in: defaults) }
     }
 
     /// Doubles as camera consent, so only the Calendar pane's switch writes it.
     var cameraPreview: Bool {
-        didSet { defaults.set(cameraPreview, forKey: Key.cameraPreview.rawValue) }
+        didSet { Stored.cameraPreview.store(cameraPreview, in: defaults) }
     }
 
     /// Nil opens meeting links in the default browser.
     var meetingBrowserBundleID: String? {
-        didSet {
-            guard let meetingBrowserBundleID else {
-                defaults.removeObject(forKey: Key.meetingBrowser.rawValue)
-                return
-            }
-            defaults.set(meetingBrowserBundleID, forKey: Key.meetingBrowser.rawValue)
-        }
+        didSet { Stored.meetingBrowserBundleID.store(meetingBrowserBundleID, in: defaults) }
     }
 
     var menuBarEvents: MenuBarEvents {
-        didSet { defaults.set(menuBarEvents.rawValue, forKey: Key.menuBarEvents.rawValue) }
+        didSet { Stored.menuBarEvents.store(menuBarEvents, in: defaults) }
     }
 
     var calendarMenuBarDisplay: CalendarMenuBarDisplay {
-        didSet {
-            defaults.set(
-                calendarMenuBarDisplay.rawValue, forKey: Key.calendarMenuBarDisplay.rawValue)
-        }
+        didSet { Stored.calendarMenuBarDisplay.store(calendarMenuBarDisplay, in: defaults) }
     }
 
     var menuBarLinkedEventsOnly: Bool {
-        didSet {
-            defaults.set(
-                menuBarLinkedEventsOnly, forKey: Key.menuBarLinkedEventsOnly.rawValue)
-        }
+        didSet { Stored.menuBarLinkedEventsOnly.store(menuBarLinkedEventsOnly, in: defaults) }
     }
 
     var calendarMenuBarHidesWhenEmpty: Bool {
-        didSet {
-            defaults.set(
-                calendarMenuBarHidesWhenEmpty, forKey: Key.calendarMenuBarHidesWhenEmpty.rawValue)
-        }
+        didSet { Stored.calendarMenuBarHidesWhenEmpty.store(calendarMenuBarHidesWhenEmpty, in: defaults) }
     }
 
     var hideCurrentEvent: HideCurrentEvent {
-        didSet { defaults.set(hideCurrentEvent.rawValue, forKey: Key.hideCurrentEvent.rawValue) }
+        didSet { Stored.hideCurrentEvent.store(hideCurrentEvent, in: defaults) }
     }
 
     /// Off means fully off: no launcher entries, and a still-registered shortcut moves nothing.
     var windowManagementEnabled: Bool {
-        didSet {
-            defaults.set(windowManagementEnabled, forKey: Key.windowManagementEnabled.rawValue)
-        }
+        didSet { Stored.windowManagementEnabled.store(windowManagementEnabled, in: defaults) }
     }
 
     var windowManagementShowInLauncher: Bool {
-        didSet {
-            defaults.set(
-                windowManagementShowInLauncher,
-                forKey: Key.windowManagementShowInLauncher.rawValue)
-        }
+        didSet { Stored.windowManagementShowInLauncher.store(windowManagementShowInLauncher, in: defaults) }
     }
 
     /// Points between tiled windows and the screen edge; `WindowPlacementEngine` caps it.
     var windowGap: Int {
-        didSet { defaults.set(windowGap, forKey: Key.windowGap.rawValue) }
+        didSet { Stored.windowGap.store(windowGap, in: defaults) }
     }
 
     /// Its own flag: hiding 34 command rows must not also hide the layouts you wrote.
     var windowLayoutsShowInLauncher: Bool {
-        didSet {
-            defaults.set(
-                windowLayoutsShowInLauncher, forKey: Key.windowLayoutsShowInLauncher.rawValue)
-        }
+        didSet { Stored.windowLayoutsShowInLauncher.store(windowLayoutsShowInLauncher, in: defaults) }
     }
 
     var windowRoomsShowInLauncher: Bool {
-        didSet {
-            defaults.set(windowRoomsShowInLauncher, forKey: Key.windowRoomsShowInLauncher.rawValue)
-        }
+        didSet { Stored.windowRoomsShowInLauncher.store(windowRoomsShowInLauncher, in: defaults) }
     }
 
     /// What re-triggering a half does: nothing, step its size, or walk it across the displays.
     var windowCycle: WindowCycle {
-        didSet { defaults.set(windowCycle.rawValue, forKey: Key.windowCycle.rawValue) }
+        didSet { Stored.windowCycle.store(windowCycle, in: defaults) }
     }
 
     var windowWrapsDisplays: Bool {
-        didSet { defaults.set(windowWrapsDisplays, forKey: Key.windowWrapsDisplays.rawValue) }
+        didSet { Stored.windowWrapsDisplays.store(windowWrapsDisplays, in: defaults) }
     }
 
     var windowKeepsProportions: Bool {
-        didSet {
-            defaults.set(windowKeepsProportions, forKey: Key.windowKeepsProportions.rawValue)
-        }
+        didSet { Stored.windowKeepsProportions.store(windowKeepsProportions, in: defaults) }
     }
 
     /// Off means fully off, down to a still-registered shortcut opening nothing.
     var quicklinksEnabled: Bool {
-        didSet { defaults.set(quicklinksEnabled, forKey: Key.quicklinksEnabled.rawValue) }
+        didSet { Stored.quicklinksEnabled.store(quicklinksEnabled, in: defaults) }
     }
 
     var quicklinksShowInLauncher: Bool {
-        didSet {
-            defaults.set(quicklinksShowInLauncher, forKey: Key.quicklinksShowInLauncher.rawValue)
-        }
+        didSet { Stored.quicklinksShowInLauncher.store(quicklinksShowInLauncher, in: defaults) }
     }
 
     /// Off means the Shortcuts tool is never run, down to a bound shortcut running nothing.
     var appleShortcutsEnabled: Bool {
-        didSet { defaults.set(appleShortcutsEnabled, forKey: Key.appleShortcutsEnabled.rawValue) }
+        didSet { Stored.appleShortcutsEnabled.store(appleShortcutsEnabled, in: defaults) }
     }
 
     /// Ask for a new window rather than a tab; off is the macOS default.
     var quicklinkOpensNewWindow: Bool {
-        didSet {
-            defaults.set(quicklinkOpensNewWindow, forKey: Key.quicklinkOpensNewWindow.rawValue)
-        }
+        didSet { Stored.quicklinkOpensNewWindow.store(quicklinkOpensNewWindow, in: defaults) }
     }
 
     var quicklinkPassesSelectedText: Bool {
-        didSet {
-            defaults.set(
-                quicklinkPassesSelectedText, forKey: Key.quicklinkPassesSelectedText.rawValue)
-        }
+        didSet { Stored.quicklinkPassesSelectedText.store(quicklinkPassesSelectedText, in: defaults) }
     }
 
     var quicklinkConfirmsBeforeDelete: Bool {
-        didSet {
-            defaults.set(
-                quicklinkConfirmsBeforeDelete, forKey: Key.quicklinkConfirmsBeforeDelete.rawValue)
-        }
+        didSet { Stored.quicklinkConfirmsBeforeDelete.store(quicklinkConfirmsBeforeDelete, in: defaults) }
     }
 
     /// Whether the support window may reopen itself; off means never ask again.
     var supportRemindersEnabled: Bool {
-        didSet { defaults.set(supportRemindersEnabled, forKey: Key.supportReminders.rawValue) }
+        didSet { Stored.supportRemindersEnabled.store(supportRemindersEnabled, in: defaults) }
     }
 
     /// Whether settings.json mirrors these settings; `AppCore` starts and stops the mirror.
     var settingsFileEnabled: Bool {
-        didSet { defaults.set(settingsFileEnabled, forKey: Key.settingsFileEnabled.rawValue) }
+        didSet { Stored.settingsFileEnabled.store(settingsFileEnabled, in: defaults) }
     }
 
     /// Rows a link from outside may run without asking; only `DeepLinkCoordinator` adds to it.
     var allowedDeepLinks: [String] {
-        didSet { defaults.set(allowedDeepLinks, forKey: Key.allowedDeepLinks.rawValue) }
+        didSet { Stored.allowedDeepLinks.store(allowedDeepLinks, in: defaults) }
     }
 
     /// With no per-app list the bundle follows macOS's languages, so this runs before any lookup.
@@ -731,261 +633,316 @@ final class AppSettings {
     }
 
     init() {
-        // The only feature switch that defaults on, so absence has to outrank a stored `false`.
-        clipboardEnabled =
-            defaults.object(forKey: Key.clipboardEnabled.rawValue) == nil
-            || defaults.bool(forKey: Key.clipboardEnabled.rawValue)
-        // `integer(forKey:)` returns 0 when unset, which no case matches.
-        clipboardTextSearchEnabled = defaults.bool(forKey: Key.clipboardTextSearchEnabled.rawValue)
-        clipboardRetention =
-            ClipboardRetention(rawValue: defaults.integer(forKey: Key.clipboardRetention.rawValue))
-            ?? .threeMonths
-        // Password managers ship excluded, until the user first edits the list.
-        clipboardDisabledApps =
-            defaults.stringArray(forKey: Key.clipboardDisabledApps.rawValue)
-            ?? ["com.apple.keychainaccess", "com.apple.Passwords"]
-        clipboardDefaultAction =
-            defaults.string(forKey: Key.clipboardDefaultAction.rawValue)
-            .flatMap(ClipboardDefaultAction.init) ?? .paste
-        launchAtLogin = defaults.object(forKey: Key.launchAtLogin.rawValue) as? Bool ?? true
-        showInMenuBar =
-            defaults.object(forKey: Key.showInMenuBar.rawValue) == nil
-            || defaults.bool(forKey: Key.showInMenuBar.rawValue)
-        automaticallyCheckForUpdates =
-            defaults.object(forKey: Key.automaticallyCheckForUpdates.rawValue) == nil
-            || defaults.bool(forKey: Key.automaticallyCheckForUpdates.rawValue)
-        hyperKey =
-            defaults.string(forKey: Key.hyperKey.rawValue).flatMap(HyperKeyPhysicalKey.init)
-            ?? .none
-        // Defaults to true, so absence must be distinguished from a stored `false`.
-        hyperKeyIncludesShift =
-            defaults.object(forKey: Key.hyperKeyIncludesShift.rawValue) == nil
-            || defaults.bool(forKey: Key.hyperKeyIncludesShift.rawValue)
-        hyperKeyQuickPress =
-            defaults.string(forKey: Key.hyperKeyQuickPress.rawValue)
-            .flatMap(HyperKeyQuickPress.init)
-            ?? .none
-        hyperKeySecureInputCompatibility = defaults.bool(
-            forKey: Key.hyperKeySecureInputCompatibility.rawValue)
-        emojiSkinTone =
-            defaults.string(forKey: Key.emojiSkinTone.rawValue).flatMap(EmojiSkinTone.init) ?? .none
-        emojiGridColumns =
-            EmojiGridColumns(rawValue: defaults.integer(forKey: Key.emojiGridColumns.rawValue))
-            ?? .default
-        popToRootTimeout = defaults.object(forKey: Key.popToRootTimeout.rawValue) == nil
-            ? .afterNinety
-            : PopToRootTimeout(rawValue: defaults.integer(forKey: Key.popToRootTimeout.rawValue))
-                ?? .afterNinety
-        escapeKeyBehavior =
-            defaults.string(forKey: Key.escapeKeyBehavior.rawValue).flatMap(EscapeKeyBehavior.init)
-            ?? .navigateBackOrClose
-        appearance =
-            defaults.string(forKey: Key.appearance.rawValue).flatMap(AppAppearance.init) ?? .system
+        searchScopes = Stored.searchScopes.load(from: defaults)
+        launcherShowsSuggestions = Stored.launcherShowsSuggestions.load(from: defaults)
+        rootSearchSensitivity = Stored.rootSearchSensitivity.load(from: defaults)
+        clipboardEnabled = Stored.clipboardEnabled.load(from: defaults)
+        clipboardTextSearchEnabled = Stored.clipboardTextSearchEnabled.load(from: defaults)
+        clipboardRetention = Stored.clipboardRetention.load(from: defaults)
+        clipboardDisabledApps = Stored.clipboardDisabledApps.load(from: defaults)
+        clipboardDefaultAction = Stored.clipboardDefaultAction.load(from: defaults)
+        launchAtLogin = Stored.launchAtLogin.load(from: defaults)
+        showInMenuBar = Stored.showInMenuBar.load(from: defaults)
+        automaticallyCheckForUpdates = Stored.automaticallyCheckForUpdates.load(from: defaults)
+        hyperKey = Stored.hyperKey.load(from: defaults)
+        hyperKeyIncludesShift = Stored.hyperKeyIncludesShift.load(from: defaults)
+        hyperKeyQuickPress = Stored.hyperKeyQuickPress.load(from: defaults)
+        hyperKeySecureInputCompatibility = Stored.hyperKeySecureInputCompatibility.load(from: defaults)
+        emojiSkinTone = Stored.emojiSkinTone.load(from: defaults)
+        emojiGridColumns = Stored.emojiGridColumns.load(from: defaults)
+        popToRootTimeout = Stored.popToRootTimeout.load(from: defaults)
+        escapeKeyBehavior = Stored.escapeKeyBehavior.load(from: defaults)
+        appearance = Stored.appearance.load(from: defaults)
         language = Self.storedLanguage
-        calcNumberStyle =
-            defaults.string(forKey: Key.calcNumberStyle.rawValue).flatMap(CalcNumberStyle.init)
-            ?? .system
-        typography = defaults.string(forKey: Key.typography.rawValue).flatMap(AppTypography.init) ?? .system
-        interfaceSize =
-            defaults.string(forKey: Key.interfaceSize.rawValue).flatMap(InterfaceSize.init)
-            ?? .standard
-        compactMode = defaults.bool(forKey: Key.compactMode.rawValue)
-        compactBarCommands =
-            defaults.stringArray(forKey: Key.compactBarCommands.rawValue)
-            .flatMap(CommandID.compactBarCommands(from:)) ?? CommandID.defaultCompactBarCommands
-        // Unset seeds the defaults; a stored empty array is a deliberately cleared list.
-        searchScopes =
-            defaults.stringArray(forKey: Key.searchScopes.rawValue) ?? SearchScopes.defaults
-        launcherShowsSuggestions =
-            defaults.object(forKey: Key.launcherShowsSuggestions.rawValue) == nil
-            || defaults.bool(forKey: Key.launcherShowsSuggestions.rawValue)
-        rootSearchSensitivity =
-            defaults.string(forKey: Key.rootSearchSensitivity.rawValue)
-            .flatMap(SearchSensitivity.init) ?? .default
-        openOnCursorScreen =
-            defaults.object(forKey: Key.openOnCursorScreen.rawValue) == nil
-            || defaults.bool(forKey: Key.openOnCursorScreen.rawValue)
-        dictionaryRecentSources =
-            Array((defaults.stringArray(forKey: Key.dictionaryRecentSources.rawValue) ?? []).prefix(12))
-        dictionaryPreferredSource = defaults.string(forKey: Key.dictionaryPreferredSource.rawValue) ?? ""
-        dictionaryPronunciationSource =
-            defaults.string(forKey: Key.dictionaryPronunciationSource.rawValue) ?? "nativeSpeech"
-        dictionaryPronunciationSlow = defaults.bool(forKey: Key.dictionaryPronunciationSlow.rawValue)
-        dictionaryPronunciationVoice = defaults.string(forKey: Key.dictionaryPronunciationVoice.rawValue) ?? ""
-        dictionaryPronunciationAccent = defaults.string(forKey: Key.dictionaryPronunciationAccent.rawValue) ?? ""
-        autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
-        paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
-        animationsEnabled =
-            defaults.object(forKey: Key.animationsEnabled.rawValue) == nil
-            || defaults.bool(forKey: Key.animationsEnabled.rawValue)
-        palettePositions =
-            defaults.dictionary(forKey: Key.palettePosition.rawValue)
-            as? [String: [Double]] ?? [:]
-        paletteExpandedCenterDisplays =
-            Set(defaults.stringArray(forKey: Key.paletteExpandedCenterDisplays.rawValue) ?? [])
-        fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
-        // Unset seeds home; a stored empty array is a cleared list that searches nothing.
-        fileSearchScopes =
-            defaults.stringArray(forKey: Key.fileSearchScopes.rawValue)
-            ?? FileSearchScope.defaultScopes
-        fileSearchIgnorePatterns =
-            defaults.stringArray(forKey: Key.fileSearchIgnorePatterns.rawValue) ?? []
-        fileSearchRemovedDefaultPatterns =
-            defaults.stringArray(forKey: Key.fileSearchRemovedDefaultPatterns.rawValue) ?? []
-        fileSearchDocumentContentEnabled = defaults.bool(forKey: Key.fileSearchDocumentContentEnabled.rawValue)
-        fileSearchImageContentEnabled = defaults.bool(forKey: Key.fileSearchImageContentEnabled.rawValue)
-        fileSearchShowInLauncher =
-            defaults.object(forKey: Key.fileSearchShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.fileSearchShowInLauncher.rawValue)
-        notesEnabled = defaults.bool(forKey: Key.notesEnabled.rawValue)
-        dictationEnabled = defaults.bool(forKey: Key.dictationEnabled.rawValue)
-        dictationUsesApple = defaults.bool(forKey: Key.dictationUsesApple.rawValue)
-        dictationModel =
-            defaults.string(forKey: Key.dictationModel.rawValue)
-            .flatMap(DictationModel.init) ?? DictationModel.Family.parakeet.defaultModel
-        dictationRemovesFillerWords = defaults.object(forKey: Key.dictationRemovesFillerWords.rawValue) as? Bool ?? true
-        dictationCleanupEngine = defaults.string(forKey: Key.dictationCleanupEngine.rawValue)
-            ?? DictationCleanupModel.Variant.defaultSmart.rawValue
-        dictationSmartCleanup = defaults.object(forKey: Key.dictationSmartCleanup.rawValue) as? Bool ?? false
-        dictationAdvancedCleanup = defaults.bool(forKey: Key.dictationAdvancedCleanup.rawValue)
-        dictationAutoTransform = defaults.object(forKey: Key.dictationAutoTransform.rawValue) as? Bool ?? false
-        dictationTransformID = defaults.string(forKey: Key.dictationTransformID.rawValue)
-            ?? "D1C70000-0000-4000-8000-000000000001"
-        dictationMicrophone = defaults.string(forKey: Key.dictationMicrophone.rawValue)
-        dictationAdaptsCapitalization =
-            defaults.object(forKey: Key.dictationAdaptsCapitalization.rawValue) == nil
-            || defaults.bool(forKey: Key.dictationAdaptsCapitalization.rawValue)
-        dictationHistoryRetention =
-            ClipboardRetention(rawValue: defaults.integer(forKey: Key.dictationHistoryRetention.rawValue))
-            ?? .threeMonths
-        dictationPlaysSounds =
-            defaults.object(forKey: Key.dictationPlaysSounds.rawValue) == nil
-            || defaults.bool(forKey: Key.dictationPlaysSounds.rawValue)
-        dictationIndicatorStyle =
-            defaults.string(forKey: Key.dictationIndicatorStyle.rawValue)
-            .flatMap(DictationIndicatorStyle.init(rawValue:)) ?? .compact
-        dictationIndicatorPositions =
-            defaults.dictionary(forKey: Key.dictationIndicatorPositions.rawValue) as? [String: [Double]] ?? [:]
-        dictationLivePreview = defaults.bool(forKey: Key.dictationLivePreview.rawValue)
-        dictationTwoLinePreview = defaults.bool(forKey: Key.dictationTwoLinePreview.rawValue)
-        dictationAnimateTranscript = defaults.object(forKey: Key.dictationAnimateTranscript.rawValue) == nil
-            || defaults.bool(forKey: Key.dictationAnimateTranscript.rawValue)
-        dictationIdleIndicator = defaults.bool(forKey: Key.dictationIdleIndicator.rawValue)
-        dictationIdleRelease =
-            defaults.object(forKey: Key.dictationIdleRelease.rawValue)
-            .flatMap { $0 as? Int }
-            .flatMap(DictationIdleRelease.init(rawValue:)) ?? .afterDictation
-        dictationLanguage =
-            defaults.string(forKey: Key.dictationLanguage.rawValue)
-            .flatMap(DictationLanguage.init(rawValue:))?.rawValue
-        notesRendersMarkdown =
-            defaults.object(forKey: Key.notesRendersMarkdown.rawValue) == nil
-            || defaults.bool(forKey: Key.notesRendersMarkdown.rawValue)
-        notesShowsFormattingBar =
-            defaults.object(forKey: Key.notesShowsFormattingBar.rawValue) == nil
-            || defaults.bool(forKey: Key.notesShowsFormattingBar.rawValue)
-        notesShowsInMenuBar = defaults.bool(forKey: Key.notesShowsInMenuBar.rawValue)
-        notesFolder = defaults.string(forKey: Key.notesFolder.rawValue)
-        aiEnabled = defaults.bool(forKey: Key.aiEnabled.rawValue)
-        mcpEnabled = defaults.bool(forKey: Key.mcpEnabled.rawValue)
-        customCommandsEnabled = defaults.bool(forKey: Key.customCommandsEnabled.rawValue)
-        // These default on, so absence must be distinguished from a stored `false`.
-        customCommandsShowInLauncher =
-            defaults.object(forKey: Key.customCommandsShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.customCommandsShowInLauncher.rawValue)
-        snippetsEnabled = defaults.bool(forKey: Key.snippetsEnabled.rawValue)
-        quickActionsEnabled = defaults.bool(forKey: Key.quickActionsEnabled.rawValue)
-        snippetsShowInLauncher =
-            defaults.object(forKey: Key.snippetsShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.snippetsShowInLauncher.rawValue)
-        snippetsFolder = defaults.string(forKey: Key.snippetsFolder.rawValue)
-        // Opt-in, unlike its siblings: until it is asked for, nothing about extensions is loaded.
-        extensionsEnabled = defaults.bool(forKey: Key.extensionsEnabled.rawValue)
-        extensionsShowInLauncher =
-            defaults.object(forKey: Key.extensionsShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.extensionsShowInLauncher.rawValue)
-        extensionPackageManager =
-            defaults.string(forKey: Key.extensionPackageManager.rawValue)
-            .flatMap(ExtensionPackageManager.init(rawValue:)) ?? .automatic
-        extensionCustomSearchPaths =
-            defaults.stringArray(forKey: Key.extensionCustomSearchPaths.rawValue) ?? []
-        // Opt-in, like extensions: until it is asked for, EventKit is never loaded.
-        calendarEnabled = defaults.bool(forKey: Key.calendarEnabled.rawValue)
-        calendarShowInLauncher =
-            defaults.object(forKey: Key.calendarShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.calendarShowInLauncher.rawValue)
-        calendarLauncherLimit =
-            defaults.object(forKey: Key.calendarLauncherLimit.rawValue)
-            .flatMap { $0 as? Int }
-            .flatMap(CalendarLauncherLimit.init(rawValue:)) ?? .five
-        // No case is zero, so an unset key falls through to the default.
-        calendarSpan =
-            MeetingSpan(rawValue: defaults.integer(forKey: Key.calendarSpan.rawValue))
-            ?? .todayAndTomorrow
-        joinWindowMinutes =
-            JoinWindow(rawValue: defaults.integer(forKey: Key.joinWindowMinutes.rawValue)) ?? .five
-        autoJoinMeetings = defaults.bool(forKey: Key.autoJoinMeetings.rawValue)
-        autoJoinConfirms =
-            defaults.object(forKey: Key.autoJoinConfirms.rawValue) == nil
-            || defaults.bool(forKey: Key.autoJoinConfirms.rawValue)
-        autoJoinNamedProvidersOnly = defaults.bool(forKey: Key.autoJoinNamedProvidersOnly.rawValue)
-        cameraPreview = defaults.bool(forKey: Key.cameraPreview.rawValue)
-        meetingBrowserBundleID = defaults.string(forKey: Key.meetingBrowser.rawValue)
-        // Both default to their zero case, so an unset key needs no presence check.
-        menuBarEvents =
-            MenuBarEvents(rawValue: defaults.integer(forKey: Key.menuBarEvents.rawValue)) ?? .today
-        calendarMenuBarDisplay =
-            CalendarMenuBarDisplay(
-                rawValue: defaults.integer(forKey: Key.calendarMenuBarDisplay.rawValue))
-            ?? .disabled
-        menuBarLinkedEventsOnly =
-            defaults.object(forKey: Key.menuBarLinkedEventsOnly.rawValue) == nil
-            || defaults.bool(forKey: Key.menuBarLinkedEventsOnly.rawValue)
-        calendarMenuBarHidesWhenEmpty =
-            defaults.bool(forKey: Key.calendarMenuBarHidesWhenEmpty.rawValue)
-        hideCurrentEvent =
-            defaults.object(forKey: Key.hideCurrentEvent.rawValue)
-            .flatMap { $0 as? Int }
-            .flatMap(HideCurrentEvent.init(rawValue:)) ?? .dontHide
-        navigationEnabled = defaults.bool(forKey: Key.navigationEnabled.rawValue)
-        menuSearchDisabledApps =
-            defaults.stringArray(forKey: Key.menuSearchDisabledApps.rawValue) ?? []
-        menuSearchShowsAppleMenu = defaults.bool(forKey: Key.menuSearchShowsAppleMenu.rawValue)
-        windowManagementEnabled = defaults.bool(forKey: Key.windowManagementEnabled.rawValue)
-        windowManagementShowInLauncher =
-            defaults.object(forKey: Key.windowManagementShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.windowManagementShowInLauncher.rawValue)
-        // Unset reads as 0, which is the intended default anyway — no gap.
-        windowGap = defaults.integer(forKey: Key.windowGap.rawValue)
-        windowCycle =
-            defaults.string(forKey: Key.windowCycle.rawValue).flatMap(WindowCycle.init) ?? .off
-        windowWrapsDisplays =
-            defaults.object(forKey: Key.windowWrapsDisplays.rawValue) == nil
-            || defaults.bool(forKey: Key.windowWrapsDisplays.rawValue)
-        windowKeepsProportions =
-            defaults.object(forKey: Key.windowKeepsProportions.rawValue) == nil
-            || defaults.bool(forKey: Key.windowKeepsProportions.rawValue)
-        windowLayoutsShowInLauncher =
-            defaults.object(forKey: Key.windowLayoutsShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.windowLayoutsShowInLauncher.rawValue)
-        windowRoomsShowInLauncher =
-            defaults.object(forKey: Key.windowRoomsShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.windowRoomsShowInLauncher.rawValue)
-        quicklinksEnabled = defaults.bool(forKey: Key.quicklinksEnabled.rawValue)
-        quicklinksShowInLauncher =
-            defaults.object(forKey: Key.quicklinksShowInLauncher.rawValue) == nil
-            || defaults.bool(forKey: Key.quicklinksShowInLauncher.rawValue)
-        appleShortcutsEnabled = defaults.bool(forKey: Key.appleShortcutsEnabled.rawValue)
-        quicklinkOpensNewWindow = defaults.bool(forKey: Key.quicklinkOpensNewWindow.rawValue)
-        quicklinkPassesSelectedText = defaults.bool(
-            forKey: Key.quicklinkPassesSelectedText.rawValue)
-        quicklinkConfirmsBeforeDelete =
-            defaults.object(forKey: Key.quicklinkConfirmsBeforeDelete.rawValue) == nil
-            || defaults.bool(forKey: Key.quicklinkConfirmsBeforeDelete.rawValue)
-        supportRemindersEnabled =
-            defaults.object(forKey: Key.supportReminders.rawValue) == nil
-            || defaults.bool(forKey: Key.supportReminders.rawValue)
-        settingsFileEnabled = defaults.bool(forKey: Key.settingsFileEnabled.rawValue)
-        allowedDeepLinks = defaults.stringArray(forKey: Key.allowedDeepLinks.rawValue) ?? []
+        calcNumberStyle = Stored.calcNumberStyle.load(from: defaults)
+        typography = Stored.typography.load(from: defaults)
+        interfaceSize = Stored.interfaceSize.load(from: defaults)
+        compactMode = Stored.compactMode.load(from: defaults)
+        compactBarCommands = Stored.compactBarCommands.load(from: defaults)
+        openOnCursorScreen = Stored.openOnCursorScreen.load(from: defaults)
+        dictionaryRecentSources = Stored.dictionaryRecentSources.load(from: defaults)
+        dictionaryPreferredSource = Stored.dictionaryPreferredSource.load(from: defaults)
+        dictionaryPronunciationSource = Stored.dictionaryPronunciationSource.load(from: defaults)
+        dictionaryPronunciationSlow = Stored.dictionaryPronunciationSlow.load(from: defaults)
+        dictionaryPronunciationVoice = Stored.dictionaryPronunciationVoice.load(from: defaults)
+        dictionaryPronunciationAccent = Stored.dictionaryPronunciationAccent.load(from: defaults)
+        autoSwitchInputSourceID = Stored.autoSwitchInputSourceID.load(from: defaults)
+        paletteDraggable = Stored.paletteDraggable.load(from: defaults)
+        animationsEnabled = Stored.animationsEnabled.load(from: defaults)
+        palettePositions = Stored.palettePositions.load(from: defaults)
+        paletteExpandedCenterDisplays = Stored.paletteExpandedCenterDisplays.load(from: defaults)
+        fileSearchEnabled = Stored.fileSearchEnabled.load(from: defaults)
+        fileSearchScopes = Stored.fileSearchScopes.load(from: defaults)
+        fileSearchIgnorePatterns = Stored.fileSearchIgnorePatterns.load(from: defaults)
+        fileSearchRemovedDefaultPatterns = Stored.fileSearchRemovedDefaultPatterns.load(from: defaults)
+        fileSearchDocumentContentEnabled = Stored.fileSearchDocumentContentEnabled.load(from: defaults)
+        fileSearchImageContentEnabled = Stored.fileSearchImageContentEnabled.load(from: defaults)
+        fileSearchShowInLauncher = Stored.fileSearchShowInLauncher.load(from: defaults)
+        notesEnabled = Stored.notesEnabled.load(from: defaults)
+        dictationEnabled = Stored.dictationEnabled.load(from: defaults)
+        dictationModel = Stored.dictationModel.load(from: defaults)
+        dictationUsesApple = Stored.dictationUsesApple.load(from: defaults)
+        dictationRemovesFillerWords = Stored.dictationRemovesFillerWords.load(from: defaults)
+        dictationCleanupEngine = Stored.dictationCleanupEngine.load(from: defaults)
+        dictationSmartCleanup = Stored.dictationSmartCleanup.load(from: defaults)
+        dictationAdvancedCleanup = Stored.dictationAdvancedCleanup.load(from: defaults)
+        dictationAutoTransform = Stored.dictationAutoTransform.load(from: defaults)
+        dictationTransformID = Stored.dictationTransformID.load(from: defaults)
+        dictationMicrophone = Stored.dictationMicrophone.load(from: defaults)
+        dictationAdaptsCapitalization = Stored.dictationAdaptsCapitalization.load(from: defaults)
+        dictationHistoryRetention = Stored.dictationHistoryRetention.load(from: defaults)
+        dictationPlaysSounds = Stored.dictationPlaysSounds.load(from: defaults)
+        dictationIndicatorStyle = Stored.dictationIndicatorStyle.load(from: defaults)
+        dictationIndicatorPositions = Stored.dictationIndicatorPositions.load(from: defaults)
+        dictationLivePreview = Stored.dictationLivePreview.load(from: defaults)
+        dictationTwoLinePreview = Stored.dictationTwoLinePreview.load(from: defaults)
+        dictationAnimateTranscript = Stored.dictationAnimateTranscript.load(from: defaults)
+        dictationIdleIndicator = Stored.dictationIdleIndicator.load(from: defaults)
+        dictationIdleRelease = Stored.dictationIdleRelease.load(from: defaults)
+        dictationLanguage = Stored.dictationLanguage.load(from: defaults)
+        notesRendersMarkdown = Stored.notesRendersMarkdown.load(from: defaults)
+        notesShowsFormattingBar = Stored.notesShowsFormattingBar.load(from: defaults)
+        notesShowsInMenuBar = Stored.notesShowsInMenuBar.load(from: defaults)
+        notesFolder = Stored.notesFolder.load(from: defaults)
+        mcpEnabled = Stored.mcpEnabled.load(from: defaults)
+        aiEnabled = Stored.aiEnabled.load(from: defaults)
+        customCommandsEnabled = Stored.customCommandsEnabled.load(from: defaults)
+        customCommandsShowInLauncher = Stored.customCommandsShowInLauncher.load(from: defaults)
+        snippetsEnabled = Stored.snippetsEnabled.load(from: defaults)
+        quickActionsEnabled = Stored.quickActionsEnabled.load(from: defaults)
+        snippetsShowInLauncher = Stored.snippetsShowInLauncher.load(from: defaults)
+        snippetsFolder = Stored.snippetsFolder.load(from: defaults)
+        navigationEnabled = Stored.navigationEnabled.load(from: defaults)
+        menuSearchDisabledApps = Stored.menuSearchDisabledApps.load(from: defaults)
+        menuSearchShowsAppleMenu = Stored.menuSearchShowsAppleMenu.load(from: defaults)
+        extensionsEnabled = Stored.extensionsEnabled.load(from: defaults)
+        extensionsShowInLauncher = Stored.extensionsShowInLauncher.load(from: defaults)
+        extensionPackageManager = Stored.extensionPackageManager.load(from: defaults)
+        extensionCustomSearchPaths = Stored.extensionCustomSearchPaths.load(from: defaults)
+        calendarEnabled = Stored.calendarEnabled.load(from: defaults)
+        calendarShowInLauncher = Stored.calendarShowInLauncher.load(from: defaults)
+        calendarLauncherLimit = Stored.calendarLauncherLimit.load(from: defaults)
+        calendarSpan = Stored.calendarSpan.load(from: defaults)
+        joinWindowMinutes = Stored.joinWindowMinutes.load(from: defaults)
+        autoJoinMeetings = Stored.autoJoinMeetings.load(from: defaults)
+        autoJoinConfirms = Stored.autoJoinConfirms.load(from: defaults)
+        autoJoinNamedProvidersOnly = Stored.autoJoinNamedProvidersOnly.load(from: defaults)
+        cameraPreview = Stored.cameraPreview.load(from: defaults)
+        meetingBrowserBundleID = Stored.meetingBrowserBundleID.load(from: defaults)
+        menuBarEvents = Stored.menuBarEvents.load(from: defaults)
+        calendarMenuBarDisplay = Stored.calendarMenuBarDisplay.load(from: defaults)
+        menuBarLinkedEventsOnly = Stored.menuBarLinkedEventsOnly.load(from: defaults)
+        calendarMenuBarHidesWhenEmpty = Stored.calendarMenuBarHidesWhenEmpty.load(from: defaults)
+        hideCurrentEvent = Stored.hideCurrentEvent.load(from: defaults)
+        windowManagementEnabled = Stored.windowManagementEnabled.load(from: defaults)
+        windowManagementShowInLauncher = Stored.windowManagementShowInLauncher.load(from: defaults)
+        windowGap = Stored.windowGap.load(from: defaults)
+        windowLayoutsShowInLauncher = Stored.windowLayoutsShowInLauncher.load(from: defaults)
+        windowRoomsShowInLauncher = Stored.windowRoomsShowInLauncher.load(from: defaults)
+        windowCycle = Stored.windowCycle.load(from: defaults)
+        windowWrapsDisplays = Stored.windowWrapsDisplays.load(from: defaults)
+        windowKeepsProportions = Stored.windowKeepsProportions.load(from: defaults)
+        quicklinksEnabled = Stored.quicklinksEnabled.load(from: defaults)
+        quicklinksShowInLauncher = Stored.quicklinksShowInLauncher.load(from: defaults)
+        appleShortcutsEnabled = Stored.appleShortcutsEnabled.load(from: defaults)
+        quicklinkOpensNewWindow = Stored.quicklinkOpensNewWindow.load(from: defaults)
+        quicklinkPassesSelectedText = Stored.quicklinkPassesSelectedText.load(from: defaults)
+        quicklinkConfirmsBeforeDelete = Stored.quicklinkConfirmsBeforeDelete.load(from: defaults)
+        supportRemindersEnabled = Stored.supportRemindersEnabled.load(from: defaults)
+        settingsFileEnabled = Stored.settingsFileEnabled.load(from: defaults)
+        allowedDeepLinks = Stored.allowedDeepLinks.load(from: defaults)
     }
+}
+
+/// Every persisted preference: its key, its default and how it is stored.
+@MainActor
+private enum Stored {
+    typealias Key = AppSettingsKey
+
+    static let searchScopes = Preference<[String]>(Key.searchScopes.rawValue, default: SearchScopes.defaults)
+    static let launcherShowsSuggestions = Preference<Bool>(
+        Key.launcherShowsSuggestions.rawValue, default: true)
+    static let rootSearchSensitivity = Preference<SearchSensitivity>(
+        Key.rootSearchSensitivity.rawValue, default: .default)
+    static let clipboardEnabled = Preference<Bool>(Key.clipboardEnabled.rawValue, default: true)
+    static let clipboardTextSearchEnabled = Preference<Bool>(
+        Key.clipboardTextSearchEnabled.rawValue, default: false)
+    static let clipboardRetention = Preference<ClipboardRetention>(
+        Key.clipboardRetention.rawValue, default: .threeMonths)
+    /// Password managers ship excluded, until the user first edits the list.
+    static let clipboardDisabledApps = Preference<[String]>(
+        Key.clipboardDisabledApps.rawValue, default: ["com.apple.keychainaccess", "com.apple.Passwords"])
+    static let clipboardDefaultAction = Preference<ClipboardDefaultAction>(
+        Key.clipboardDefaultAction.rawValue, default: .paste)
+    static let launchAtLogin = Preference<Bool>(Key.launchAtLogin.rawValue, default: true)
+    static let showInMenuBar = Preference<Bool>(Key.showInMenuBar.rawValue, default: true)
+    static let automaticallyCheckForUpdates = Preference<Bool>(
+        Key.automaticallyCheckForUpdates.rawValue, default: true)
+    static let hyperKey = Preference<HyperKeyPhysicalKey>(Key.hyperKey.rawValue, default: .none)
+    static let hyperKeyIncludesShift = Preference<Bool>(Key.hyperKeyIncludesShift.rawValue, default: true)
+    static let hyperKeyQuickPress = Preference<HyperKeyQuickPress>(
+        Key.hyperKeyQuickPress.rawValue, default: .none)
+    static let hyperKeySecureInputCompatibility = Preference<Bool>(
+        Key.hyperKeySecureInputCompatibility.rawValue, default: false)
+    static let emojiSkinTone = Preference<EmojiSkinTone>(Key.emojiSkinTone.rawValue, default: .none)
+    static let emojiGridColumns = Preference<EmojiGridColumns>(
+        Key.emojiGridColumns.rawValue, default: .default)
+    static let popToRootTimeout = Preference<PopToRootTimeout>(
+        Key.popToRootTimeout.rawValue, default: .afterNinety)
+    static let escapeKeyBehavior = Preference<EscapeKeyBehavior>(
+        Key.escapeKeyBehavior.rawValue, default: .navigateBackOrClose)
+    static let appearance = Preference<AppAppearance>(Key.appearance.rawValue, default: .system)
+    static let calcNumberStyle = Preference<CalcNumberStyle>(Key.calcNumberStyle.rawValue, default: .system)
+    static let typography = Preference<AppTypography>(Key.typography.rawValue, default: .system)
+    static let interfaceSize = Preference<InterfaceSize>(Key.interfaceSize.rawValue, default: .standard)
+    static let compactMode = Preference<Bool>(Key.compactMode.rawValue, default: false)
+    static let compactBarCommands = Preference<[CommandID]>(
+        Key.compactBarCommands.rawValue, default: CommandID.defaultCompactBarCommands,
+        read: { $0.stringArray(forKey: $1).flatMap(CommandID.compactBarCommands(from:)) },
+        write: { $0.set($2.map(\.rawValue), forKey: $1) })
+    static let openOnCursorScreen = Preference<Bool>(Key.openOnCursorScreen.rawValue, default: true)
+    static let dictionaryRecentSources = Preference<[String]>(
+        Key.dictionaryRecentSources.rawValue, default: [],
+        read: { $0.stringArray(forKey: $1).map { Array($0.prefix(12)) } },
+        write: { $0.set($2, forKey: $1) })
+    static let dictionaryPreferredSource = Preference<String>(
+        Key.dictionaryPreferredSource.rawValue, default: "")
+    static let dictionaryPronunciationSource = Preference<String>(
+        Key.dictionaryPronunciationSource.rawValue, default: "nativeSpeech")
+    static let dictionaryPronunciationSlow = Preference<Bool>(
+        Key.dictionaryPronunciationSlow.rawValue, default: false)
+    static let dictionaryPronunciationVoice = Preference<String>(
+        Key.dictionaryPronunciationVoice.rawValue, default: "")
+    static let dictionaryPronunciationAccent = Preference<String>(
+        Key.dictionaryPronunciationAccent.rawValue, default: "")
+    static let autoSwitchInputSourceID = Preference<String?>(Key.autoSwitchInputSource.rawValue)
+    static let paletteDraggable = Preference<Bool>(Key.paletteDraggable.rawValue, default: false)
+    static let animationsEnabled = Preference<Bool>(Key.animationsEnabled.rawValue, default: true)
+    static let palettePositions = Preference<[String: [Double]]>(Key.palettePosition.rawValue, default: [:])
+    static let paletteExpandedCenterDisplays = Preference<Set<String>>(
+        Key.paletteExpandedCenterDisplays.rawValue, default: [],
+        read: { $0.stringArray(forKey: $1).map(Set.init) }, write: { $0.set(Array($2), forKey: $1) })
+    static let fileSearchEnabled = Preference<Bool>(Key.fileSearchEnabled.rawValue, default: false)
+    /// Unset seeds home; a stored empty array is a cleared list that searches nothing.
+    static let fileSearchScopes = Preference<[String]>(
+        Key.fileSearchScopes.rawValue, default: FileSearchScope.defaultScopes)
+    static let fileSearchIgnorePatterns = Preference<[String]>(
+        Key.fileSearchIgnorePatterns.rawValue, default: [])
+    static let fileSearchRemovedDefaultPatterns = Preference<[String]>(
+        Key.fileSearchRemovedDefaultPatterns.rawValue, default: [])
+    static let fileSearchDocumentContentEnabled = Preference<Bool>(
+        Key.fileSearchDocumentContentEnabled.rawValue, default: false)
+    static let fileSearchImageContentEnabled = Preference<Bool>(
+        Key.fileSearchImageContentEnabled.rawValue, default: false)
+    static let fileSearchShowInLauncher = Preference<Bool>(
+        Key.fileSearchShowInLauncher.rawValue, default: true)
+    static let notesEnabled = Preference<Bool>(Key.notesEnabled.rawValue, default: false)
+    static let dictationEnabled = Preference<Bool>(Key.dictationEnabled.rawValue, default: false)
+    static let dictationModel = Preference<DictationModel>(
+        Key.dictationModel.rawValue, default: DictationModel.Family.parakeet.defaultModel)
+    static let dictationUsesApple = Preference<Bool>(Key.dictationUsesApple.rawValue, default: false)
+    static let dictationRemovesFillerWords = Preference<Bool>(
+        Key.dictationRemovesFillerWords.rawValue, default: true)
+    static let dictationCleanupEngine = Preference<String>(
+        Key.dictationCleanupEngine.rawValue, default: DictationCleanupModel.Variant.defaultSmart.rawValue)
+    static let dictationSmartCleanup = Preference<Bool>(Key.dictationSmartCleanup.rawValue, default: false)
+    static let dictationAdvancedCleanup = Preference<Bool>(
+        Key.dictationAdvancedCleanup.rawValue, default: false)
+    static let dictationAutoTransform = Preference<Bool>(Key.dictationAutoTransform.rawValue, default: false)
+    static let dictationTransformID = Preference<String>(
+        Key.dictationTransformID.rawValue, default: "D1C70000-0000-4000-8000-000000000001")
+    static let dictationMicrophone = Preference<String?>(Key.dictationMicrophone.rawValue)
+    static let dictationAdaptsCapitalization = Preference<Bool>(
+        Key.dictationAdaptsCapitalization.rawValue, default: true)
+    static let dictationHistoryRetention = Preference<ClipboardRetention>(
+        Key.dictationHistoryRetention.rawValue, default: .threeMonths)
+    static let dictationPlaysSounds = Preference<Bool>(Key.dictationPlaysSounds.rawValue, default: true)
+    static let dictationIndicatorStyle = Preference<DictationIndicatorStyle>(
+        Key.dictationIndicatorStyle.rawValue, default: .compact)
+    static let dictationIndicatorPositions = Preference<[String: [Double]]>(
+        Key.dictationIndicatorPositions.rawValue, default: [:])
+    static let dictationLivePreview = Preference<Bool>(Key.dictationLivePreview.rawValue, default: false)
+    static let dictationTwoLinePreview = Preference<Bool>(
+        Key.dictationTwoLinePreview.rawValue, default: false)
+    static let dictationAnimateTranscript = Preference<Bool>(
+        Key.dictationAnimateTranscript.rawValue, default: true)
+    static let dictationIdleIndicator = Preference<Bool>(Key.dictationIdleIndicator.rawValue, default: false)
+    static let dictationIdleRelease = Preference<DictationIdleRelease>(
+        Key.dictationIdleRelease.rawValue, default: .afterDictation)
+    /// A language Tinycast no longer offers reads as nil, so the system language applies.
+    static let dictationLanguage = Preference<String?>(
+        Key.dictationLanguage.rawValue, default: nil,
+        read: { $0.string(forKey: $1).map { DictationLanguage(rawValue: $0)?.rawValue } },
+        write: { $0.set($2, forKey: $1) })
+    static let notesRendersMarkdown = Preference<Bool>(Key.notesRendersMarkdown.rawValue, default: true)
+    static let notesShowsFormattingBar = Preference<Bool>(Key.notesShowsFormattingBar.rawValue, default: true)
+    static let notesShowsInMenuBar = Preference<Bool>(Key.notesShowsInMenuBar.rawValue, default: false)
+    static let notesFolder = Preference<String?>(Key.notesFolder.rawValue)
+    static let mcpEnabled = Preference<Bool>(Key.mcpEnabled.rawValue, default: false)
+    static let aiEnabled = Preference<Bool>(Key.aiEnabled.rawValue, default: false)
+    static let customCommandsEnabled = Preference<Bool>(Key.customCommandsEnabled.rawValue, default: false)
+    static let customCommandsShowInLauncher = Preference<Bool>(
+        Key.customCommandsShowInLauncher.rawValue, default: true)
+    static let snippetsEnabled = Preference<Bool>(Key.snippetsEnabled.rawValue, default: false)
+    static let quickActionsEnabled = Preference<Bool>(Key.quickActionsEnabled.rawValue, default: false)
+    static let snippetsShowInLauncher = Preference<Bool>(Key.snippetsShowInLauncher.rawValue, default: true)
+    static let snippetsFolder = Preference<String?>(Key.snippetsFolder.rawValue)
+    static let navigationEnabled = Preference<Bool>(Key.navigationEnabled.rawValue, default: false)
+    static let menuSearchDisabledApps = Preference<[String]>(Key.menuSearchDisabledApps.rawValue, default: [])
+    static let menuSearchShowsAppleMenu = Preference<Bool>(
+        Key.menuSearchShowsAppleMenu.rawValue, default: false)
+    /// Opt-in, unlike its siblings: until it is asked for, nothing about extensions is loaded.
+    static let extensionsEnabled = Preference<Bool>(Key.extensionsEnabled.rawValue, default: false)
+    static let extensionsShowInLauncher = Preference<Bool>(
+        Key.extensionsShowInLauncher.rawValue, default: true)
+    static let extensionPackageManager = Preference<ExtensionPackageManager>(
+        Key.extensionPackageManager.rawValue, default: .automatic)
+    static let extensionCustomSearchPaths = Preference<[String]>(
+        Key.extensionCustomSearchPaths.rawValue, default: [])
+    /// Opt-in, like extensions: until it is asked for, EventKit is never loaded.
+    static let calendarEnabled = Preference<Bool>(Key.calendarEnabled.rawValue, default: false)
+    static let calendarShowInLauncher = Preference<Bool>(Key.calendarShowInLauncher.rawValue, default: true)
+    static let calendarLauncherLimit = Preference<CalendarLauncherLimit>(
+        Key.calendarLauncherLimit.rawValue, default: .five)
+    static let calendarSpan = Preference<MeetingSpan>(Key.calendarSpan.rawValue, default: .todayAndTomorrow)
+    static let joinWindowMinutes = Preference<JoinWindow>(Key.joinWindowMinutes.rawValue, default: .five)
+    static let autoJoinMeetings = Preference<Bool>(Key.autoJoinMeetings.rawValue, default: false)
+    static let autoJoinConfirms = Preference<Bool>(Key.autoJoinConfirms.rawValue, default: true)
+    static let autoJoinNamedProvidersOnly = Preference<Bool>(
+        Key.autoJoinNamedProvidersOnly.rawValue, default: false)
+    static let cameraPreview = Preference<Bool>(Key.cameraPreview.rawValue, default: false)
+    static let meetingBrowserBundleID = Preference<String?>(Key.meetingBrowser.rawValue)
+    static let menuBarEvents = Preference<MenuBarEvents>(Key.menuBarEvents.rawValue, default: .today)
+    static let calendarMenuBarDisplay = Preference<CalendarMenuBarDisplay>(
+        Key.calendarMenuBarDisplay.rawValue, default: .disabled)
+    static let menuBarLinkedEventsOnly = Preference<Bool>(Key.menuBarLinkedEventsOnly.rawValue, default: true)
+    static let calendarMenuBarHidesWhenEmpty = Preference<Bool>(
+        Key.calendarMenuBarHidesWhenEmpty.rawValue, default: false)
+    static let hideCurrentEvent = Preference<HideCurrentEvent>(
+        Key.hideCurrentEvent.rawValue, default: .dontHide)
+    static let windowManagementEnabled = Preference<Bool>(
+        Key.windowManagementEnabled.rawValue, default: false)
+    static let windowManagementShowInLauncher = Preference<Bool>(
+        Key.windowManagementShowInLauncher.rawValue, default: true)
+    static let windowGap = Preference<Int>(Key.windowGap.rawValue, default: 0)
+    static let windowLayoutsShowInLauncher = Preference<Bool>(
+        Key.windowLayoutsShowInLauncher.rawValue, default: true)
+    static let windowRoomsShowInLauncher = Preference<Bool>(
+        Key.windowRoomsShowInLauncher.rawValue, default: true)
+    static let windowCycle = Preference<WindowCycle>(Key.windowCycle.rawValue, default: .off)
+    static let windowWrapsDisplays = Preference<Bool>(Key.windowWrapsDisplays.rawValue, default: true)
+    static let windowKeepsProportions = Preference<Bool>(Key.windowKeepsProportions.rawValue, default: true)
+    static let quicklinksEnabled = Preference<Bool>(Key.quicklinksEnabled.rawValue, default: false)
+    static let quicklinksShowInLauncher = Preference<Bool>(
+        Key.quicklinksShowInLauncher.rawValue, default: true)
+    static let appleShortcutsEnabled = Preference<Bool>(Key.appleShortcutsEnabled.rawValue, default: false)
+    static let quicklinkOpensNewWindow = Preference<Bool>(
+        Key.quicklinkOpensNewWindow.rawValue, default: false)
+    static let quicklinkPassesSelectedText = Preference<Bool>(
+        Key.quicklinkPassesSelectedText.rawValue, default: false)
+    static let quicklinkConfirmsBeforeDelete = Preference<Bool>(
+        Key.quicklinkConfirmsBeforeDelete.rawValue, default: true)
+    static let supportRemindersEnabled = Preference<Bool>(Key.supportReminders.rawValue, default: true)
+    static let settingsFileEnabled = Preference<Bool>(Key.settingsFileEnabled.rawValue, default: false)
+    static let allowedDeepLinks = Preference<[String]>(Key.allowedDeepLinks.rawValue, default: [])
 }

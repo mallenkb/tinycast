@@ -42,6 +42,7 @@ value. `[]` removes every shortcut, and omitting the key leaves the current sele
 
 | File | Role |
 | --- | --- |
+| `Settings/Model/Preference.swift` | One `UserDefaults` key with its default and stored form, for `AppSettings` |
 | `Settings/Model/SettingsFileKey.swift` | Every key, in file order; the raw value is its `section.name` path |
 | `Settings/Model/SettingsFileJSON.swift` | An ordered JSON tree, so records print in a readable key order |
 | `Settings/Model/SettingsFileValue.swift` | Value conversions; `SettingsFileRawValue` and `SettingsFileToken` for enums |
@@ -204,7 +205,8 @@ values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
 ## Adding a setting
 
 1. Add the property to its store as usual, with its `AppSettingsKey` and its
-   `SettingsBackupCoverage` entry.
+   `SettingsBackupCoverage` entry. In `AppSettings` that is one `Stored` entry, a `Preference` naming
+   the key, the default and the stored form, loaded in `init` and stored in `didSet`.
 2. Add a `SettingsFileKey` case in pane order, its raw value the `section.name` path.
 3. Bind it in `SettingsFileSchema`; an enum conforms to `SettingsFileRawValue`, or to
    `SettingsFileToken` when its file spelling differs from its raw value.
