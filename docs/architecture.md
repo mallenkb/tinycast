@@ -241,7 +241,8 @@ House idioms for the sharp edges:
 - Raw Carbon and C pointers are decoded to plain values before crossing into actor code (see
   `hotKeyCarbonEventHandler`).
 - `HealthTicker` (`Platform/HealthTicker.swift`) is the one shared timer for periodic health checks, so
-  the event taps do not each own one.
+  the event taps do not each own one. It checks every second while a subscriber is waiting or has
+  just repaired a tap, and every five seconds once ten checks in a row come back clean.
 
 ## The tree
 

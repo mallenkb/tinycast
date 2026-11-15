@@ -305,11 +305,12 @@ final class ModifierTapMonitor: HealthCheckable {
     fileprivate func tapWasDisabled() {
         resetDetectors()
         if let tapPort { CGEvent.tapEnable(tap: tapPort, enable: true) }
+        healthTicker?.wake()
     }
 
-    /// One-second watchdog while something is bound. See docs/features/hotkeys.md#lifecycle.
-    func healthCheck() {
-        guard !bound.isEmpty, sessionActive else { return }
+    /// Watchdog while something is bound. See docs/features/hotkeys.md#lifecycle.
+    func healthCheck() -> Bool {
+        guard !bound.isEmpty, sessionActive else { return true }
         if tapPort == nil {
             installTapIfNeeded()
         } else if !Permissions.isAccessibilityTrusted() {
@@ -318,6 +319,9 @@ final class ModifierTapMonitor: HealthCheckable {
         } else if let tapPort, !CGEvent.tapIsEnabled(tap: tapPort) {
             resetDetectors()
             CGEvent.tapEnable(tap: tapPort, enable: true)
+        } else {
+            return true
         }
+        return false
     }
 }

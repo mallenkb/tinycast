@@ -40,8 +40,10 @@ final class DictationKeyManager: HealthCheckable {
         instanceLock.release()
     }
 
-    func healthCheck() {
+    /// Subscribed only while another copy holds the remap, so every check is a retry.
+    func healthCheck() -> Bool {
         apply()
+        return false
     }
 
     private func apply() {
