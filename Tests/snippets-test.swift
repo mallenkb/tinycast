@@ -797,7 +797,7 @@ struct SnippetsTests {
         var completionCount = 0
         var failureCount = 0
         let completion = DeliveryCompletion(
-            onDelivered: { completionCount += 1 }, onFailed: { failureCount += 1 })
+            onDelivered: { completionCount += 1 }, onFailed: { _ in failureCount += 1 })
         completion.confirm()
         completion.confirm()
         completion.settle()
@@ -806,13 +806,25 @@ struct SnippetsTests {
             completion.isConfirmed && completionCount == 1 && failureCount == 0)
 
         var unconfirmedFailures = 0
-        let unconfirmed = DeliveryCompletion(onFailed: { unconfirmedFailures += 1 })
+        var unconfirmedReason: DeliveryFailure?
+        let unconfirmed = DeliveryCompletion(onFailed: {
+            unconfirmedFailures += 1
+            unconfirmedReason = $0
+        })
         unconfirmed.settle()
         unconfirmed.settle()
         unconfirmed.confirm()
         check(
             "a delivery that returned early reports failure exactly once and stays unconfirmed",
-            !unconfirmed.isConfirmed && unconfirmedFailures == 1)
+            !unconfirmed.isConfirmed && unconfirmedFailures == 1 && unconfirmedReason == .notDelivered)
+
+        var noTargetReason: DeliveryFailure?
+        let noTarget = DeliveryCompletion(onFailed: { noTargetReason = $0 })
+        noTarget.settle(.noTextTarget)
+        noTarget.settle()
+        check(
+            "a delivery with no focused text element reports that reason, not a generic failure",
+            noTargetReason == .noTextTarget)
 
         check(
             "unavailable AX text attributes use the event delivery fallback",
@@ -820,6 +832,9 @@ struct SnippetsTests {
         check(
             "a rejected AX keyword replacement fails closed instead of deleting by events",
             !AccessibilityReplacement.rejected.fallsBackToEvents)
+        check(
+            "no focused text element never falls back to synthesized key events",
+            !AccessibilityReplacement.noTextTarget.fallsBackToEvents)
 
         check(
             "an AX keyword one character behind the event stream remains pending",

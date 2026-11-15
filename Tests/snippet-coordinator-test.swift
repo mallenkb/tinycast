@@ -164,9 +164,12 @@ final class TextInjector {
     func copySelection(from app: NSRunningApplication) async -> String? { nil }
     func deliver(
         _ text: InjectedText, target: InjectionTarget?, expectedKeyword: String?, keywordLength: Int,
-        automaticGeneration: UInt?, onDelivered: @escaping () -> Void
+        automaticGeneration: UInt?, onDelivered: @escaping () -> Void,
+        onFailed: @escaping (DeliveryFailure) -> Void
     ) {}
 }
+
+enum DeliveryFailure { case notDelivered, noTextTarget }
 
 @MainActor
 enum Permissions {
