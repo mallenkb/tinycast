@@ -30,6 +30,7 @@ final class LinkPreviewStore {
     @ObservationIgnored private let cache = NSCache<NSURL, Cached>()
     @ObservationIgnored private let banners = NSCache<NSURL, NSImage>()
     @ObservationIgnored private var bannerGeneration = 0
+    @ObservationIgnored private var previewGeneration = 0
     @ObservationIgnored private let fetchPreview: @Sendable (URL) async -> Preview
     /// Bumped per finished fetch: `NSCache` is invisible to Observation, so readers track this.
     private var revision = 0
@@ -65,6 +66,7 @@ final class LinkPreviewStore {
 
     func purgePreviews() {
         purgeBanners()
+        previewGeneration &+= 1
         cache.removeAllObjects()
     }
 
@@ -87,12 +89,17 @@ final class LinkPreviewStore {
         loadingCount += 1
         defer { loadingCount -= 1 }
         let generation = bannerGeneration
+        let previews = previewGeneration
         let result = await fetchPreview(url)
         guard !Task.isCancelled else { return result }
         var metadata = result
         metadata.image = nil
-        guard generation == bannerGeneration else { return metadata }
+        guard previews == previewGeneration else { return metadata }
         cache.setObject(Cached(result), forKey: url as NSURL, cost: Self.cost(result.icon))
+        guard generation == bannerGeneration else {
+            revision += 1
+            return metadata
+        }
         banners.removeAllObjects()
         if let image = result.image, Self.cost(image) <= Self.bannerBytes {
             banners.setObject(image, forKey: url as NSURL, cost: Self.cost(image))
