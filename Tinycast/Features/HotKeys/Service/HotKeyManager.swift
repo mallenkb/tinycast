@@ -4,33 +4,14 @@ import Foundation
 @MainActor
 @Observable
 final class HotKeyManager {
-    var onTogglePalette: (() -> Void)?
-    var onDictationHoldPressed: (() -> Void)?
-    var onDictationTogglePressed: (() -> Void)?
-    var onDictationHoldReleased: (() -> Void)?
-    var onDictationHoldCancelled: (() -> Void)?
-    var onDictationCancelled: (() -> Void)?
+    var routes = HotKeyRoutes()
     var dictationEnabled = false {
         didSet {
             guard dictationEnabled != oldValue else { return }
-            if !dictationEnabled { onDictationCancelled?() }
+            if !dictationEnabled { routes.dictationCancelled() }
             syncModifierTaps()
         }
     }
-    /// The launcher's own command funnel, so a shortcut and a palette row run the same thing.
-    var onRunCommand: ((CommandID) -> Void)?
-    var onRunCustomCommand: ((UUID) -> Void)?
-    var onRunSystemAction: ((SystemAction.ID) -> Void)?
-    var onRunWindowCommand: ((WindowCommand.ID) -> Void)?
-    var onRunWindowLayout: ((UUID) -> Void)?
-    var onEnterRoom: ((UUID) -> Void)?
-    var onRunCustomWindowSize: ((UUID) -> Void)?
-    var onOpenQuicklink: ((UUID) -> Void)?
-    var onRunDictationTransform: ((UUID) -> Void)?
-    var onRunQuickAction: ((UUID) -> Void)?
-    var onRunAppleShortcut: ((UUID) -> Void)?
-    var onExpandSnippet: ((StoredSnippet.ID) -> Void)?
-    var onRunExtensionCommand: ((String) -> Void)?
     /// Names what only the stores know; the fixed catalogs resolve here. Set in `AppCore.start()`.
     var displayName: ((HotKeyAction) -> String?)?
     /// Whether the action's launcher category is switched on. Set in `AppCore.start()`.
@@ -41,7 +22,7 @@ final class HotKeyManager {
         didSet {
             guard recordingAction != oldValue else { return }
             let recording = recordingAction != nil
-            if recording, dictationEnabled { onDictationHoldCancelled?() }
+            if recording, dictationEnabled { routes.dictationHoldCancelled() }
             if recording { secureInputPressedActions.removeAll(keepingCapacity: true) }
             center.isPaused = recording
             modifierTapMonitor.isPaused = recording
@@ -93,9 +74,11 @@ final class HotKeyManager {
     }
 
     func start(
-        customCommandIDs: Set<UUID>, quicklinkIDs: Set<UUID>, windowLayoutIDs: Set<UUID>,
-        windowRoomIDs: Set<UUID>, customWindowSizeIDs: Set<UUID>, quickActionIDs: Set<UUID>
+        routes: HotKeyRoutes, customCommandIDs: Set<UUID>, quicklinkIDs: Set<UUID>,
+        windowLayoutIDs: Set<UUID>, windowRoomIDs: Set<UUID>, customWindowSizeIDs: Set<UUID>,
+        quickActionIDs: Set<UUID>
     ) {
+        self.routes = routes
         prune(key: boundCustomCommandKey, live: customCommandIDs) { .customCommand(id: $0) }
         prune(key: boundQuicklinkKey, live: quicklinkIDs) { .quicklink(id: $0) }
         prune(key: boundWindowLayoutKey, live: windowLayoutIDs) { .windowLayout(id: $0) }
@@ -116,8 +99,8 @@ final class HotKeyManager {
             perform(action)
         }
         modifierTapMonitor.onHoldPressed = { [weak self] in self?.perform(.dictationHold) }
-        modifierTapMonitor.onHoldReleased = { [weak self] in self?.onDictationHoldReleased?() }
-        modifierTapMonitor.onHoldCancelled = { [weak self] in self?.onDictationHoldCancelled?() }
+        modifierTapMonitor.onHoldReleased = { [weak self] in self?.routes.dictationHoldReleased() }
+        modifierTapMonitor.onHoldCancelled = { [weak self] in self?.routes.dictationHoldCancelled() }
         modifierTapMonitor.start()
         syncModifierTaps()
     }
@@ -191,7 +174,7 @@ final class HotKeyManager {
     func setBinding(_ binding: HotKeyBinding?, for action: HotKeyAction) {
         if action == .dictationHold {
             guard binding?.supportsHold != false else { return }
-            if binding != self.binding(for: action) { onDictationHoldCancelled?() }
+            if binding != self.binding(for: action) { routes.dictationHoldCancelled() }
         }
         let previous = bindings[action]
         clearSecureInputEquivalents()
@@ -299,7 +282,7 @@ final class HotKeyManager {
                 onKeyUp: { [weak self] in
                     isPressed = false
                     if self?.secureInputPressedActions.removeValue(forKey: id) == .dictationHold {
-                        self?.onDictationHoldReleased?()
+                        self?.routes.dictationHoldReleased()
                     }
                 })
             secureInputEquivalentIDs.append(id)
@@ -307,7 +290,7 @@ final class HotKeyManager {
     }
 
     private func clearSecureInputEquivalents() {
-        if secureInputPressedActions.values.contains(.dictationHold) { onDictationHoldCancelled?() }
+        if secureInputPressedActions.values.contains(.dictationHold) { routes.dictationHoldCancelled() }
         secureInputPressedActions.removeAll(keepingCapacity: true)
         secureInputEquivalentIDs.forEach { center.unregister(id: $0) }
         secureInputEquivalentIDs.removeAll(keepingCapacity: true)
@@ -409,7 +392,7 @@ final class HotKeyManager {
         center.register(
             id: action.defaultsKey, shortcut: shortcut,
             onKeyDown: { [weak self] _ in self?.perform(action) },
-            onKeyUp: action == .dictationHold ? { [weak self] in self?.onDictationHoldReleased?() } : nil)
+            onKeyUp: action == .dictationHold ? { [weak self] in self?.routes.dictationHoldReleased() } : nil)
     }
 
     /// Rebuilt wholesale, so the map can't drift from what is on disk.
@@ -440,24 +423,24 @@ final class HotKeyManager {
         // The category switch, the way each feature switch already guards its own funnel.
         guard allowsAction?(action) ?? true else { return }
         switch action {
-        case .togglePalette: onTogglePalette?()
-        case .dictationHold: if dictationEnabled { onDictationHoldPressed?() }
-        case .dictationToggle, .dictationToggleAlternate: if dictationEnabled { onDictationTogglePressed?() }
-        case .command(let id): onRunCommand?(id)
+        case .togglePalette: routes.togglePalette()
+        case .dictationHold: if dictationEnabled { routes.dictationHoldPressed() }
+        case .dictationToggle, .dictationToggleAlternate: if dictationEnabled { routes.dictationTogglePressed() }
+        case .command(let id): routes.runCommand(id)
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)
         case .settingsPane(let bundleID): AppLauncher.openSettingsPane(bundleID: bundleID)
-        case .customCommand(let id): onRunCustomCommand?(id)
-        case .systemAction(let id): onRunSystemAction?(id)
-        case .windowCommand(let id): onRunWindowCommand?(id)
-        case .windowLayout(let id): onRunWindowLayout?(id)
-        case .windowRoom(let id): onEnterRoom?(id)
-        case .customWindowSize(let id): onRunCustomWindowSize?(id)
-        case .quicklink(let id): onOpenQuicklink?(id)
-        case .dictationTransform(let id): if dictationEnabled { onRunDictationTransform?(id) }
-        case .quickAction(let id): onRunQuickAction?(id)
-        case .appleShortcut(let id): onRunAppleShortcut?(id)
-        case .snippet(let id): onExpandSnippet?(id)
-        case .extensionCommand(let entryID): onRunExtensionCommand?(entryID)
+        case .customCommand(let id): routes.runCustomCommand(id)
+        case .systemAction(let id): routes.runSystemAction(id)
+        case .windowCommand(let id): routes.runWindowCommand(id)
+        case .windowLayout(let id): routes.runWindowLayout(id)
+        case .windowRoom(let id): routes.enterRoom(id)
+        case .customWindowSize(let id): routes.runCustomWindowSize(id)
+        case .quicklink(let id): routes.openQuicklink(id)
+        case .dictationTransform(let id): if dictationEnabled { routes.runDictationTransform(id) }
+        case .quickAction(let id): routes.runQuickAction(id)
+        case .appleShortcut(let id): routes.runAppleShortcut(id)
+        case .snippet(let id): routes.expandSnippet(id)
+        case .extensionCommand(let entryID): routes.runExtensionCommand(entryID)
         }
     }
 
