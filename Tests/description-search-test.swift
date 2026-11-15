@@ -345,7 +345,7 @@ struct DescriptionSearchTests {
             + (0..<300).map {
                 ClipboardItem(imagePath: "/fixture/new-\($0).png", createdAt: now, sourceBundleID: nil)
             }
-        _ = ClipboardStore.importStoredItems(inDatabaseAt: store.dbURL, entries)
+        _ = ClipboardDatabase.importStoredItems(inDatabaseAt: store.dbURL, entries)
         for entry in entries {
             expect(
                 store.setExtractedText(
@@ -370,7 +370,7 @@ struct DescriptionSearchTests {
             id: UUID(), kind: .text, text: "meeting notes", imagePath: nil, createdAt: yesterday,
             sourceBundleID: nil)
         let file = ClipboardItem(filePath: "/fixture/invoice.pdf", createdAt: yesterday, sourceBundleID: nil)
-        _ = ClipboardStore.importStoredItems(inDatabaseAt: store.dbURL, [text, file])
+        _ = ClipboardDatabase.importStoredItems(inDatabaseAt: store.dbURL, [text, file])
         let texts = await settled(store, "text from yesterday containing meeting notes")
         expect(texts.map(\.id) == [text.id], "ordinary copied text works without OCR")
         let files = await settled(store, "files named invoice")
@@ -392,7 +392,7 @@ struct DescriptionSearchTests {
                 id: UUID(), kind: .text, text: value, imagePath: nil, createdAt: yesterday,
                 sourceBundleID: nil)
         }
-        _ = ClipboardStore.importStoredItems(inDatabaseAt: store.dbURL, links)
+        _ = ClipboardDatabase.importStoredItems(inDatabaseAt: store.dbURL, links)
         let matching = await settled(store, "links from flaticon")
         expect(
             Set(matching.map(\.id)) == Set(links.prefix(2).map(\.id)), "brand matches URL hosts only")
@@ -475,7 +475,7 @@ struct DescriptionSearchTests {
         let later = copied("Invoice", at: yesterday.end)
         let items = [literal, note, file, image, movie, later] + domains
         expect(
-            ClipboardStore.importStoredItems(inDatabaseAt: store.dbURL, items) == items.count,
+            ClipboardDatabase.importStoredItems(inDatabaseAt: store.dbURL, items) == items.count,
             "interpreted clipboard fixtures imported")
         expect(store.setTextSearchEnabled(true), "recognized text search enabled")
         expect(

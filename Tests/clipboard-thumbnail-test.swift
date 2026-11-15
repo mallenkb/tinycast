@@ -232,7 +232,7 @@ struct ClipboardThumbnailTests {
         let staged = dir.appendingPathComponent("staged-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: staged, withIntermediateDirectories: true)
         let blob = image(name, color: color, in: staged)
-        ClipboardStore.importStoredItems(
+        ClipboardDatabase.importStoredItems(
             inDatabaseAt: store.dbURL, adoptingImagesInto: store.imagesDir,
             [ClipboardItem(imagePath: blob.path, sourceBundleID: nil)])
         store.load()

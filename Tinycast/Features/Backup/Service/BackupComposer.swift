@@ -91,7 +91,7 @@ enum BackupComposer {
         var written = 0
         var missing = 0
         var failure: Error?
-        ClipboardStore.forEachStoredItem(inDatabaseAt: database) { item in
+        ClipboardDatabase.forEachStoredItem(inDatabaseAt: database) { item in
             guard failure == nil else { return }
             do {
                 guard let portable = try portableItem(item, into: bundle) else {
