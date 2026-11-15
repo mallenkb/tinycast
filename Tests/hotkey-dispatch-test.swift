@@ -14,6 +14,7 @@ struct HotKeyDispatchTest {
 
     static func main() {
         for includesShift in [false, true] { dispatch(includesShift: includesShift) }
+        routing()
         print("\(checks) dispatch checks; \(failures) failures")
         if failures > 0 { exit(1) }
     }
@@ -28,10 +29,9 @@ struct HotKeyDispatchTest {
         var releases = 0
         var cancellations = 0
         var palette = 0
-        manager.onDictationHoldPressed = { presses += 1 }
-        manager.onDictationHoldReleased = { releases += 1 }
-        manager.onDictationHoldCancelled = { cancellations += 1 }
-        manager.onTogglePalette = { palette += 1 }
+        manager.routes = HotKeyRoutes(
+            togglePalette: { palette += 1 }, dictationHoldPressed: { presses += 1 },
+            dictationHoldReleased: { releases += 1 }, dictationHoldCancelled: { cancellations += 1 })
         manager.dictationEnabled = true
         let chord = KeyShortcut.hyperChord(includesShift: includesShift)
         let hyper = KeyShortcut(
@@ -43,7 +43,7 @@ struct HotKeyDispatchTest {
         normal.onKeyUp?()
         check("normal dictation has both callbacks", presses == 1 && releases == 1)
         var toggles = 0
-        manager.onDictationTogglePressed = { toggles += 1 }
+        manager.routes.dictationTogglePressed = { toggles += 1 }
         let toggle = KeyShortcut(carbonKeyCode: kVK_ANSI_T, carbonModifiers: controlKey)
         manager.setBinding(.combo(toggle), for: .dictationToggle)
         let toggleEntry = center.entries[HotKeyAction.dictationToggle.defaultsKey]!
@@ -130,5 +130,34 @@ struct HotKeyDispatchTest {
         check(
             "Hyper selects the other action in a shared registration",
             palette == 3 && presses == beforePress + 1)
+    }
+
+    static func routing() {
+        let domain = "tinycast.hotkey-dispatch-test.\(UUID())"
+        let defaults = UserDefaults(suiteName: domain)!
+        defer { defaults.removePersistentDomain(forName: domain) }
+        let manager = HotKeyManager(defaults: defaults)
+        let quicklink = UUID()
+        var routed: [String] = []
+        manager.routes = HotKeyRoutes(
+            dictationTogglePressed: { routed.append("toggle") },
+            dictationCancelled: { routed.append("cancelled") },
+            runCommand: { routed.append("command \($0.rawValue)") },
+            openQuicklink: { routed.append("quicklink \($0 == quicklink)") },
+            expandSnippet: { routed.append("snippet \($0)") })
+        manager.perform(.command(.sample))
+        manager.perform(.quicklink(id: quicklink))
+        manager.perform(.snippet(id: "s"))
+        manager.perform(.dictationToggle)
+        check(
+            "each action reaches its own route",
+            routed == ["command sample", "quicklink true", "snippet s"])
+        manager.dictationEnabled = true
+        manager.perform(.dictationToggle)
+        manager.dictationEnabled = false
+        check("dictation routes follow the switch", routed.suffix(2) == ["toggle", "cancelled"])
+        manager.allowsAction = { $0 != .command(.sample) }
+        manager.perform(.command(.sample))
+        check("a switched-off category never reaches its route", routed.count == 5)
     }
 }

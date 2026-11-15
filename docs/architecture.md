@@ -115,7 +115,7 @@ launch. That is the one wiring point, and `start` reads as the app's whole boot 
 
 **Feature actions live on that feature's coordinator, and a view must never reach past a coordinator
 into a store to mutate it.** That is the rule; `AppCore` holds only the closure wiring that connects a
-hotkey to a coordinator. Views inject `AppCore` through `@Environment` and use it as the *locator* for
+hotkey to a coordinator: `start()` builds one `HotKeyRoutes` and hands it to `HotKeyManager.start`. Views inject `AppCore` through `@Environment` and use it as the *locator* for
 those coordinators — `core.quicklinkCoordinator.deleteQuicklink(…)` is the shape, and the alternative
 is injecting fifteen coordinators separately for no gain. Reading a store off `AppCore` to render it is
 fine too; deciding something with one is what the rule forbids. `showNotice`, `confirm`,

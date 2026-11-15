@@ -484,7 +484,6 @@ final class AppCore {
             hotKeys.modifierTapMonitor.healthTicker = healthTicker
             snippetListener.healthTicker = healthTicker
 
-            hotKeys.onTogglePalette = { [weak self] in self?.paletteCoordinator.togglePalette() }
             hotKeys.dictationEnabled = settings.dictationEnabled
             dictationCoordinator.onRecordingStarted = { [weak self] in
                 self?.dictationWriting.beginRecording()
@@ -500,52 +499,8 @@ final class AppCore {
                 guard let self else { return text }
                 return await self.dictationWriting.process(text, isEnglish: isEnglish)
             }
-            hotKeys.onRunDictationTransform = { [weak self] id in
-                guard let self, let transform = dictationTransforms.transforms.first(where: { $0.id == id }),
-                      let entry = dictationHistory.entries.first else { return }
-                dictationWriting.apply(transform, to: entry) { [weak self] in
-                    self?.launcherCoordinator.runCommand(.dictationHistory)
-                }
-            }
-            hotKeys.onDictationHoldPressed = { [weak self] in self?.dictationCoordinator.pressed(.pushToTalk) }
-            hotKeys.onDictationTogglePressed = { [weak self] in self?.dictationCoordinator.pressed(.toggle) }
-            hotKeys.onDictationHoldReleased = { [weak self] in self?.dictationCoordinator.releasedHold() }
-            hotKeys.onDictationHoldCancelled = { [weak self] in self?.dictationCoordinator.cancelHold() }
-            hotKeys.onDictationCancelled = { [weak self] in self?.dictationCoordinator.cancel() }
             if settings.dictationEnabled && settings.dictationIdleIndicator {
                 dictationCoordinator.applyIdleIndicator()
-            }
-            hotKeys.onRunCommand = { [weak self] id in self?.launcherCoordinator.runCommand(id) }
-            hotKeys.onRunCustomCommand = { [weak self] id in
-                self?.customCommandCoordinator.runCustomCommand(id: id)
-            }
-            hotKeys.onRunSystemAction = { [weak self] id in
-                self?.systemActionCoordinator.runSystemAction(id: id)
-            }
-            hotKeys.onRunWindowCommand = { [weak self] id in
-                self?.windowCommandCoordinator.runWindowCommand(id: id)
-            }
-            hotKeys.onRunWindowLayout = { [weak self] id in
-                self?.windowLayoutCoordinator.runWindowLayout(id: id)
-            }
-            hotKeys.onEnterRoom = { [weak self] id in self?.roomCoordinator.enterRoom(id: id) }
-            hotKeys.onRunCustomWindowSize = { [weak self] id in
-                self?.windowCommandCoordinator.runCustomWindowSize(id: id)
-            }
-            hotKeys.onOpenQuicklink = { [weak self] id in
-                self?.quicklinkCoordinator.openQuicklinkFromHotKey(id: id)
-            }
-            hotKeys.onRunQuickAction = { [weak self] id in
-                self?.quickActionCoordinator.run(id: id)
-            }
-            hotKeys.onRunAppleShortcut = { [weak self] id in
-                self?.appleShortcutCoordinator.run(id: id)
-            }
-            hotKeys.onExpandSnippet = { [weak self] id in
-                self?.snippetCoordinator.expandSnippetFromHotKey(id: id)
-            }
-            hotKeys.onRunExtensionCommand = { [weak self] entryID in
-                self?.extensionCoordinator.runExtensionCommand(entryID: entryID)
             }
             extensions.onDidUninstall = { [weak self] entryIDs in
                 self?.extensionCoordinator.removeExtensionReferences(entryIDs: entryIDs)
@@ -571,6 +526,7 @@ final class AppCore {
                 self?.systemActionCoordinator.presentSystemActionFailure(id: id, failure: failure)
             }
             hotKeys.start(
+                routes: hotKeyRoutes(),
                 customCommandIDs: Set(customCommands.commands.map(\.id)),
                 quicklinkIDs: Set(quicklinks.quicklinks.map(\.id)),
                 windowLayoutIDs: Set(windowLayouts.layouts.map(\.id)),
@@ -648,6 +604,41 @@ final class AppCore {
             extensionCoordinator.runDeepLink(link)
         case .storeInstall(let install):
             extensionCoordinator.showStoreInstall(install)
+        }
+    }
+
+    private func hotKeyRoutes() -> HotKeyRoutes {
+        HotKeyRoutes(
+            togglePalette: { [weak self] in self?.paletteCoordinator.togglePalette() },
+            dictationHoldPressed: { [weak self] in self?.dictationCoordinator.pressed(.pushToTalk) },
+            dictationTogglePressed: { [weak self] in self?.dictationCoordinator.pressed(.toggle) },
+            dictationHoldReleased: { [weak self] in self?.dictationCoordinator.releasedHold() },
+            dictationHoldCancelled: { [weak self] in self?.dictationCoordinator.cancelHold() },
+            dictationCancelled: { [weak self] in self?.dictationCoordinator.cancel() },
+            runCommand: { [weak self] in self?.launcherCoordinator.runCommand($0) },
+            runCustomCommand: { [weak self] in self?.customCommandCoordinator.runCustomCommand(id: $0) },
+            runSystemAction: { [weak self] in self?.systemActionCoordinator.runSystemAction(id: $0) },
+            runWindowCommand: { [weak self] in self?.windowCommandCoordinator.runWindowCommand(id: $0) },
+            runWindowLayout: { [weak self] in self?.windowLayoutCoordinator.runWindowLayout(id: $0) },
+            enterRoom: { [weak self] in self?.roomCoordinator.enterRoom(id: $0) },
+            runCustomWindowSize: { [weak self] in
+                self?.windowCommandCoordinator.runCustomWindowSize(id: $0)
+            },
+            openQuicklink: { [weak self] in self?.quicklinkCoordinator.openQuicklinkFromHotKey(id: $0) },
+            runDictationTransform: { [weak self] in self?.runDictationTransform(id: $0) },
+            runQuickAction: { [weak self] in self?.quickActionCoordinator.run(id: $0) },
+            runAppleShortcut: { [weak self] in self?.appleShortcutCoordinator.run(id: $0) },
+            expandSnippet: { [weak self] in self?.snippetCoordinator.expandSnippetFromHotKey(id: $0) },
+            runExtensionCommand: { [weak self] in
+                self?.extensionCoordinator.runExtensionCommand(entryID: $0)
+            })
+    }
+
+    private func runDictationTransform(id: UUID) {
+        guard let transform = dictationTransforms.transforms.first(where: { $0.id == id }),
+              let entry = dictationHistory.entries.first else { return }
+        dictationWriting.apply(transform, to: entry) { [weak self] in
+            self?.launcherCoordinator.runCommand(.dictationHistory)
         }
     }
 
