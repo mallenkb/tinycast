@@ -365,7 +365,7 @@ final class DictationCoordinator {
                             learnCorrection(using: probe, recognized: formatted, editor: destination?.ownEditor)
                         }
                     },
-                    onFailed: { [weak self] in
+                    onFailed: { [weak self] _ in
                         guard let self, token == current else { return }
                         finishTranscript(text, original: original, pasteFailed: true)
                     })
