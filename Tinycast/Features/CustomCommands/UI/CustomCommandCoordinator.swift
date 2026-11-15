@@ -219,7 +219,7 @@ final class CustomCommandCoordinator {
         panel.allowsMultipleSelection = false
         panel.prompt = String(localized: "Import")
         panel.message = String(localized: "Choose a folder of Raycast script commands.")
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         guard panel.runModal() == .OK else { return nil }
         return panel.url
     }

@@ -502,7 +502,7 @@ final class AIChatCoordinator {
         panel.prompt = String(localized: "Attach")
         panel.message = String(
             localized: "Choose images, PDFs or text files to send with your next message.")
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         guard panel.runModal() == .OK else { return }
         attach(files: panel.urls, to: chat)
     }
