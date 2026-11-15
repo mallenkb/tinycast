@@ -33,8 +33,6 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
 
     /// Off means nothing scanned, published or held: the feature costs an unused stored property.
     private(set) var isEnabled = false
-    /// Whether `installed` reflects the disk yet; before the first scan its emptiness means nothing.
-    private(set) var hasScanned = false
     /// Whether the commands reach the launcher at all; independent of `isEnabled`.
     private(set) var showsInLauncher = true
 
@@ -91,7 +89,6 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
             backgroundTask?.cancel()
             backgroundTask = nil
             installed = []
-            hasScanned = false
             appIndex?.setExtensionCommands([])
             return
         }
@@ -135,7 +132,6 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
         guard isEnabled else { return }
         let found = await Task.detached(priority: .utility) { ExtensionCatalog.scan() }.value
         guard isEnabled else { return }
-        hasScanned = true
         if found != installed {
             installed = found
             publishLauncherEntries()

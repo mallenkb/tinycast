@@ -779,9 +779,7 @@ run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
                            Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
                            Tinycast/Features/Settings/Service/SettingsFileRepository.swift \
                            Tinycast/Platform/AppPaths.swift
-run sync-test              Tinycast/Features/Sync/Model/*.swift \
-                           Tinycast/Features/Settings/Model/SettingsFileKey.swift
-run backup-archive-test    Tinycast/Platform/AppPaths.swift \
+run backup-archive-test   Tinycast/Platform/AppPaths.swift \
                            Tinycast/Features/Backup/Model/BackupArchive.swift \
                            Tinycast/Features/Backup/Model/BackupBundle.swift \
                            Tinycast/Features/Backup/Model/BackupCategory.swift \

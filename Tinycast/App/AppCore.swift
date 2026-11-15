@@ -72,10 +72,6 @@ final class AppCore {
     @ObservationIgnored private var settingsFile: SettingsFileRepository?
     /// The file's launcher items, kept to apply a waiting record once its app is installed.
     @ObservationIgnored private var launcherSettingsFile: LauncherSettingsFile?
-    let cloudSync = CloudSyncState(
-        isSupported: CloudKitEntitlement.allows(container: CloudSyncManager.containerIdentifier))
-    /// Syncs through iCloud; nil while the iCloud Sync pane's switch is off.
-    @ObservationIgnored private(set) var cloudSyncManager: CloudSyncManager?
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
     /// The last verdict `trackChatRoute` acted on; nil until it has read one.
     @ObservationIgnored private var chatsRunTheirOwnTools: Bool?
@@ -313,8 +309,6 @@ final class AppCore {
         injector: textInjector, appIndex: appIndex, hotKeys: hotKeys, favorites: favorites,
         visibility: visibility, ranking: launcherRanking, aliases: aliases,
         paletteCoordinator: paletteCoordinator, core: self)
-    @ObservationIgnored private(set) lazy var cloudSyncCoordinator = CloudSyncCoordinator(
-        settings: settings, core: self)
     @ObservationIgnored private(set) lazy var mcpCoordinator = MCPCoordinator(
         settings: settings, store: mcpSettings, manager: mcp, core: self)
     /// Its own window and lifecycle, like Settings; Quick AI is the palette's half of the feature.
@@ -566,7 +560,6 @@ final class AppCore {
                 } else if let launcherSettingsFile {
                     reportSettingsFileIssues(launcherSettingsFile.applyInstalled())
                 }
-                cloudSyncManager?.retryHeld()
             }
             hotKeys.displayName = { [weak self] action in self?.hotKeyDisplayName(for: action) }
             hotKeys.allowsAction = { [weak self] in self?.allowsHotKeyAction($0) ?? false }
@@ -605,7 +598,6 @@ final class AppCore {
             snippetCoordinator.applySnippetsLauncherPresence()
 
             observeFeatureSwitches()
-            if settings.cloudSyncEnabled { startCloudSync() }
 
             // First launch binds no hotkey, so guide once; the marker is written at show-time.
             if !OnboardingState.hasOnboarded {
@@ -665,15 +657,6 @@ final class AppCore {
         // A disabled feature drops its commands from the launcher; their shortcuts go too.
         guard case .command(let id) = action else { return true }
         return appIndex.isCommandEnabled(id)
-    }
-
-    /// Whether this Mac has what `action` names, so a shortcut from another Mac can bind here.
-    func canBindHotKey(_ action: HotKeyAction) -> Bool {
-        switch action {
-        case .togglePalette, .command, .systemAction, .windowCommand: true
-        case .app(let bundleID): !appIndex.isUninstalled(bundleID: bundleID)
-        default: hotKeyDisplayName(for: action) != nil
-        }
     }
 
     /// The store-backed half of the conflict message; `HotKeyManager` names the catalogs itself.
@@ -783,7 +766,6 @@ final class AppCore {
         dictationCleanup.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
-        cloudSyncManager?.flush()
         clipboardTextIndexer?.stop()
         fileImageContentIndexer.setEnabled(false)
         // HID remaps first: they outlive the process.
@@ -997,9 +979,6 @@ final class AppCore {
             reproject: { $0.extensionCoordinator.applyExtensionsLauncherPresence() })
         track({ _ = $0.snippetsFolder }, reproject: { $0.applySnippetsFolder() })
         track({ _ = $0.notesFolder }, reproject: { $0.applyNotesFolder() })
-        track(
-            { _ = $0.cloudSyncCategories },
-            reproject: { $0.cloudSyncManager?.setCategories($0.settings.cloudSyncCategories) })
         trackChatRoute()
     }
 
@@ -1144,30 +1123,6 @@ final class AppCore {
     private func reportSettingsFileIssues(_ issues: [SettingsFileIssue]) {
         guard let summary = SettingsFileIssue.summary(issues) else { return }
         showMessage(summary, tone: .danger)
-    }
-
-    // MARK: - iCloud sync
-
-    func startCloudSync() {
-        guard cloudSync.isSupported else { return }
-        settings.cloudSyncEnabled = true
-        guard cloudSyncManager == nil else { return }
-        let manager = CloudSyncManager(
-            state: cloudSync, bindings: CloudSyncSchema.bindings(core: self),
-            ledgerURL: AppPaths.applicationSupport().appendingPathComponent("cloud-sync.plist"))
-        manager.chooseFirstContact = { [weak self] in
-            await self?.cloudSyncCoordinator.chooseFirstContact()
-        }
-        manager.onRemoteReset = { [weak self] in self?.cloudSyncCoordinator.remoteReset() }
-        cloudSyncManager = manager
-        manager.start(categories: settings.cloudSyncCategories)
-    }
-
-    /// Stops both directions and forgets what was agreed; nothing is deleted on either side.
-    func stopCloudSync() {
-        cloudSyncManager?.stop(forgetting: true)
-        cloudSyncManager = nil
-        settings.cloudSyncEnabled = false
     }
 
     // MARK: - Interruption
