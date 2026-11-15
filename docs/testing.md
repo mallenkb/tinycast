@@ -15,8 +15,8 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
 
-GitHub Build runs lint, focused regression checks and an unsigned Debug build. The full suite and
-manual checks remain local responsibilities. Each is expanded below; the manual sweep at the end
+GitHub Build runs lint, every harness except the `exclusive` ones, and an unsigned Debug build.
+The exclusive harnesses and manual checks remain local responsibilities. Each is expanded below; the manual sweep at the end
 is judged by what you touched.
 
 ## The harnesses
@@ -84,8 +84,8 @@ scrypt at `-Onone` and one second at `-O`. `slow` dispatches it in the first wav
 harnesses are not still running after everything else has finished. `exclusive` runs a harness alone
 after the parallel queue completes; use it when a harness needs exclusive desktop focus.
 
-The script is the **only** place the full harness set is written down. CI runs a focused subset;
-run the full suite before publishing. Adding a harness means adding one `run` line.
+The script is the **only** place the full harness set is written down. CI runs all of it except
+`exclusive` harnesses (`TINYCAST_SKIP_EXCLUSIVE=1`), and Release refuses a commit Build has not passed. Adding a harness means adding one `run` line.
 
 Each harness compiles the **shipped sources** it guards rather than a copy of them, which is what makes
 the pure-layer boundary real: a harness that stops *compiling* means AppKit or SwiftUI has leaked into a

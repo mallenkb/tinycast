@@ -82,7 +82,10 @@ run() {
     while :; do
         case "$1" in
             slow)  pri=0; shift;;
-            exclusive) queue="$EXCLUSIVE_QUEUE"; shift;;
+            exclusive)
+                # A hosted runner has no desktop to hand focus to.
+                [ -n "${TINYCAST_SKIP_EXCLUSIVE:-}" ] && return 0
+                queue="$EXCLUSIVE_QUEUE"; shift;;
             -O)    opt=-O; shift;;
             index) index_only=1; shift;;
             *)     break;;
