@@ -23,12 +23,11 @@ appcast: the app reads `mallenkb/tinycast` releases directly.
   Tinycast is neither. `Quarantine` checks anyway through `getxattr`/`removexattr` rather than the
   `xattr` tool, and an app that still carries the flag is refused rather than installed.
 - **The signature is the only integrity guarantee.** A downloaded bundle is trusted when its seal
-  validates, nested helper included, *and* it either satisfies the Developer ID requirement pinned in
-  `BundleSignature` or carries the byte-identical leaf certificate the running app does. The
-  requirement names the team, so a certificate renewal strands nobody; the leaf match is the path a
-  copy installed before the Developer ID switch has, and it goes away once none is left. `notarized`
-  is deliberately not in the requirement — it resolves the ticket through `syspolicyd` or the
-  network, so an offline Mac would refuse a bundle the chain already proves is ours.
+  validates, nested helper included, *and* its leaf certificate is one of the hashes pinned in
+  `BundleSignature.trustedLeaves` or is byte-identical to the running app's own leaf. The fork signs
+  with `Tinycast Self-Signed`, so there is no team to pin: before rotating that certificate, add the
+  new leaf's hash and ship a release signed by the old one, or every installed copy is stranded.
+  Upstream's Developer ID team is deliberately not trusted.
 - **A build only ever updates within its own channel.** The channels are separate bundle ids installed
   side by side; crossing would mean installing a different app. `com.tinycast.app.dev` never updates
   at all, and does not advertise the command.
@@ -128,7 +127,7 @@ background and waits for Restart to Update before installing:
    lands there — the bundle is named for its channel, so it is `Tinycast Beta.app` on beta.
 4. Check quarantine natively; clear it if somehow present, and refuse the update if it survives.
 5. Verify the bundle id, the version, and that the code signature is valid and proves the bundle is
-   ours — by the pinned Developer ID requirement, or by the running app's own leaf certificate.
+   ours — by a pinned fork leaf hash, or by the running app's own leaf certificate.
 6. `FileManager.replaceItemAt`. The staging folder is on the same volume as `/Applications`, which is
    what lets this be atomic. A non-writable `/Applications` is reported, not worked around; there is
    no privileged helper.

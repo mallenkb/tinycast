@@ -26,7 +26,7 @@ struct UpdatesTests {
         picksTheZipThisMacCanRun()
         rejectsUnusableFeeds()
         offersOnlyWhatIsWorthInstalling()
-        pinsTheDeveloperIDRequirement()
+        pinsTheForkLeaves()
         keepsOnlyTheChangelog()
         laysOutTheChangelog()
         linksMentionsAndPullRequests()
@@ -315,22 +315,19 @@ struct UpdatesTests {
         Built from 419a5b4. [Full changelog](https://example.invalid/compare)
         """
 
-    /// A malformed string makes `satisfiesDeveloperID` answer false for every build, silently.
-    static func pinsTheDeveloperIDRequirement() {
+    /// A malformed string makes `satisfiesPinnedLeaf` answer false for every build, silently.
+    static func pinsTheForkLeaves() {
         var requirement: SecRequirement?
         let status = SecRequirementCreateWithString(
-            BundleSignature.developerID as CFString, [], &requirement)
+            BundleSignature.requirement as CFString, [], &requirement)
+        expect(status == errSecSuccess && requirement != nil, "the pinned leaf requirement compiles")
+        expect(!BundleSignature.trustedLeaves.isEmpty, "at least one release leaf is pinned")
         expect(
-            status == errSecSuccess && requirement != nil,
-            "the pinned Developer ID requirement still compiles")
-
-        // Without the anchor, any self-signed certificate claiming the same OU would satisfy it.
+            BundleSignature.trustedLeaves.allSatisfy { $0.count == 40 && $0.allSatisfy(\.isHexDigit) },
+            "every pin is a SHA-1 certificate hash")
         expect(
-            BundleSignature.developerID.hasPrefix("anchor apple generic and "),
-            "the requirement is anchored to Apple's chain, not just to a team string")
-        expect(
-            BundleSignature.developerID.contains("field.1.2.840.113635.100.6.1.13"),
-            "the requirement demands a Developer ID Application certificate specifically")
+            !BundleSignature.requirement.contains("subject.OU"),
+            "no team requirement lets another team's Developer ID build install")
     }
 
     static func keepsOnlyTheChangelog() {

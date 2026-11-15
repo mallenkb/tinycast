@@ -1,15 +1,14 @@
 import Foundation
 import Security
 
-/// Proves a staged bundle is ours: the Developer ID chain, or the leaf a pre-switch copy pins.
+/// Proves a staged bundle is ours: a pinned fork leaf, or the leaf the running copy was signed with.
 enum BundleSignature {
-    /// The team, not the certificate — a leaf is reissued on renewal and on a rename.
-    static let developerID = """
-        anchor apple generic \
-        and certificate leaf[subject.OU] = "J656U8XZ93" \
-        and certificate 1[field.1.2.840.113635.100.6.2.6] exists \
-        and certificate leaf[field.1.2.840.113635.100.6.1.13] exists
-        """
+    /// SHA-1 of each `Tinycast Self-Signed` leaf this fork releases with; add the next before rotating.
+    static let trustedLeaves = ["d8b274154817b753049cc0d63af0bf709fc5d7ab"]
+
+    static var requirement: String {
+        trustedLeaves.map { "certificate leaf = H\"\($0)\"" }.joined(separator: " or ")
+    }
 
     static func isTrusted(_ bundleURL: URL) -> Bool {
         var staticCode: SecStaticCode?
@@ -19,20 +18,19 @@ enum BundleSignature {
         // An unsealed bundle can claim any identity, and a nested helper is where one hides.
         let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSCheckNestedCode)
         guard SecStaticCodeCheckValidity(staticCode, flags, nil) == errSecSuccess else { return false }
-        if satisfiesDeveloperID(staticCode, flags: flags) { return true }
-        // A copy installed before the switch knows only the leaf it was itself signed with.
+        if satisfiesPinnedLeaf(staticCode, flags: flags) { return true }
+        // A copy signed by a leaf not yet pinned still accepts builds signed by that same leaf.
         guard let running = runningLeaf(), let candidate = leaf(of: staticCode) else { return false }
         return running == candidate
     }
 
-    /// No `notarized`: its ticket lookup can hit the network, and the chain already proves ownership.
-    private static func satisfiesDeveloperID(_ code: SecStaticCode, flags: SecCSFlags) -> Bool {
-        var requirement: SecRequirement?
+    private static func satisfiesPinnedLeaf(_ code: SecStaticCode, flags: SecCSFlags) -> Bool {
+        var compiled: SecRequirement?
         guard
-            SecRequirementCreateWithString(developerID as CFString, [], &requirement)
-                == errSecSuccess, let requirement
+            SecRequirementCreateWithString(Self.requirement as CFString, [], &compiled)
+                == errSecSuccess, let compiled
         else { return false }
-        return SecStaticCodeCheckValidity(code, flags, requirement) == errSecSuccess
+        return SecStaticCodeCheckValidity(code, flags, compiled) == errSecSuccess
     }
 
     private static func runningLeaf() -> Data? {
