@@ -173,8 +173,8 @@ for dark compact, `lightCompact`, `grayCompact`, `lightGrayCompact`, `lightCapsu
 Setting `dictation.useApple` to `true` selects Apple Dictation. The `dictation.model` value remembers
 the Parakeet or Qwen model to use when Apple Dictation is off.
 `dictation.releaseAfterMinutes` controls how long the local speech model stays loaded. The default
-`-1` releases it after each dictation. `0` keeps it loaded until you quit or switch models. Positive
-values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
+`1` releases it after a minute idle, and `-1` after each dictation. `0` keeps it loaded until you quit
+or switch models. Positive values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
 
 ```json
 "clipboard-history": { "shortcut": "cmd+shift+v", "alias": "ch", "showInLauncher": true }
