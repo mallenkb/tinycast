@@ -15,8 +15,13 @@ final class CurrencyRateStore {
     /// Shorter retry, so a machine offline at launch picks rates up soon after it reconnects.
     private static let retryInterval: TimeInterval = 30 * 60
 
-    private(set) var rates: CurrencyRates?
+    /// Reading is what asks for rates, so the first calculator query starts the schedule, not launch.
+    var rates: CurrencyRates? {
+        startIfNeeded()
+        return snapshot
+    }
     private(set) var isRefreshing = false
+    private var snapshot: CurrencyRates?
 
     private let fileURL: URL
     @ObservationIgnored private var pump: Task<Void, Never>?
@@ -28,14 +33,13 @@ final class CurrencyRateStore {
         guard let data = try? Data(contentsOf: fileURL),
             let cached = try? JSONDecoder().decode(CurrencyRates.self, from: data)
         else { return }
-        rates = cached
+        snapshot = cached
         // A cache from before coins existed still prices fiat, but has to be replaced at once.
         if CurrencyFeed.pricesCoins(cached) { completedAt = cached.fetchedAt }
     }
 
-    func start() {
-        // Replace rather than bail: an exited loop leaves a non-nil task that would block restart.
-        pump?.cancel()
+    private func startIfNeeded() {
+        guard pump == nil else { return }
         pump = Task { [weak self] in
             while !Task.isCancelled, let self {
                 // Clamped, so a future-stamped snapshot can't park the loop past one interval.
@@ -63,7 +67,7 @@ final class CurrencyRateStore {
     @discardableResult
     private func fetchAndStore() async -> Bool {
         guard let result = await Self.fetch() else { return false }
-        rates = result.rates
+        snapshot = result.rates
         // Never persist a coin-less run: `pricesCoins` reads the cache as whole by definition.
         guard result.complete, let data = try? JSONEncoder().encode(result.rates) else { return false }
         completedAt = result.rates.fetchedAt
