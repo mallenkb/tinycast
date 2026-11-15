@@ -70,22 +70,28 @@ extension ColorValue {
     /// How much untrimmed text is worth trimming first; past this nothing can be a colour anyway.
     private static let scanLimit = 2048
 
-    static func parse(_ text: String) -> ColorValue? {
+    static func parse(_ text: String, allowBareRGBHex: Bool = false) -> ColorValue? {
         // Every visible row runs this per render, so the shape is rejected before allocating.
-        guard text.utf8.count <= scanLimit, couldBeColor(text.utf8) else { return nil }
+        guard text.utf8.count <= scanLimit,
+            couldBeColor(text.utf8, allowBareRGBHex: allowBareRGBHex)
+        else { return nil }
         // Trimmed before the cap, as the classifier is; else a newline files an unreadable row.
         let token = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty, token.utf8.count <= detectionLimit else { return nil }
         if token.hasPrefix("#") { return parseHex(token.dropFirst()) }
+        if allowBareRGBHex, token.utf8.count == 6, token.utf8.allSatisfy(isHex) {
+            return parseHex(token[...])
+        }
         return parseFunctional(token)
     }
 
     /// Prose and links fail on the closing byte alone: a colour ends in a hex digit or a `)`.
-    private static func couldBeColor(_ bytes: String.UTF8View) -> Bool {
+    private static func couldBeColor(_ bytes: String.UTF8View, allowBareRGBHex: Bool) -> Bool {
         guard let first = bytes.first(where: { !isSpace($0) }),
             let last = bytes.reversed().first(where: { !isSpace($0) })
         else { return false }
         if first == UInt8(ascii: "#") { return isHex(last) }
+        if allowBareRGBHex, isHex(first), isHex(last) { return true }
         return isLetter(first) && last == UInt8(ascii: ")")
     }
 

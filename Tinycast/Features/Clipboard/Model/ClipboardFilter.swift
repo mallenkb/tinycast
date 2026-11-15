@@ -79,14 +79,20 @@ extension ClipboardItem {
 
     var colorValue: ColorValue? {
         guard kind == .text, let text else { return nil }
-        return ColorValue.parse(text)
+        let allowBareRGBHex = sourceBundleID.map(Self.bareRGBHexSources.contains) ?? false
+        return ColorValue.parse(text, allowBareRGBHex: allowBareRGBHex)
     }
 
     /// Derived and never persisted, so reclassifying is a code change rather than a migration.
     var textForm: TextForm? {
         guard kind == .text, let text else { return nil }
+        if colorValue != nil { return .color }
         return Self.classify(text)
     }
+
+    private static let bareRGBHexSources: Set<String> = [
+        "com.figma.Desktop", "com.figma.DesktopBeta", "com.canva.affinity", "com.adobe.illustrator",
+    ]
 
     /// A link or an address is one short token, so anything longer is prose by definition.
     private static let detectionLimit = 2048
@@ -104,8 +110,6 @@ extension ClipboardItem {
         guard text.utf8.count <= detectionLimit else { return .plain }
         let token = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else { return .plain }
-        // Before the whitespace reject: `rgb(255, 87, 51)` is one value written with spaces.
-        if ColorValue.parse(token) != nil { return .color }
         guard !token.contains(where: \.isWhitespace) else { return .plain }
         if let form = schemeForm(of: token) { return form }
         if isAddress(token) { return .email }
