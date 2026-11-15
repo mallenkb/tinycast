@@ -207,6 +207,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `entry-icon-test` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `text-diff-test` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
+| `settings-preference-test` | `Settings/Model/Preference.swift` — defaults, absent versus stored values, unknown raw values, and the plist type each preference writes |
 | `settings-file-test` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |
 | `window-file-test` | `WindowManagement/Model/WindowManagementFileFormat.swift` — command shortcuts, custom sizes, layouts and rooms as settings.json spells them, hand edits and bad records |
 | `launcher-settings-file-test` | Launcher settings application — invalid records, partial edits, deferred bundles, shortcut moves and records outside search scopes; isolated preferences and in-memory scan/Carbon effects |

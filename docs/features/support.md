@@ -15,9 +15,8 @@ hero shares the checkout page's brief offer copy from `website/src/data/support.
   presenting unless `AppCore.canInterruptUser`, which is `UpdateReadiness` over `AppCore.currentActivity`
   — the same seven-case gate the update prompt uses, shared rather than copied. A withheld ask leaves
   the anchor alone, so it is still owed and the pump comes back in ten minutes rather than a month.
-- **The checkbox defaults on, and off means off forever.** `AppSettings.supportRemindersEnabled` reads
-  `defaults.object(forKey:) == nil || defaults.bool(forKey:)`, so absence is on and a stored `false`
-  survives. It rides a settings backup: it grants no capability, it silences a prompt, and a user who
+- **The checkbox defaults on, and off means off forever.** `AppSettings.supportRemindersEnabled` is a
+  `Preference<Bool>` defaulting to `true`, so absence is on and a stored `false` survives. It rides a settings backup: it grants no capability, it silences a prompt, and a user who
   turned it off should stay off across a restore.
 - **The schedule state is a file, not a default.** `support-reminder.json` lives under
   `AppPaths.applicationSupport()`, not `caches()` — a purged cache would reset the anchor and ask
