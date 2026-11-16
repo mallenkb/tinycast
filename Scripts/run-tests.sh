@@ -463,7 +463,8 @@ run dictation-worker-test  Tinycast/Features/Dictation/Model/DictationModel.swif
                            Tinycast/Features/Dictation/Service/DictationWorker.swift \
                            Tinycast/Features/Dictation/Service/DictationModelStore.swift \
                            Tinycast/Features/Dictation/Service/DictationModelDownloader.swift \
-                           Tinycast/Platform/ProcessExit.swift Tinycast/Platform/AppPaths.swift
+                           Tinycast/Platform/ProcessExit.swift Tinycast/Platform/AppPaths.swift \
+                           Tinycast/Platform/Signposts.swift
 run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKey.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKeyDetector.swift \
