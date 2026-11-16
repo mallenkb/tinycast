@@ -115,7 +115,7 @@ launch. That is the one wiring point, and `start` reads as the app's whole boot 
 
 **Feature actions live on that feature's coordinator, and a view must never reach past a coordinator
 into a store to mutate it.** That is the rule; `AppCore` holds only the closure wiring that connects a
-hotkey to a coordinator. Views inject `AppCore` through `@Environment` and use it as the *locator* for
+hotkey to a coordinator: `start()` builds one `HotKeyRoutes` and hands it to `HotKeyManager.start`. Views inject `AppCore` through `@Environment` and use it as the *locator* for
 those coordinators — `core.quicklinkCoordinator.deleteQuicklink(…)` is the shape, and the alternative
 is injecting fifteen coordinators separately for no gain. Reading a store off `AppCore` to render it is
 fine too; deciding something with one is what the rule forbids. `showNotice`, `confirm`,
@@ -241,7 +241,8 @@ House idioms for the sharp edges:
 - Raw Carbon and C pointers are decoded to plain values before crossing into actor code (see
   `hotKeyCarbonEventHandler`).
 - `HealthTicker` (`Platform/HealthTicker.swift`) is the one shared timer for periodic health checks, so
-  the event taps do not each own one.
+  the event taps do not each own one. It checks every second while a subscriber is waiting or has
+  just repaired a tap, and every five seconds once ten checks in a row come back clean.
 
 ## The tree
 

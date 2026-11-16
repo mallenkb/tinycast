@@ -83,7 +83,7 @@ final class QuickActionCoordinator {
             settings.quickActionsEnabled = false
             return
         }
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         Task {
             guard
                 await core.confirm(
@@ -246,7 +246,7 @@ final class QuickActionCoordinator {
             core.showMessage(failure.localizedDescription, tone: .danger)
             return
         }
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         Task {
             guard
                 await core.reportFailure(

@@ -82,7 +82,7 @@ struct WindowLayoutArgumentField: View {
         panel.canChooseDirectories = directories
         panel.allowsMultipleSelection = false
         // An accessory app's panel opens behind the frontmost app without this.
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         guard panel.runModal() == .OK, let url = panel.url else { return }
         isEditingURL = false
         draft.setArgument((url.path as NSString).abbreviatingWithTildeInPath)

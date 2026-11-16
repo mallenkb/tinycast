@@ -38,7 +38,7 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
         panel?.orderOut(nil)
         guard restore else { return }
         if let previousOwnWindow, previousOwnWindow.isVisible {
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
             previousOwnWindow.makeKeyAndOrderFront(nil)
         } else {
             previousApp?.activate()

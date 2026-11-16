@@ -31,7 +31,7 @@ The command palette is a borderless floating `NSPanel` hosting SwiftUI; see
 ## Summoning
 
 ```
-⌥Space (Carbon) → HotKeyCenter → HotKeyManager.perform → AppCore's onTogglePalette closure
+⌥Space (Carbon) → HotKeyCenter → HotKeyManager.perform → HotKeyRoutes.togglePalette (AppCore)
                                                               ↓
                                           PaletteCoordinator.togglePalette()
                                                               ↓
@@ -50,7 +50,7 @@ The command palette is a borderless floating `NSPanel` hosting SwiftUI; see
 ```
 
 Everything resolved "once per summon" is resolved there deliberately, not per render. `AppCore` holds
-only the closure wiring; the behaviour is `PaletteCoordinator`'s.
+only the `HotKeyRoutes` wiring; the behaviour is `PaletteCoordinator`'s.
 
 Opening the app summons the launcher too: a Dock click or a second open through `handleReopen`, and a
 cold launch from Finder, Spotlight or a relaunch through `start(launchedByUser:)`. A login-item or URL

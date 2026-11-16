@@ -51,7 +51,7 @@ struct SearchScopesSection: View {
         panel.prompt = String(localized: "Add")
         panel.message = String(localized: "Choose folders or applications to include in the launcher.")
         // Tinycast is an accessory app, so the panel opens behind the frontmost app without this.
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         guard panel.runModal() == .OK else { return }
         settings.searchScopes = SearchScopes.normalize(
             settings.searchScopes + panel.urls.map(\.path))
