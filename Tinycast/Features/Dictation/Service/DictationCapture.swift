@@ -28,6 +28,7 @@ final class DictationCapture {
     }
 
     var onLevels: (([Float]) -> Void)?
+    var onCountdown: ((Int) -> Void)?
     var onLimit: (() -> Void)?
 
     private var active: CaptureSessionBox?
@@ -50,6 +51,12 @@ final class DictationCapture {
                 Task { @MainActor [weak self] in
                     guard let self, active?.id == id else { return }
                     onLevels?(levels)
+                }
+            },
+            onCountdown: { [weak self] seconds in
+                Task { @MainActor [weak self] in
+                    guard let self, active?.id == id else { return }
+                    onCountdown?(seconds)
                 }
             },
             onLimit: { [weak self] in
@@ -95,6 +102,7 @@ private struct CaptureSessionBox: @unchecked Sendable {
     @concurrent static func configure(
         id: UUID, microphoneID: String?, stream: AsyncStream<[Float]>.Continuation?,
         onLevels: @escaping @Sendable ([Float]) -> Void,
+        onCountdown: @escaping @Sendable (Int) -> Void,
         onLimit: @escaping @Sendable () -> Void
     ) async throws -> Self {
         try Task.checkCancellation()
@@ -123,7 +131,8 @@ private struct CaptureSessionBox: @unchecked Sendable {
         }
         capture.addInput(input)
         capture.addOutput(output)
-        let collector = try AudioCollector(stream: stream, onLevels: onLevels, onLimit: onLimit)
+        let collector = try AudioCollector(
+            stream: stream, onLevels: onLevels, onCountdown: onCountdown, onLimit: onLimit)
         output.setSampleBufferDelegate(collector, queue: collector.queue)
         return Self(id: id, isBluetooth: isBluetooth, session: capture, output: output, collector: collector)
     }
@@ -165,17 +174,21 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     private var waveformStartIndex = 0
     private var lastLevelUpdate: TimeInterval = 0
     private var reachedLimit = false
+    private var lastCountdown: Int?
     private let onLevels: @Sendable ([Float]) -> Void
+    private let onCountdown: @Sendable (Int) -> Void
     private let onLimit: @Sendable () -> Void
 
     init(
         stream: AsyncStream<[Float]>.Continuation?, onLevels: @escaping @Sendable ([Float]) -> Void,
+        onCountdown: @escaping @Sendable (Int) -> Void,
         onLimit: @escaping @Sendable () -> Void
     ) throws {
         self.stream = stream
         spectrum = try DictationSpectrum()
         displayedLevels = [Float](repeating: 0, count: DictationSpectrum.barCount)
         self.onLevels = onLevels
+        self.onCountdown = onCountdown
         self.onLimit = onLimit
     }
 
@@ -203,6 +216,10 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
                 min(DictationWire.maximumSamples, samples.count + accepted + Self.reservationStep))
         }
         samples.append(contentsOf: UnsafeBufferPointer(start: floats, count: accepted))
+        if let remaining = DictationWire.remainingSeconds(afterCapturing: samples.count), remaining != lastCountdown {
+            lastCountdown = remaining
+            onCountdown(remaining)
+        }
         if let stream, samples.count - streamedSamples >= DictationWire.sampleRate / 10 {
             stream.yield(Array(samples[streamedSamples...]))
             streamedSamples = samples.count
