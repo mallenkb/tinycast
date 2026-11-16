@@ -60,12 +60,14 @@ struct RootPaletteView: View {
     private var screen: any PaletteScreen {
         switch vm.mode {
         case .launcher:
-            return LauncherScreen(
-                appIndex: appIndex, favorites: favorites, visibility: visibility,
-                currencyRates: currencyRates, core: core, vm: vm, running: selectionIsRunning,
-                meeting: core.calendarCoordinator.cardedMeeting, now: meetingClock.now,
-                openActions: openActions, openArgumentOptions: openArgumentOptions,
-                scrollToFollow: { scroll = ScrollIntent(kind: .follow) })
+            return Signposts.interval("LauncherScreen") {
+                LauncherScreen(
+                    appIndex: appIndex, favorites: favorites, visibility: visibility,
+                    currencyRates: currencyRates, core: core, vm: vm, running: selectionIsRunning,
+                    meeting: core.calendarCoordinator.cardedMeeting, now: meetingClock.now,
+                    openActions: openActions, openArgumentOptions: openArgumentOptions,
+                    scrollToFollow: { scroll = ScrollIntent(kind: .follow) })
+            }
         case .uninstall:
             return UninstallScreen(
                 session: uninstall, core: core, vm: vm, openActions: openActions)
