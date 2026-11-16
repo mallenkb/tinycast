@@ -7,6 +7,17 @@ import Foundation
 final class ExtensionNodeShims: @unchecked Sendable {
     private let fileManager = FileManager.default
     private var fileHandles: [Int32: FileHandle] = [:]
+    private let authorizeProcesses: @Sendable () -> ExtensionProcessAccess
+    /// Nil until this session's first process call; a background refusal is asked again later.
+    private var processAccess: ExtensionProcessAccess?
+
+    init(authorizeProcesses: @escaping @Sendable () -> ExtensionProcessAccess) {
+        self.authorizeProcesses = authorizeProcesses
+    }
+
+    func beginSession() {
+        processAccess = nil
+    }
 
     /// A lock flag like `O_EXLOCK` would block the JS queue with no way back.
     private static let openableFlags =
@@ -503,6 +514,7 @@ final class ExtensionNodeShims: @unchecked Sendable {
     // MARK: - child_process
 
     private func process(method: String, arguments: [Any]) throws -> Any? {
+        try requireProcessAccess()
         if method == "kill" { return try signal(arguments) }
         guard let spec = arguments.first as? [String: Any] else {
             throw ShimError.failed("No command given.", "EINVAL")
@@ -522,6 +534,21 @@ final class ExtensionNodeShims: @unchecked Sendable {
             return Int(child.task.processIdentifier)
         default:
             throw ShimError.failed("child_process.\(method) is not supported.", "ENOSYS")
+        }
+    }
+
+    private func requireProcessAccess() throws {
+        if processAccess == nil || processAccess == .deniedInBackground {
+            processAccess = authorizeProcesses()
+        }
+        switch processAccess {
+        case .allowed: return
+        case .deniedInBackground:
+            throw ShimError.failed(
+                "child_process needs the user's permission, which a background refresh cannot ask.",
+                "EPERM")
+        default:
+            throw ShimError.failed("The user did not allow this extension to run programs.", "EPERM")
         }
     }
 

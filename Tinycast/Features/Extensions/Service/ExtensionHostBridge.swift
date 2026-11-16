@@ -27,6 +27,10 @@ protocol ExtensionHostContext: AnyObject {
     func hide(toast id: Int)
     func showHUD(_ text: String)
     func confirmAlert(_ alert: ExtensionAlert) async -> Bool
+    /// The active extension holds a standing grant to start processes and send signals.
+    var processesGranted: Bool { get }
+    /// True when the user allows it; an "always" answer is persisted before this returns.
+    func askProcessConsent() async -> Bool
     func openWithPicker(path: String) async
     func launch(
         command: String, extensionName: String?, arguments: [String: String],
@@ -109,12 +113,14 @@ enum ExtensionHostError: LocalizedError {
     case noActiveExtension
     case unknown(String)
     case unsupported(String)
+    case background(String)
 
     var errorDescription: String? {
         switch self {
         case .noActiveExtension: return "No extension command is running."
         case .unknown(let what): return "Unknown host call '\(what)'."
         case .unsupported(let what): return "\(what) is not supported in Tinycast extensions."
+        case .background(let what): return "\(what) is not available during a background refresh."
         }
     }
 }
@@ -122,20 +128,18 @@ enum ExtensionHostError: LocalizedError {
 @MainActor
 final class ExtensionHostBridge: ExtensionHostAPI {
     weak var context: ExtensionHostContext?
-    private let clipboardStore: ClipboardStore
     private let fetcher: ExtensionFetcher
     private let sockets = ExtensionWebSocketBridge()
     private var reportedSocketFailures: Set<String> = []
     /// One browser sign-in at a time; the palette keeps its command alive while it is out.
     private(set) var isSigningIn = false
 
-    init(clipboardStore: ClipboardStore, fetcher: ExtensionFetcher = ExtensionFetcher()) {
-        self.clipboardStore = clipboardStore
+    init(fetcher: ExtensionFetcher = ExtensionFetcher()) {
         self.fetcher = fetcher
     }
 
     func scoped(to context: ExtensionHostContext) -> ExtensionHostBridge {
-        let bridge = ExtensionHostBridge(clipboardStore: clipboardStore, fetcher: fetcher)
+        let bridge = ExtensionHostBridge(fetcher: fetcher)
         bridge.context = context
         return bridge
     }
@@ -162,6 +166,23 @@ final class ExtensionHostBridge: ExtensionHostAPI {
         case "proc": return try await ExtensionAsyncProcess.wait(arguments.first)
         default: throw ExtensionHostError.unknown("\(api).\(method)")
         }
+    }
+
+    /// Asked by the Node shims before a process starts or a signal is sent.
+    func authorizeProcesses() async -> ExtensionProcessAccess {
+        guard let context, let name = context.activeExtensionName else { return .denied }
+        if context.processesGranted { return .allowed }
+        guard context.activeLaunchType != .background else { return .deniedInBackground }
+        let allowed = await context.askProcessConsent()
+        // The dialog outlived its question when the session ended or moved on meanwhile.
+        guard self.context === context, context.activeExtensionName == name else { return .denied }
+        return allowed ? .allowed : .denied
+    }
+
+    /// Reads that would hand a timer-driven run whatever the user happens to have open.
+    private func refuseInBackground(_ what: @autoclosure () -> String) throws {
+        guard context?.activeLaunchType == .background else { return }
+        throw ExtensionHostError.background(what())
     }
 
     private func fetch(_ spec: RenderValue?) async throws -> [String: Any] {
@@ -249,9 +270,11 @@ final class ExtensionHostBridge: ExtensionHostAPI {
             return nil
 
         case "readText":
+            try refuseInBackground("Clipboard.readText")
             return NSPasteboard.general.string(forType: .string) ?? ""
 
         case "read":
+            try refuseInBackground("Clipboard.read")
             var payload: [String: Any] = [:]
             if let text = NSPasteboard.general.string(forType: .string) { payload["text"] = text }
             if let url = NSPasteboard.general.string(forType: .URL) { payload["file"] = url }
@@ -482,9 +505,11 @@ final class ExtensionHostBridge: ExtensionHostAPI {
             return describe(application: url)
 
         case "selectedText":
+            try refuseInBackground("getSelectedText")
             return try selectedText()
 
         case "selectedFinderItems":
+            try refuseInBackground("getSelectedFinderItems")
             return try finderSelection()
 
         case "launchCommand":
