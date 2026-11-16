@@ -123,7 +123,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `fuzz-test` | `Launcher/Model/LauncherMatch.swift`, `LauncherOrder.swift`, `LauncherSuggestions.swift`, `EntryNaming.swift`, `ScriptRomanization.swift`, `SearchRelevance.swift`, `LauncherRankingStore.swift` — **a new ranking complaint is a new case in its `denseIndex`** |
 | `description-search-test` | Local description grammar, calendar boundaries, scoped and live file matches, clipboard OCR and ordinary text, cancellation and interpreted search constraints |
 | `file-search-test` | `FileSearch/Model/`: folding, masks, scoring, ignore rules, priors, scopes |
-| `file-index-test` | `FileIndexCrawler`, `FileIndexSnapshot`, `FileIndex`: a real fixture crawled, written, mapped, searched and live-updated |
+| `file-index-test` | `FileIndexCrawler`, `FileIndexSnapshot`, `FileIndex`, `FileIndexLiveChanges`: a real fixture crawled, written, mapped, searched and live-updated |
 | `file-search-session-test` | serialized query execution, coalescing, cancellation and refresh |
 | `spotlight-content-test` | real Spotlight predicate shapes, bounded helper output, and child cleanup on completion, cancellation and timeout |
 | `menu-search-test` | `MenuSearch/Model/` decisions, `MenuSearch/Service/` session filtering, the shared `FuzzyMatch` scorer |
@@ -319,6 +319,7 @@ swiftc -O -wmo -swift-version 6 Tinycast/Features/FileSearch/Model/*.swift \
     Tinycast/Features/SearchCalendarDate.swift Tinycast/Features/SearchFileQuery.swift \
     Tinycast/Features/FileSearch/Service/FileSearchMetadata.swift \
     Tinycast/Features/FileSearch/Service/FileIndex.swift \
+    Tinycast/Features/FileSearch/Service/FileIndexLiveChanges.swift \
     Tinycast/Features/FileSearch/Service/FileIndexSnapshot.swift \
     Tinycast/Features/FileSearch/Service/FileIndexCrawler.swift \
     Tests/file-search-performance.swift -o /tmp/file-search-performance
