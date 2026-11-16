@@ -86,14 +86,16 @@ final class ClipboardStore {
     nonisolated static let maxTextLength = 32_000
 
     @ObservationIgnored private let database: ClipboardDatabase
-    /// A backup names both to stream the table and adopt its blobs.
-    var imagesDir: URL { database.imagesDir }
-    var dbURL: URL { database.url }
+    /// Stored lets, so a backup can read both off the main actor.
+    let imagesDir: URL
+    let dbURL: URL
 
     /// `directory` defaults to the per-channel store; the harness passes a throwaway one.
     init(directory: URL? = nil, describeQuery: @escaping (String) -> DescriptionQuery? = { _ in nil }) {
         self.describeQuery = describeQuery
         database = ClipboardDatabase(directory: directory ?? Self.defaultDirectory)
+        imagesDir = database.imagesDir
+        dbURL = database.url
     }
 
     /// Idempotent, so the coordinator can re-open the file when the feature is switched back on.
