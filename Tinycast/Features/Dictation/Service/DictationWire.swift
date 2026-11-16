@@ -50,14 +50,19 @@ nonisolated enum DictationWire {
     }
 
     static func readExactly(_ count: Int, from handle: FileHandle) throws -> Data {
-        var data = Data()
-        data.reserveCapacity(count)
-        while data.count < count {
-            guard let bytes = try handle.read(upToCount: count - data.count), !bytes.isEmpty else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            data.append(bytes)
-        }
+        var data = Data(count: count)
+        try data.withUnsafeMutableBytes { try readExactly(into: $0, from: handle) }
         return data
+    }
+
+    static func readExactly(into buffer: UnsafeMutableRawBufferPointer, from handle: FileHandle) throws {
+        guard let base = buffer.baseAddress else { return }
+        var offset = 0
+        while offset < buffer.count {
+            let count = Darwin.read(handle.fileDescriptor, base + offset, buffer.count - offset)
+            if count < 0, errno == EINTR { continue }
+            guard count > 0 else { throw CocoaError(.fileReadCorruptFile) }
+            offset += count
+        }
     }
 }
