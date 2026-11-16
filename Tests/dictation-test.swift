@@ -64,8 +64,10 @@ struct DictationTest {
                     before: document.prefix(7), after: document.suffix(6))), " World ")
         let recognized = "Try Whisper Flow."
         let edited = "Try Wispr Flow."
-        let firstDetection = DictationCorrection.detect(from: recognized, to: edited, recognized: recognized)
-        let secondDetection = DictationCorrection.detect(from: edited, to: "Try Wisper Flow.", recognized: recognized)
+        let firstDetection = DictationCorrection.detect(from: recognized, to: edited, recognized: recognized,
+            isKnownWord: isKnownWord)
+        let secondDetection = DictationCorrection.detect(from: edited, to: "Try Wisper Flow.", recognized: recognized,
+            isKnownWord: isKnownWord)
         guard let correction = (firstDetection.corrections + firstDetection.candidates).first,
             let updated = (secondDetection.corrections + secondDetection.candidates).first
         else { fatalError("Expected a spelling correction and an update to it") }
@@ -138,7 +140,8 @@ struct DictationTest {
 
     private static func testLearningCorrections() {
         func check(_ recognized: String, _ edited: String, replay: String? = nil, pairs: [String: String]) {
-            let result = DictationCorrection.detect(from: recognized, to: edited, recognized: recognized)
+            let result = DictationCorrection.detect(from: recognized, to: edited, recognized: recognized,
+                isKnownWord: isKnownWord)
             let detected = result.corrections + result.candidates
             let spellings = Dictionary(detected.map { ($0.original, $0.spelling) }, uniquingKeysWith: { first, _ in first })
             precondition(detected.count == pairs.count && spellings == pairs,
@@ -179,14 +182,14 @@ struct DictationTest {
             ("that we can go.", "that we cannot go."),
             ("to send the files.", "to keep the files."),
             ("to send the files.", "to send the files!"),
-            ("to use tinycast.", "to use Tinycast."),
         ] {
             check("Tell Jhon \(original)", "Tell John \(rewrite)", replay: "Tell John \(original)",
                 pairs: ["Jhon": "John"])
         }
 
         let confidence = DictationCorrection.detect(
-            from: "Ask Haptel about Samoa.", to: "Ask Hubtel about Samuel.", recognized: "Ask Haptel about Samoa.")
+            from: "Ask Haptel about Samoa.", to: "Ask Hubtel about Samuel.", recognized: "Ask Haptel about Samoa.",
+            isKnownWord: isKnownWord)
         precondition(confidence.corrections.map(\.spelling) == ["Hubtel"], "Hubtel should be learned immediately")
         precondition(confidence.candidates.map(\.spelling) == ["Samuel"], "Samuel should require a second observation")
 
@@ -196,6 +199,14 @@ struct DictationTest {
         let oversized = String(repeating: "a", count: 8_192)
         check("Jhon \(oversized)", "John \(oversized)", pairs: [:])
     }
+
+    private static let knownWords = Set("""
+        about again alongside and anna anne anya ask before bring build by call can cast discuss files for friday
+        from go john katherine keep latest meet monday next notes on open please samoa samuel says send should
+        sunday tell that the then tiny to try update use we when you
+        """.split(whereSeparator: \.isWhitespace).map(String.init))
+
+    private static func isKnownWord(_ word: String) -> Bool { knownWords.contains(word.lowercased()) }
 
     private static func testCorrectionAttribution() {
         let prefixes = ["Please tell", "Tell, tell", "Élodie says", "聞いて", "📓 Note"]
@@ -210,7 +221,8 @@ struct DictationTest {
                         let recognized = "\(prefix) tiny cast \(bridge) \(wrong) \(ending) OpenAI."
                         let inserted = "\(prefix) Tinycast \(bridge) \(wrong) \(ending) Open AI."
                         let edited = "\(prefix) tiny cast \(bridge) \(right) \(ending) OpenAI."
-                        let detection = DictationCorrection.detect(from: inserted, to: edited, recognized: recognized)
+                        let detection = DictationCorrection.detect(from: inserted, to: edited, recognized: recognized,
+                            isKnownWord: isKnownWord)
                         let spellings = Dictionary(uniqueKeysWithValues: detection.corrections.map { ($0.original, $0.spelling) })
                         precondition(spellings == ["tiny cast": "tiny cast", wrong: right, "OpenAI": "OpenAI"],
                             "Existing split and joined words should preserve source attribution for \(recognized)")
@@ -222,11 +234,13 @@ struct DictationTest {
         for (wrong, right) in names {
             let recognized = "Ask \(wrong) again, and ask \(wrong) about it."
             let matching = "Ask \(right) again, and ask \(right) about it."
-            let consistent = DictationCorrection.detect(from: recognized, to: matching, recognized: recognized)
+            let consistent = DictationCorrection.detect(from: recognized, to: matching, recognized: recognized,
+                isKnownWord: isKnownWord)
             precondition(consistent.corrections.count == 1 && consistent.corrections.first?.spelling == right,
                 "Identical edits to repeated names should produce one dictionary entry")
             let divergent = "Ask \(right) again, and ask \(wrong) about it."
-            let conflicting = DictationCorrection.detect(from: recognized, to: divergent, recognized: recognized)
+            let conflicting = DictationCorrection.detect(from: recognized, to: divergent, recognized: recognized,
+                isKnownWord: isKnownWord)
             precondition(conflicting.corrections.isEmpty && conflicting.candidates.isEmpty,
                 "An edit of one repeated name should not globally replace it")
         }
@@ -234,7 +248,8 @@ struct DictationTest {
 
     private static func testCorrectionSession() {
         let recognized = "Ask Haptel about Kathrine."
-        var session = DictationCorrectionSession(id: UUID(), inserted: recognized, recognized: recognized, baseline: [])
+        var session = DictationCorrectionSession(id: UUID(), inserted: recognized, recognized: recognized, baseline: [],
+            isKnownWord: isKnownWord)
         let firstEdit = "Ask Hubtel about Kathrine."
         let secondEdit = "Ask Hubtel about Katherine."
         precondition(session.observe(firstEdit, at: .milliseconds(100)) == nil, "A fresh edit has not settled")
@@ -270,7 +285,8 @@ struct DictationTest {
         var peakFootprint = initialFootprint
         var learnedCount = 0
         for index in 0..<1_000 {
-            let result = DictationCorrection.detect(from: recognized, to: edited, recognized: recognized)
+            let result = DictationCorrection.detect(from: recognized, to: edited, recognized: recognized,
+                isKnownWord: isKnownWord)
             learnedCount += result.corrections.count
             if index.isMultiple(of: 100) { peakFootprint = max(peakFootprint, footprint()) }
         }

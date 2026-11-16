@@ -158,6 +158,12 @@ struct DictationFieldTest {
         expect(fixture.transcripts.last == "Hubtel called.", "Dictionary entries apply once without chaining")
     }
 
+    nonisolated private static let knownWords: Set = [
+        "about", "again", "and", "ask", "called", "katherine", "returned", "samoa", "samuel",
+    ]
+
+    nonisolated private static func isKnownWord(_ word: String) -> Bool { knownWords.contains(word.lowercased()) }
+
     private static func testCorrectionStore() throws {
         let fileURL = FileManager.default.temporaryDirectory.appending(path: "dictation-corrections-\(UUID()).json")
         defer { try? FileManager.default.removeItem(at: fileURL) }
@@ -165,7 +171,8 @@ struct DictationFieldTest {
         let original = DictationCorrection(original: "Haptel", spelling: "Huptel")
         let revised = DictationCorrection(original: "Haptel", spelling: "Hubtel")
         let detection = DictationCorrection.detect(
-            from: "Ask about Samoa.", to: "Ask about Samuel.", recognized: "Ask about Samoa.")
+            from: "Ask about Samoa.", to: "Ask about Samuel.", recognized: "Ask about Samoa.",
+            isKnownWord: isKnownWord)
         guard let candidate = detection.candidates.first, let context = candidate.context else {
             fatalError("A speculative correction should retain its spoken context")
         }
@@ -604,7 +611,7 @@ struct DictationFieldTest {
             .appending(path: "dictation-corrections-\(UUID()).json")
         lazy var coordinator = DictationCoordinator(
             settings: settings, hotKeys: HotKeyManager(), models: models,
-            corrections: DictationCorrectionStore(fileURL: correctionFileURL),
+            corrections: DictationCorrectionStore(fileURL: correctionFileURL, isKnownWord: isKnownWord),
             injector: TextInjector(
                 clipboardManager: ClipboardManager(), settings: settings, deliveryQueue: queue),
             focusedTarget: { [weak self] in self?.focusedTarget },
