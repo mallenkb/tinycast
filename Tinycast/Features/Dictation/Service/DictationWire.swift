@@ -13,8 +13,14 @@ nonisolated enum DictationWire {
     }
 
     static let sampleRate = 16_000
-    static let maximumSamples = sampleRate * 60 * 5
+    static let maximumSamples = sampleRate * 60 * 10
     static let maximumMessageBytes = 64_000
+
+    /// Whole seconds left before the length limit, once a recording reaches its final minute.
+    static func remainingSeconds(afterCapturing count: Int) -> Int? {
+        let remaining = (maximumSamples - min(max(count, 0), maximumSamples) + sampleRate - 1) / sampleRate
+        return (1...60).contains(remaining) ? remaining : nil
+    }
 
     struct Request: Codable, Sendable {
         let id: UUID

@@ -199,6 +199,26 @@ struct DictationSettingsView: View {
                 }
             }
         }
+        HStack {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                SettingsRowTitle(.dictationCommands, "Paste last transcript")
+                Text("Pastes your latest dictation again where you're typing.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            ShortcutRecorder(action: .command(.pasteLastDictation))
+        }
+        HStack {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                SettingsRowTitle(.dictationCommands, "Undo last dictation")
+                Text("Removes the last dictation if nothing was typed after it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            ShortcutRecorder(action: .command(.undoDictation))
+        }
         Picker(selection: microphoneBinding) {
             Text(microphones.isEmpty ? "No microphone available" : "System default")
                 .tag("")
@@ -779,13 +799,16 @@ struct DictationIndicatorPreviews: View {
     var showsTranscript = false
     var twoLines = false
     var animatesTranscript = true
+    @Environment(\.appearsActive) private var appearsActive
     @State private var transcribing = DictationIndicatorView.Phase.randomTranscribing()
+    @State private var scrolledIntoView = true
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .bottom, spacing: Theme.Spacing.xl) { previews }
             VStack(spacing: Theme.Spacing.md) { previews }
         }
+        .onScrollVisibilityChange { scrolledIntoView = $0 }
     }
 
     private var previews: some View {
@@ -811,6 +834,7 @@ struct DictationIndicatorPreviews: View {
     private func preview(_ phase: DictationIndicatorView.Phase) -> some View {
         DictationIndicatorView(
             style: style, phase: phase,
-            levels: [0.05, 0.25, 0.55, 0.75, 0.45, 0.25, 0.05])
+            levels: [0.05, 0.25, 0.55, 0.75, 0.45, 0.25, 0.05],
+            cyclesWords: appearsActive && scrolledIntoView)
     }
 }

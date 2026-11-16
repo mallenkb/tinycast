@@ -279,6 +279,17 @@ final class LauncherCoordinator {
         case .dictationSettings:
             dismissPalette()
             settingsCoordinator.showSettings(tab: .dictation)
+        case .pasteLastDictation:
+            let target = dictationTarget()
+            dismissPalette()
+            core.dictationCoordinator.pasteLastTranscript(core.dictationHistory.entries.first?.text, into: target)
+        case .undoDictation:
+            dismissPalette()
+            core.dictationCoordinator.undoLastInsertion()
+        case .retryDictation:
+            let target = dictationTarget()
+            dismissPalette()
+            core.dictationCoordinator.retryLastRecording(into: target)
         case .about:
             dismissPalette()
             settingsCoordinator.showAbout()
@@ -291,6 +302,13 @@ final class LauncherCoordinator {
     }
 
     /// A shortcut runs these with nothing open, where a plain hide would still reset palette state.
+    private func dictationTarget() -> InjectionTarget? {
+        paletteCoordinator.isVisible
+            ? InjectionTarget.behindPalette(
+                ownWindow: paletteCoordinator.previousOwnWindow, app: paletteCoordinator.targetApp)
+            : InjectionTarget.current()
+    }
+
     private func dismissPalette() {
         guard paletteCoordinator.isVisible else { return }
         paletteCoordinator.hidePalette(restoreFocus: false)

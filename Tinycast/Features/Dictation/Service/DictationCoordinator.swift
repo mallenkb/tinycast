@@ -14,6 +14,32 @@ final class DictationCoordinator {
         let language: String?
     }
 
+    private struct RecordingSource {
+        let model: DictationModel
+        let language: String?
+        let usesApple: Bool
+    }
+
+    private struct Recording {
+        let samples: [Float]
+        let source: RecordingSource
+        let cleanupMode: DictationCleanupMode
+    }
+
+    /// What the last insertion changed, so undo can prove the field still holds exactly that.
+    private struct LastInsertion {
+        weak var editor: (any InjectableTextView)?
+        let app: NSRunningApplication?
+        let expected: String
+        let replaced: String
+        let insertedRange: NSRange
+    }
+
+    private static let minimumSamples = DictationWire.sampleRate / 4
+    private static let retention = Duration.seconds(60)
+    private static let confirmedDiscardLength = Duration.seconds(30)
+    private static let discardWindow = Duration.seconds(2)
+
     private let settings: AppSettings
     private let hotKeys: HotKeyManager
     let models: DictationModelStore
@@ -58,6 +84,13 @@ final class DictationCoordinator {
     @ObservationIgnored private var finishWhenStarted = false
     @ObservationIgnored private var shortcutMode: DictationMode?
     @ObservationIgnored private var target: InjectionTarget?
+    @ObservationIgnored private var source: RecordingSource?
+    @ObservationIgnored private var capturedRecording: Recording?
+    @ObservationIgnored private var retained: Recording?
+    @ObservationIgnored private var retainedExpiry: Task<Void, Never>?
+    @ObservationIgnored private var listeningStarted: ContinuousClock.Instant?
+    @ObservationIgnored private var pendingDiscard: ContinuousClock.Instant?
+    @ObservationIgnored private var lastInsertion: LastInsertion?
     /// The field a mic button is dictating into; nil for a shortcut's session.
     private(set) var field: DictationField?
 
@@ -83,12 +116,16 @@ final class DictationCoordinator {
         self.showMessage = showMessage
         self.recordTranscript = recordTranscript
         panel.onAccept = { [weak self] in self?.finish() }
-        panel.onCancel = { [weak self] in self?.cancel(dismissIndicator: true) }
+        panel.onCancel = { [weak self] in self?.escapePressed() }
         panel.onStart = { [weak self] in self?.pressed(.toggle) }
         capture.onLevels = { [weak self] in
             guard let self else { return }
             panel.state.levels = $0
             if pendingStartCue == token { playStartCue() }
+        }
+        capture.onCountdown = { [weak self] seconds in
+            guard let self, phase == .listening else { return }
+            panel.showCountdown(seconds)
         }
         capture.onLimit = { [weak self] in self?.accept() }
     }
@@ -145,12 +182,16 @@ final class DictationCoordinator {
     }
 
     func pressed(_ mode: DictationMode) {
-        guard settings.dictationEnabled, phase != .stopping else { return }
-        if phase != .idle {
-            if mode == .toggle, shortcutMode != .pushToTalk { finish() }
-            return
+        guard settings.dictationEnabled else { return }
+        switch phase {
+        case .idle: begin(shortcutMode: mode)
+        case .transcribing, .stopping: reportBusy()
+        case .starting, .listening: if mode == .toggle, shortcutMode != .pushToTalk { finish() }
         }
-        begin(shortcutMode: mode)
+    }
+
+    private func reportBusy() {
+        showMessage(String(localized: "Still finishing the last dictation"), .neutral)
     }
 
     var isEnabled: Bool { settings.dictationEnabled }
@@ -158,9 +199,13 @@ final class DictationCoordinator {
 
     /// A field's own mic: click to start and click to finish, whatever the shortcut's mode or focus.
     func toggle(into editor: any InjectableTextView) {
-        guard settings.dictationEnabled, phase != .stopping else { return }
+        guard settings.dictationEnabled else { return }
         guard phase == .idle else {
-            if field?.editor == ObjectIdentifier(editor) { finish() }
+            if field?.editor == ObjectIdentifier(editor) {
+                if phase != .stopping { finish() }
+            } else if phase == .transcribing || phase == .stopping {
+                reportBusy()
+            }
             return
         }
         field = DictationField(editor: ObjectIdentifier(editor))
@@ -195,6 +240,7 @@ final class DictationCoordinator {
         let usesApple = settings.dictationUsesApple
         let model = settings.dictationModel
         let language = settings.dictationLanguage
+        source = RecordingSource(model: model, language: language, usesApple: usesApple)
         let progressive = usesApple && settings.dictationLivePreview
         let audio = progressive ? AsyncStream<[Float]>.makeStream() : nil
         if usesApple {
@@ -228,6 +274,7 @@ final class DictationCoordinator {
                 guard token == current else { return }
                 guard settings.dictationEnabled else { cancel(); return }
                 phase = .listening
+                listeningStarted = .now
                 if !usesApple { startRecognition(model: model, language: language) }
                 if finishWhenStarted {
                     accept()
@@ -273,7 +320,7 @@ final class DictationCoordinator {
     }
 
     func accept() {
-        guard phase == .listening else { return }
+        guard phase == .listening, let source else { return }
         phase = .transcribing
         previewDelay?.cancel()
         previewCleanupTask?.cancel()
@@ -284,109 +331,300 @@ final class DictationCoordinator {
         field?.isTranscribing = true
         if settings.dictationPlaysSounds { cues.play(.stop) }
         let current = token
-        let model = settings.dictationModel
-        let language = settings.dictationLanguage
+        let stoppedIn = shortcutMode == nil ? nil : Self.processID(of: focusedTarget())
         let applePreparation = self.applePreparation
         let appleStreaming = self.appleStreaming
+        let cleanupMode = self.cleanupMode
         transcriptionTask = Task { [weak self] in
-            guard let self else { return }
-            guard token == current else { return }
-            var samples = await capture.stop()
+            guard let self, token == current else { return }
+            let recording = Recording(samples: await capture.stop(), source: source, cleanupMode: cleanupMode)
+            guard token == current else { return retain(recording) }
             let prefix = await recognitionTask?.value
-            guard token == current else { return }
-            guard samples.count >= 1_600 else {
-                reset(cancelTranscription: false)
-                showMessage(String(localized: "No speech was recorded"), .danger)
-                return
-            }
-            do {
-                let transcript: String
-                if let appleStreaming {
-                    do {
-                        let final = try await appleStreaming.value
-                        guard !final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                            throw DictationWire.Failure.unavailable
-                        }
-                        transcript = final
-                    } catch {
-                        try Task.checkCancellation()
-                        let vocabulary = Array(Set(corrections.entries.filter { $0.context == nil }.map(\.spelling)))
-                        let session = try await AppleDictationSession.prepare(vocabulary: vocabulary)
-                        transcript = try await session.transcribe(samples)
-                    }
-                } else if let applePreparation {
-                    let session = try await applePreparation.value
-                    try Task.checkCancellation()
-                    transcript = try await session.transcribe(samples)
-                } else {
-                    transcript = try await transcribe(samples, prefix: prefix, model: model, language: language)
-                }
-                guard token == current else { return }
-                samples.removeAll(keepingCapacity: false)
-                models.endRecording()
-                let isEnglish = englishOverride(model: applePreparation == nil ? model : nil, language: language)
-                let cleaned = await cleanTranscript(transcript, isEnglish: isEnglish)
-                guard token == current, !Task.isCancelled else { return }
-                let processed = await processTranscript?(cleaned, isEnglish) ?? cleaned
-                guard token == current, !Task.isCancelled else { return }
-                let followsFocus = shortcutMode != nil
-                if followsFocus, injector.isDelivering {
-                    await injector.drain()
-                    guard token == current, !Task.isCancelled else { return }
-                }
-                if settings.dictationEnabled && settings.dictationIdleIndicator && !terminating {
-                    panel.showIdle(style: settings.dictationIndicatorStyle)
-                } else {
-                    panel.close()
-                }
-                let destination = followsFocus ? focusedTarget() : target
-                let insertion = DictationInsertionContext.read(
-                    in: destination, learnsCorrections: settings.dictationEnabled)
-                let formatted = DictationTextFormatter.format(
-                    processed,
-                    context: insertion?.context,
-                    adaptCapitalization: settings.dictationAdaptsCapitalization)
-                let text = DictationCorrection.applying(corrections.entries, to: formatted)
-                let original = processed == transcript && text == formatted ? nil : transcript
-                guard !text.isEmpty else { reset(cancelTranscription: false); return }
-                let probe = insertion?.correctionProbe(inserted: text)
-                injector.deliver(
-                    InjectedText(text), target: destination, expectedKeyword: nil,
-                    keywordLength: 0, automaticGeneration: nil, activateTarget: !followsFocus,
-                    isValid: { [weak self] in
-                        guard let self, token == current else { return false }
-                        guard followsFocus, let editor = destination?.ownEditor else { return true }
-                        return focusedTarget()?.ownEditor === editor
-                    },
-                    onDelivered: { [weak self] in
-                        guard let self, token == current else { return }
-                        finishTranscript(text, original: original, destination: destination)
-                        if let probe {
-                            learnCorrection(using: probe, recognized: formatted, editor: destination?.ownEditor)
-                        }
-                    },
-                    onFailed: { [weak self] in
-                        guard let self, token == current else { return }
-                        finishTranscript(text, original: original, pasteFailed: true)
-                    })
-            } catch {
-                guard token == current else { return }
-                reset(cancelTranscription: false)
-                showMessage(error.localizedDescription, .danger)
-            }
+            guard token == current else { return retain(recording) }
+            await finishRecording(
+                recording, prefix: prefix,
+                applePreparation: applePreparation, appleStreaming: appleStreaming,
+                stoppedIn: stoppedIn, token: current)
         }
     }
 
-    private func finishTranscript(
-        _ transcript: String, original: String?, destination: InjectionTarget? = nil, pasteFailed: Bool = false
-    ) {
+    /// Runs the kept recording again; it is copied instead if focus leaves `destination`'s app.
+    func retryLastRecording(into destination: InjectionTarget?) {
+        guard settings.dictationEnabled else { return }
+        guard phase == .idle else { return reportBusy() }
+        guard let recording = retained else {
+            showMessage(String(localized: "No recent recording to try again"), .neutral)
+            return
+        }
+        retained = nil
+        retainedExpiry?.cancel()
+        retainedExpiry = nil
+        _ = pollCorrectionLearning(flush: true)
+        stopCorrectionLearning()
+        token = UUID()
+        let current = token
+        phase = .transcribing
+        shortcutMode = .toggle
+        target = nil
+        source = recording.source
+        cleanupMode = recording.cleanupMode
+        let stoppedIn = Self.processID(of: destination)
+        if !recording.source.usesApple { models.beginRecording(recording.source.model) }
+        panel.showStarting(style: settings.dictationIndicatorStyle)
+        panel.showTranscribing()
+        onRecordingStarted?()
+        transcriptionTask = Task { [weak self] in
+            guard let self, token == current else { return }
+            await finishRecording(
+                recording, prefix: nil, applePreparation: nil, appleStreaming: nil, stoppedIn: stoppedIn, token: current)
+        }
+    }
+
+    private func finishRecording(
+        _ recording: Recording, prefix: RecognizedPrefix?,
+        applePreparation: Task<AppleDictationSession, Error>?, appleStreaming: Task<String, Error>?,
+        stoppedIn: pid_t?, token current: UUID
+    ) async {
+        guard recording.samples.count >= Self.minimumSamples else {
+            reset(cancelTranscription: false)
+            return
+        }
+        capturedRecording = recording
+        let transcript: String
+        let usedApple: Bool
+        let fellBack: Bool
+        do {
+            (transcript, usedApple, fellBack) = try await recognize(
+                recording, prefix: prefix, applePreparation: applePreparation, appleStreaming: appleStreaming)
+        } catch {
+            guard token == current else { return }
+            reset(cancelTranscription: false)
+            Logger(subsystem: "com.tinycast.app", category: "Dictation")
+                .error("Transcription failed: \(error.localizedDescription, privacy: .public)")
+            retain(recording)
+            showMessage(
+                String(localized: "Transcription failed; run Retry Last Dictation within a minute to try again"),
+                .danger)
+            return
+        }
+        guard token == current else { return }
+        capturedRecording = nil
+        models.endRecording()
+        if fellBack {
+            showMessage(String(localized: "The speech model failed, so Apple Dictation transcribed this"), .neutral)
+        }
+        guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            reset(cancelTranscription: false)
+            showMessage(String(localized: "No speech detected"), .neutral)
+            return
+        }
+        let isEnglish = englishOverride(
+            model: usedApple ? nil : recording.source.model, language: recording.source.language)
+        let cleaned = await cleanTranscript(transcript, isEnglish: isEnglish)
+        guard token == current, !Task.isCancelled else { return }
+        let processed = await processTranscript?(cleaned, isEnglish) ?? cleaned
+        guard token == current, !Task.isCancelled else { return }
+        let followsFocus = shortcutMode != nil
+        if followsFocus, injector.isDelivering {
+            await injector.drain()
+            guard token == current, !Task.isCancelled else { return }
+        }
+        if settings.dictationEnabled && settings.dictationIdleIndicator && !terminating {
+            panel.showIdle(style: settings.dictationIndicatorStyle)
+        } else {
+            panel.close()
+        }
+        let destination = followsFocus ? focusedTarget() : target
+        let switchedApps = followsFocus && stoppedIn != nil && Self.processID(of: destination) != stoppedIn
+        let insertion = switchedApps
+            ? nil : DictationInsertionContext.read(in: destination, learnsCorrections: settings.dictationEnabled)
+        let formatted = DictationTextFormatter.format(
+            processed,
+            context: insertion?.context,
+            adaptCapitalization: settings.dictationAdaptsCapitalization)
+        let text = DictationCorrection.applying(corrections.entries, to: formatted)
+        let original = processed == transcript && text == formatted ? nil : transcript
+        guard !text.isEmpty else {
+            reset(cancelTranscription: false)
+            showMessage(String(localized: "No speech detected"), .neutral)
+            return
+        }
+        guard !switchedApps else {
+            copyTranscript(text, original: original, message: String(localized: "Copied dictation because you switched apps"))
+            return
+        }
+        let probe = insertion?.correctionProbe(inserted: text)
+        injector.deliver(
+            InjectedText(text), target: destination, expectedKeyword: nil,
+            keywordLength: 0, automaticGeneration: nil, activateTarget: !followsFocus,
+            isValid: { [weak self] in
+                guard let self, token == current else { return false }
+                guard followsFocus, let editor = destination?.ownEditor else { return true }
+                return focusedTarget()?.ownEditor === editor
+            },
+            onDelivered: { [weak self] in
+                guard let self, token == current else { return }
+                finishTranscript(text, original: original, destination: destination)
+                if let insertion, let destination { recordInsertion(text, snapshot: insertion, target: destination) }
+                if let probe {
+                    learnCorrection(using: probe, recognized: formatted, editor: destination?.ownEditor)
+                }
+            },
+            onFailed: { [weak self] in
+                guard let self, token == current else { return }
+                copyTranscript(
+                    text, original: original, message: String(localized: "Couldn't paste here, so the dictation was copied"))
+            })
+    }
+
+    private func recognize(
+        _ recording: Recording, prefix: RecognizedPrefix?,
+        applePreparation: Task<AppleDictationSession, Error>?, appleStreaming: Task<String, Error>?
+    ) async throws -> (text: String, usedApple: Bool, fellBack: Bool) {
+        let samples = recording.samples
+        if let appleStreaming {
+            do {
+                let final = try await appleStreaming.value
+                guard !final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw DictationWire.Failure.unavailable
+                }
+                return (final, true, false)
+            } catch {
+                try Task.checkCancellation()
+                return (try await appleTranscription(samples), true, false)
+            }
+        }
+        if let applePreparation {
+            let session = try await applePreparation.value
+            try Task.checkCancellation()
+            return (try await session.transcribe(samples), true, false)
+        }
+        if recording.source.usesApple { return (try await appleTranscription(samples), true, false) }
+        do {
+            let text = try await transcribe(
+                samples, prefix: prefix, model: recording.source.model, language: recording.source.language)
+            return (text, false, false)
+        } catch {
+            try Task.checkCancellation()
+            Logger(subsystem: "com.tinycast.app", category: "Dictation")
+                .error("Speech model failed: \(error.localizedDescription, privacy: .public)")
+            return (try await appleTranscription(samples), true, true)
+        }
+    }
+
+    private func appleTranscription(_ samples: [Float]) async throws -> String {
+        let vocabulary = Array(Set(corrections.entries.filter { $0.context == nil }.map(\.spelling)))
+        let session = try await AppleDictationSession.prepare(vocabulary: vocabulary)
+        try Task.checkCancellation()
+        return try await session.transcribe(samples)
+    }
+
+    private func retain(_ recording: Recording) {
+        guard settings.dictationEnabled, !terminating, recording.samples.count >= Self.minimumSamples else { return }
+        retained = recording
+        retainedExpiry?.cancel()
+        retainedExpiry = Task { [weak self] in
+            do { try await Task.sleep(for: Self.retention) } catch { return }
+            self?.retained = nil
+            self?.retainedExpiry = nil
+        }
+    }
+
+    private func finishTranscript(_ transcript: String, original: String?, destination: InjectionTarget? = nil) {
         let app = destination?.externalApp ?? (destination?.ownEditor == nil ? nil : NSRunningApplication.current)
         reset(cancelTranscription: false)
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !text.isEmpty { recordTranscript(text, original, pasteFailed ? nil : app) }
-        if pasteFailed {
-            showMessage(String(localized: "Couldn't paste dictation into this app"), .danger)
+        if !text.isEmpty { recordTranscript(text, original, app) }
+    }
+
+    /// History already keeps the transcript; the clipboard puts it one paste away.
+    private func copyTranscript(_ transcript: String, original: String?, message: String) {
+        finishTranscript(transcript, original: original)
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        Paster.copyPlainText(text)
+        showMessage(message, .neutral)
+    }
+
+    func pasteLastTranscript(_ transcript: String?, into destination: InjectionTarget?) {
+        guard let transcript, !transcript.isEmpty else {
+            showMessage(String(localized: "No dictation to paste yet"), .neutral)
+            return
         }
+        guard let destination else {
+            Paster.copyPlainText(transcript)
+            showMessage(String(localized: "Couldn't paste here, so the dictation was copied"), .neutral)
+            return
+        }
+        let insertion = DictationInsertionContext.read(in: destination, learnsCorrections: false)
+        let text = DictationTextFormatter.format(
+            transcript, context: insertion?.context, adaptCapitalization: settings.dictationAdaptsCapitalization)
+        injector.deliver(
+            InjectedText(text), target: destination, expectedKeyword: nil,
+            keywordLength: 0, automaticGeneration: nil,
+            onDelivered: { [weak self] in
+                if let insertion { self?.recordInsertion(text, snapshot: insertion, target: destination) }
+            },
+            onFailed: { [weak self] in
+                Paster.copyPlainText(transcript)
+                self?.showMessage(String(localized: "Couldn't paste here, so the dictation was copied"), .neutral)
+            })
+    }
+
+    private func recordInsertion(
+        _ inserted: String, snapshot: DictationInsertionContext.Snapshot, target: InjectionTarget
+    ) {
+        let before = snapshot.text as NSString
+        guard NSMaxRange(snapshot.range) <= before.length else { return }
+        lastInsertion = LastInsertion(
+            editor: target.ownEditor, app: target.externalApp,
+            expected: before.replacingCharacters(in: snapshot.range, with: inserted),
+            replaced: before.substring(with: snapshot.range),
+            insertedRange: NSRange(location: snapshot.range.location, length: (inserted as NSString).length))
+    }
+
+    /// Removes the last insertion only while its field provably holds nothing typed since.
+    func undoLastInsertion() {
+        let unavailable = String(localized: "Can't undo the last dictation here")
+        guard let last = lastInsertion, !injector.isDelivering else { return showMessage(unavailable, .neutral) }
+        if let editor = last.editor {
+            guard editor.window?.isVisible == true, editor.isEditable, !editor.hasMarkedText(),
+                editor.string == last.expected
+            else { return showMessage(unavailable, .neutral) }
+            lastInsertion = nil
+            stopCorrectionLearning()
+            editor.insertText(last.replaced, replacementRange: last.insertedRange)
+            return
+        }
+        guard let app = last.app, !app.isTerminated,
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
+            let field = DictationInsertionContext.read(in: .external(app), learnsCorrections: false),
+            field.text == last.expected, field.range == NSRange(location: NSMaxRange(last.insertedRange), length: 0)
+        else { return showMessage(unavailable, .neutral) }
+        lastInsertion = nil
+        stopCorrectionLearning()
+        Paster.postCommandZ(toPid: app.processIdentifier)
+    }
+
+    private static func processID(of target: InjectionTarget?) -> pid_t? {
+        switch target {
+        case .external(let app): app.processIdentifier
+        case .ownEditor: ProcessInfo.processInfo.processIdentifier
+        case nil: nil
+        }
+    }
+
+    private func escapePressed() {
+        if phase == .listening, let listeningStarted,
+            listeningStarted.duration(to: .now) > Self.confirmedDiscardLength
+        {
+            guard let pendingDiscard, pendingDiscard.duration(to: .now) <= Self.discardWindow else {
+                pendingDiscard = .now
+                showMessage(String(localized: "Press Esc again to discard this recording"), .neutral)
+                return
+            }
+        }
+        cancel(dismissIndicator: true)
     }
 
     private func learnCorrection(
@@ -488,6 +726,9 @@ final class DictationCoordinator {
     func cancel(dismissIndicator: Bool = false) {
         stopCorrectionLearning()
         guard phase != .stopping, phase != .idle || !settings.dictationEnabled else { return }
+        let inFlight = capturedRecording
+        let source = self.source
+        let cleanupMode = self.cleanupMode
         let pendingStart = startTask
         let pendingTranscription = transcriptionTask
         let pendingRecognition = recognitionTask
@@ -498,7 +739,12 @@ final class DictationCoordinator {
         stopTask = Task { [weak self] in
             guard let self else { return }
             await pendingStart?.value
-            _ = await capture.stop()
+            let captured = await capture.stop()
+            if let recording = inFlight
+                ?? source.map({ Recording(samples: captured, source: $0, cleanupMode: cleanupMode) })
+            {
+                retain(recording)
+            }
             await pendingTranscription?.value
             _ = await pendingRecognition?.value
             if !settings.dictationEnabled { await models.stop() }
@@ -537,6 +783,10 @@ final class DictationCoordinator {
         phase = .idle
         shortcutMode = nil
         target = nil
+        source = nil
+        capturedRecording = nil
+        listeningStarted = nil
+        pendingDiscard = nil
         field = nil
         if showIdleIndicator {
             applyIdleIndicator()

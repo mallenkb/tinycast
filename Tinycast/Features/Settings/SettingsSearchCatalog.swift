@@ -349,6 +349,8 @@ enum SettingsSearchCatalog {
         .init(.dictationDictation, "Enable Dictation"),
         .init(.dictationCommands, "Push to talk", keywords: ["shortcut", "hold to talk"]),
         .init(.dictationCommands, "Hands-free", keywords: ["shortcut", "toggle", "double tap", "start or stop"]),
+        .init(.dictationCommands, "Paste last transcript", keywords: ["shortcut", "paste again", "repeat"]),
+        .init(.dictationCommands, "Undo last dictation", keywords: ["shortcut", "remove", "revert"]),
         .init(.dictationOutput, "Play sounds", keywords: ["sound", "chime", "beep", "audio", "feedback"]),
         .init(group: .dictationModel, "Speech recognition", keywords: ["speech model", "models", "performance"]),
         .init(group: .dictationModel, "Model"),
