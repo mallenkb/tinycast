@@ -375,7 +375,7 @@ final class DictationCoordinator {
         if !recording.source.usesApple { models.beginRecording(recording.source.model) }
         panel.showStarting(style: settings.dictationIndicatorStyle)
         panel.showTranscribing()
-        onRecordingStarted?()
+        onRecordingStarted?(destination?.externalApp?.bundleIdentifier)
         transcriptionTask = Task { [weak self] in
             guard let self, token == current else { return }
             await finishRecording(

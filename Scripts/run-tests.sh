@@ -372,7 +372,7 @@ run palette-coordinator-test Tinycast/Palette/PaletteState.swift \
                            Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/HoverArming.swift \
                            Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
-                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
