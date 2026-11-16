@@ -173,7 +173,8 @@ final class DictationModelStore {
     }
 
     func transcribe(
-        _ samples: [Float], model: DictationModel, language: String? = nil
+        _ samples: [Float], model: DictationModel, language: String? = nil,
+        purpose: DictationWorker.Purpose = .final
     ) async throws -> String {
         try Task.checkCancellation()
         guard !transcribing, removing != model else { throw Failure.busy }
@@ -187,18 +188,24 @@ final class DictationModelStore {
             await preparation.task.value
         }
         try Task.checkCancellation()
+        let worker: DictationWorker
         do {
-            let worker = try await worker(for: model)
+            worker = try await self.worker(for: model)
+        } catch {
+            await stopWorker()
+            throw error
+        }
+        do {
             let request = DictationWire.Request(
                 id: UUID(), model: model, directory: directory(for: model),
                 sampleCount: samples.count, language: model.isQwen || model.isCohere ? language : nil)
-            let text = try await worker.transcribe(samples, request: request) { [weak self] in
+            let text = try await worker.transcribe(samples, request: request, purpose: purpose) { [weak self] in
                 guard let self, self.worker === worker, self.transcribing else { return }
                 self.loadedModel = model
             }
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
-            await stopWorker()
+            if !purpose.survivesCancellation || !worker.isUsable { await stopWorker() }
             throw error
         }
     }

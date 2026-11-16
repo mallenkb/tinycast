@@ -12,7 +12,8 @@ Rows show language coverage and approximate disk size; published
 benchmark figures are external measurements, with their sources in the row help. Hovering over language coverage shows the supported languages.
 Choose an installed model, download one from its row, or remove it after selecting another. Cohere Q8
 uses a separate Core ML encoder-decoder pipeline and 14 selectable languages, with English as its default.
-Its fixed 35-second batch encoder does not provide live preview. Cohere Q4 requires a separate GGUF
+Its fixed 35-second batch encoder does not provide live preview. A window that fills the decoder's
+cache keeps the text it produced. Its six-token repetition ban covers only generated text. Cohere Q4 requires a separate GGUF
 speech runtime and remains unavailable.
 Qwen models remain available. Apple Dictation uses speech assets managed by macOS.
 After microphone access is granted, enabling Dictation offers the missing recommended downloads for
@@ -121,11 +122,20 @@ models use CPU/Neural Engine.
   audio and finalizes that session. If the stream fails, the full recording is still available for
   a fresh Apple Dictation pass. Parakeet and Qwen use overlapping five-second audio windows and aim
   to start requests at least 350 ms and 500 ms apart, respectively. One request runs at a time.
+  A request is skipped when the audio since the previous one stays near the recording's noise floor
+  and a request has already covered the end of speech. After three unchanged results the interval
+  doubles, and after six it triples, until the text changes. Five-second windows stay because
+  the decoders' cost grows with the audio, even though the encoders pad to 15 seconds.
   For Parakeet and Qwen, the recognition loop also looks for a pause of at least 600 milliseconds
-  within each 10 to 30 second audio window. It transcribes completed audio at those pauses, even
-  with the preview off. On stop it transcribes the remaining audio and joins the results in order.
-  It retries the full recording if a segment fails, the tail cannot be reused, or an amount may
-  cross a segment boundary. The app retains the bounded capture until this check finishes.
+  from 10 seconds into each segment. A pause is quiet relative to the tenth-percentile frame level
+  of the last 30 seconds, never below the original absolute threshold. Without a pause by 30 seconds,
+  it cuts at the quietest 200 ms of the last three seconds. A cut rejected for an unfinished
+  number moves the next forced cut at most five seconds later. It transcribes completed audio at
+  those cuts, even with the preview off. On stop it transcribes the remaining audio and joins the
+  results in order. A failed segment is dropped and the next one covers its audio again; after three
+  failures in a row, segmentation stops. It retries the full recording if the tail is longer than
+  30 seconds or cannot be reused, or an amount may cross a segment boundary. The app retains the
+  bounded capture until this check finishes.
   A preview error hides stale text and retries after 1.5 seconds. Three consecutive failures end
   the preview loop; the full recording remains available for final transcription.
   After four seconds without new preview text, the card fades out while the recording pill stays visible.
@@ -185,9 +195,10 @@ models use CPU/Neural Engine.
   model loading, audio features and decoding run in `Tinycast Dictation` (`Tinycast Dev Dictation` in Debug). The helper
   starts loading the selected model alongside microphone setup. If the user stops before it is ready,
   the transcription waits for the same load before sending the buffered audio. A failed preload
-  leaves the audio available for a regular transcription request. Phonon-2 has up to three minutes
-  to load because its first Neural Engine compilation can take longer than a minute. Once it is ready,
-  transcription uses the normal timeout. Main-app state never retains Core ML models.
+  leaves the audio available for a regular transcription request. Every model has up to three
+  minutes to load, because a first Core ML compilation can take longer than a minute. Once it is
+  ready, transcription uses the normal timeout. Capture start, model loads and each preview,
+  segment and final transcription emit `com.tinycast.perf` signpost intervals for Instruments. Main-app state never retains Core ML models.
   The helper is an embedded accessory app with no bundled icon, Dock item or windows.
 - The Apple Dictation engine uses Apple's on-device `DictationTranscriber` and the Mac's preferred
   language. Tinycast starts preparation when recording begins. macOS installs missing speech assets,
@@ -198,11 +209,13 @@ models use CPU/Neural Engine.
   it longer. Switching models
   reaps the old helper before loading the next. Removing a loaded model
   stops its helper before deleting the directory and blocks new requests for that model meanwhile.
-  Cancelling an in-flight load or transcription, failed inference and normal quit stop the helper.
-  Late results cannot paste.
+  Cancelling an in-flight load or final transcription, failed final inference and normal quit
+  stop the helper. A cancelled or failed preview or segment request keeps the loaded helper: the
+  exchange finishes and its result is discarded. Late results cannot paste.
 - Audio stays in memory, bounded to five minutes of mono 16 kHz Float32 samples. Pipes carry
   bounded JSON control messages and binary audio; recordings are never written to disk or sent
   over the network. Long recordings split near a quiet passage without overlapping samples.
+  The capture buffer grows a minute at a time, and the helper reads audio straight into its buffer.
 - Tinycast transcribes the complete recording after the user stops, then inserts the finished
   text in the target app.
 - Model files download through a feature-private ephemeral session without a disk URL cache.
@@ -219,8 +232,8 @@ models use CPU/Neural Engine.
   the same cache root. Its empty lock file stays in place; macOS releases the lock on process exit.
 - An installed Qwen model exposes a language hint; Auto leaves language detection to the model. Parakeet
   does not accept a language hint. Neither adapter exposes user vocabulary. Qwen prepares its fixed
-  prompts and supported language hints once, then retains only the tokenizer's decoding tables
-  and prepared tokens, not the BPE encoding rules.
+  prompts, supported language hints and their embeddings once, then retains only the tokenizer's
+  decoding tables and prepared tokens, not the BPE encoding rules.
 - The `Model/` folder imports Foundation only. Context-sensitive spaces and capitalization are a
   pure decision driven by text around the caret. Capitalization adapts by default.
   The `dictation.adaptsCapitalization` override in `settings.json` leaves contextual spaces enabled.
@@ -241,8 +254,10 @@ attribution, undo, debounce, input bounds and repeated inference. Hidden-editor 
 `dictation-field-test` also cover learning across dictations, persistence, candidate corroboration,
 manual-entry priority and correction watcher teardown. These fixtures do not activate windows,
 record audio or write to the shared clipboard. `dictation-inference-test` checks score selection,
-byte BPE, Fourier/mel features, listening bands and audio partitioning without downloading a model. `dictation-worker-test`
-exercises framed IPC, worker reuse/switching, removal, cancellation and broken pipes with a fixture.
+byte BPE, Fourier/mel features, listening bands, audio partitioning, pause cuts, preview pacing,
+Cohere's mel features against a scalar reference and its repetition ban without downloading a model. `dictation-worker-test`
+exercises framed IPC, worker reuse/switching, removal, cancellation, dropped previews and segments
+that keep the helper, and broken pipes with a fixture.
 An in-process URLProtocol fixture checks byte progress before the first file completes, combined
 progress and atomic installation for both families, including cancellation, stale staging cleanup
 and competing downloads on shared or independent cache roots, without sockets or timed waits.

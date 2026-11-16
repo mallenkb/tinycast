@@ -654,6 +654,10 @@ final class DictationCapture {
     }
 }
 
+enum DictationWorker {
+    enum Purpose { case preview, segment, final }
+}
+
 @MainActor
 final class DictationModelStore {
     var pending: CheckedContinuation<String, any Error>?
@@ -667,7 +671,10 @@ final class DictationModelStore {
     func stop() async {}
     func prepareForTermination() {}
 
-    func transcribe(_ samples: [Float], model: DictationModel, language: String?) async throws -> String {
+    func transcribe(
+        _ samples: [Float], model: DictationModel, language: String?,
+        purpose: DictationWorker.Purpose = .final
+    ) async throws -> String {
         defer { finished = true }
         return try await withCheckedThrowingContinuation { pending = $0 }
     }

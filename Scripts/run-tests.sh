@@ -461,6 +461,9 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swif
                            Tinycast/Features/Dictation/Model/DictationLanguage.swift \
                            Tinycast/Features/Dictation/Model/DictationMode.swift \
                            Tinycast/Features/Dictation/Model/DictationPreviewSequence.swift \
+                           Tinycast/Features/Dictation/Model/DictationPausePolicy.swift \
+                           Tinycast/Features/Dictation/Model/DictationPreviewPacing.swift \
+                           Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
                            Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
                            Tinycast/Features/Dictation/Service/AppleDictationSession.swift \
                            Tinycast/Features/Dictation/Service/DictationCoordinator.swift \
@@ -480,14 +483,19 @@ run index -O dictation-performance Tinycast/Platform/ProcessExit.swift \
 run dictation-inference-test Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
     Tinycast/Features/Dictation/Service/DictationSpectrum.swift \
     Tinycast/Features/Dictation/Helper/DictationTensor.swift Tinycast/Features/Dictation/Helper/DictationTokenizer.swift \
-    Tinycast/Features/Dictation/Helper/DictationMel.swift
+    Tinycast/Features/Dictation/Helper/DictationMel.swift \
+    Tinycast/Features/Dictation/Model/DictationPausePolicy.swift \
+    Tinycast/Features/Dictation/Model/DictationPreviewPacing.swift \
+    Tinycast/Features/Dictation/Helper/CoherePipeline.swift \
+    Tinycast/Features/Dictation/Helper/CohereAsrConfig.swift
 run dictation-worker-test  Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Model/DictationIdleRelease.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \
                            Tinycast/Features/Dictation/Service/DictationWorker.swift \
                            Tinycast/Features/Dictation/Service/DictationModelStore.swift \
                            Tinycast/Features/Dictation/Service/DictationModelDownloader.swift \
-                           Tinycast/Platform/ProcessExit.swift Tinycast/Platform/AppPaths.swift
+                           Tinycast/Platform/ProcessExit.swift Tinycast/Platform/AppPaths.swift \
+                           Tinycast/Platform/Signposts.swift
 run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKey.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKeyDetector.swift \
