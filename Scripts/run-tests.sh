@@ -129,7 +129,8 @@ SEARCH_DESCRIPTION="Tinycast/Features/SearchDescription.swift Tinycast/Features/
 SEARCH_INTENT=Tinycast/Features/IntelligentSearch/Model
 IMAGE_CONTENT=Tinycast/Features/ImageSearch/Model/ImageContent.swift
 IMAGE_STORE=Tinycast/Features/ImageSearch/Service/ImageContentStore.swift
-FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileSearchMetadata.swift $FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileSearchMetadata.swift $FS/Service/FileIndex.swift"
+FILE_INDEX="$FILE_INDEX $FS/Service/FileIndexLiveChanges.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
 run file-filters-test $FS/Model/*.swift $FILE_INDEX $SEARCH_DESCRIPTION
 run spotlight-content-test Tinycast/Platform/ProcessExit.swift $FS/Service/SpotlightContentSearch.swift \
                            $FS/Service/SpotlightContentRequest.swift $FS/Helper/SpotlightContentQuery.swift \
