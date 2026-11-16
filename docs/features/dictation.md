@@ -134,7 +134,8 @@ models use CPU/Neural Engine.
   on another edge or display, or the active app is full-screen with the Dock hidden. Dragging the pill
   shows alignment guides and snaps it to the display center and edges. A click on the idle pill still
   starts dictation. Its position is remembered per display, and Indicator & feedback can restore the
-  default position. The transcript card follows the pill and stays within the display when it appears.
+  default position. The transcript card follows the pill, flips below it near the top edge, and aligns with the pill's outer edge on either side.
+  It stays centered on the pill in the middle of the display.
   Revealing a bottom Dock moves the indicator above it. It repositions when Spaces,
   display configuration or system presentation changes. While recording, transcribing or dragging,
   it also checks Dock bounds and the frontmost window twice per second; the idle bar does not poll.
@@ -151,7 +152,7 @@ models use CPU/Neural Engine.
   at the same height as the recording pill. The button starts hands-free dictation. The indicator
   expands into the selected pill when recording begins and contracts when
   dictation finishes. The border follows the pill as it resizes. Live transcript preview is
-  separately opt-in and shows recent words above the pill. Apple Dictation streams audio to one
+  separately opt-in and shows recent words beside the pill. Apple Dictation streams audio to one
   recognition session and displays partial results as they arrive. Stopping flushes the remaining
   audio and finalizes that session. If the stream fails, the full recording is still available for
   a fresh Apple Dictation pass. Parakeet and Qwen use overlapping five-second audio windows and aim
