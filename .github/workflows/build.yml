@@ -33,7 +33,7 @@ jobs:
         run: ./Scripts/lint.sh
       - name: Run every harness
         env:
-          TINYCAST_SKIP_EXCLUSIVE: 1
+          TINYCAST_HOSTED_RUNNER: 1
         run: ./Scripts/run-tests.sh
       - name: Build Debug without signing
         run: |

@@ -82,10 +82,12 @@ A `run` line takes optional markers before the harness name. `-O` compiles that 
 which is worth it only where the run dominates the compile — `raycast-test` spends 47 seconds in
 scrypt at `-Onone` and one second at `-O`. `slow` dispatches it in the first wave, so the longest
 harnesses are not still running after everything else has finished. `exclusive` runs a harness alone
-after the parallel queue completes; use it when a harness needs exclusive desktop focus.
+after the parallel queue completes; use it when a harness needs exclusive desktop focus. `device`
+marks a harness that needs the Mac's on-device Vision models, which a hosted runner lacks.
 
 The script is the **only** place the full harness set is written down. CI runs all of it except
-`exclusive` harnesses (`TINYCAST_SKIP_EXCLUSIVE=1`), and Release refuses a commit Build has not passed. Adding a harness means adding one `run` line.
+`exclusive` and `device` harnesses (`TINYCAST_HOSTED_RUNNER=1`), and Release refuses a commit Build
+has not passed. Adding a harness means adding one `run` line.
 
 Each harness compiles the **shipped sources** it guards rather than a copy of them, which is what makes
 the pure-layer boundary real: a harness that stops *compiling* means AppKit or SwiftUI has leaked into a

@@ -94,8 +94,8 @@ Removing that line would reintroduce exactly those three problems. See
 ## GitHub Actions
 
 `Build` runs on pushes to main, pull requests and manual dispatch. It uses GitHub's `xcode-27` hosted
-runner, runs lint and every harness except the `exclusive` ones that need desktop focus
-(`TINYCAST_SKIP_EXCLUSIVE=1`), then builds an unsigned Apple silicon Debug build. Signed releases
+runner, runs lint and every harness except the `exclusive` ones that need desktop focus and the `device`
+ones that need on-device Vision (`TINYCAST_HOSTED_RUNNER=1`), then builds an unsigned Apple silicon Debug build. Signed releases
 retain universal validation. The build log is retained for seven days.
 
 `Release` is a manual workflow for this fork on main. Update project.yml's version first, push that

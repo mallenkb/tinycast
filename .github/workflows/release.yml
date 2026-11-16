@@ -74,7 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           ./Scripts/lint.sh
-          TINYCAST_SKIP_EXCLUSIVE=1 ./Scripts/run-tests.sh
+          TINYCAST_HOSTED_RUNNER=1 ./Scripts/run-tests.sh
       - name: Import existing signing identity
         env:
           P12_BASE64: ${{ secrets.SIGNING_P12_BASE64 }}

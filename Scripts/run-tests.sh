@@ -84,8 +84,12 @@ run() {
             slow)  pri=0; shift;;
             exclusive)
                 # A hosted runner has no desktop to hand focus to.
-                [ -n "${TINYCAST_SKIP_EXCLUSIVE:-}" ] && return 0
+                [ -n "${TINYCAST_HOSTED_RUNNER:-}" ] && return 0
                 queue="$EXCLUSIVE_QUEUE"; shift;;
+            device)
+                # Vision text recognition throws on a hosted runner's virtual machine.
+                [ -n "${TINYCAST_HOSTED_RUNNER:-}" ] && return 0
+                shift;;
             -O)    opt=-O; shift;;
             index) index_only=1; shift;;
             *)     break;;
@@ -243,7 +247,7 @@ run clipboard-thumbnail-test $IMAGE_CONTENT $CLIPBOARD_STORE \
 Q=Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
 run clipboard-search-test  $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q
 run paste-sequence-test    $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q
-run clipboard-text-test    $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q \
+run device clipboard-text-test $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q \
                            Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardTextIndexer.swift \
                            Tinycast/Features/ImageSearch/Service/ImageContentWorker.swift \
