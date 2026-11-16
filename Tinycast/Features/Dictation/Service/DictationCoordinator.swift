@@ -49,6 +49,7 @@ final class DictationCoordinator {
     @ObservationIgnored private var correctionProbe: DictationInsertionContext.CorrectionProbe?
     @ObservationIgnored private var correctionStarted: ContinuousClock.Instant?
     @ObservationIgnored private var correctionEditor: ObjectIdentifier?
+    @ObservationIgnored private var correctionObservation: DictationInsertionContext.CorrectionObservation?
     @ObservationIgnored private var applePreparation: Task<AppleDictationSession, Error>?
     @ObservationIgnored private var appleStreaming: Task<String, Error>?
     @ObservationIgnored private var cleanupMode: DictationCleanupMode = .off
@@ -397,52 +398,92 @@ final class DictationCoordinator {
         guard settings.dictationEnabled, probe.readInsertion() == probe.inserted else { return }
         let identity = UUID()
         correctionSession = DictationCorrectionSession(
-            id: identity, inserted: probe.inserted, recognized: recognized, baseline: corrections.entries)
+            id: identity, inserted: probe.inserted, recognized: recognized, baseline: corrections.entries,
+            isKnownWord: corrections.isKnownWord)
         correctionProbe = probe
         correctionStarted = .now
         correctionEditor = editor.map { ObjectIdentifier($0) }
+        correctionObservation = probe.observeChanges { [weak self] in
+            guard let self, correctionSession?.id == identity else { return }
+            scheduleCorrectionCheck(after: DictationCorrectionSession.changeCoalescing, identity: identity)
+        }
+        scheduleCorrectionCheck(after: DictationCorrectionSession.polledCheckInterval, identity: identity)
+    }
+
+    private func scheduleCorrectionCheck(after delay: Duration, identity: UUID) {
+        correctionTask?.cancel()
         correctionTask = Task { [weak self] in
-            while !Task.isCancelled {
-                do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
-                guard !Task.isCancelled, self?.correctionSession?.id == identity,
-                    self?.pollCorrectionLearning() == true
-                else { return }
-            }
+            do { try await Task.sleep(for: delay) } catch { return }
+            guard let self, !Task.isCancelled, correctionSession?.id == identity, pollCorrectionLearning(),
+                let session = correctionSession, let started = correctionStarted
+            else { return }
+            let next = session.nextCheck(at: started.duration(to: .now), isObserved: correctionObservation != nil)
+            scheduleCorrectionCheck(after: next, identity: identity)
         }
     }
 
     private func pollCorrectionLearning(flush: Bool = false) -> Bool {
         guard settings.dictationEnabled, var session = correctionSession,
-            let started = correctionStarted, let edited = correctionProbe?.readInsertion()
+            let started = correctionStarted, let probe = correctionProbe
         else {
             stopCorrectionLearning()
             return false
         }
-        guard !edited.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            correctionProbe?.restoresSelection(edited) != true
-        else {
+        let elapsed = started.duration(to: .now)
+        let edited = probe.readInsertion()
+        if let edited, probe.restoresSelection(edited) {
             corrections.discardCandidates(for: session.id)
             stopCorrectionLearning()
             return false
         }
-        if let detection = session.observe(edited, at: started.duration(to: .now), flush: flush) {
-            do {
-                session.learned = try corrections.learn(
-                    detection.corrections, candidates: detection.candidates, sessionID: session.id,
-                    replacing: session.learned, baseline: session.baseline)
-            } catch {
-                stopCorrectionLearning()
-                showMessage(error.localizedDescription, .danger)
-                return false
-            }
+        guard let edited, !edited.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            if let observation = session.settleOnLoss(at: elapsed) { learn(observation, in: &session) }
+            stopCorrectionLearning()
+            return false
+        }
+        if let observation = session.observe(edited, at: elapsed, flush: flush) {
+            guard learn(observation, in: &session) else { return false }
+        }
+        guard !session.isExpired(at: elapsed) else {
+            stopCorrectionLearning()
+            return false
         }
         correctionSession = session
+        return true
+    }
+
+    @discardableResult
+    private func learn(
+        _ observation: DictationCorrectionSession.Observation, in session: inout DictationCorrectionSession
+    ) -> Bool {
+        let previous = session.learned
+        do {
+            session.learned = try corrections.learn(
+                observation.corrections, candidates: observation.candidates, sessionID: session.id,
+                replacing: session.learned, baseline: session.baseline)
+        } catch {
+            stopCorrectionLearning()
+            showMessage(error.localizedDescription, .danger)
+            return false
+        }
+        let added = session.learned.filter { entry in
+            entry.original != entry.spelling
+                && !previous.contains { $0.id == entry.id && $0.spelling == entry.spelling }
+        }
+        if let first = added.first {
+            let message = added.count == 1
+                ? String(localized: "Learned “\(first.original)” → “\(first.spelling)”")
+                : String(localized: "Learned new dictionary words")
+            showMessage(message, .success)
+        }
         return true
     }
 
     func stopCorrectionLearning() {
         correctionTask?.cancel()
         correctionTask = nil
+        correctionObservation?.invalidate()
+        correctionObservation = nil
         correctionSession = nil
         correctionProbe = nil
         correctionStarted = nil

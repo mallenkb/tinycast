@@ -637,7 +637,10 @@ struct DictationSettingsView: View {
                 let title =
                     correction.original == correction.spelling
                     ? correction.spelling : "\(correction.original) → \(correction.spelling)"
-                SettingsRow(title: title) {
+                SettingsRow(
+                    title: title,
+                    subtitle: correction.isManual ? nil : String(localized: "Learned from your edits")
+                ) {
                     Button(role: .destructive) {
                         coordinator.removeCorrection(correction)
                     } label: {
