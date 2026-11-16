@@ -23,7 +23,7 @@ struct DictationTest {
             DictationTextFormatter.basicCleanup(
                 "The cost is 20 Ghana Sadis and 75 passe was. Call at nine thirty AM.", normalize: { $0 }, now: {
                     cleanupClockReads += 1
-                    return cleanupClockReads < 3 ? cleanupStart : cleanupStart + .milliseconds(30)
+                    return cleanupClockReads < 3 ? cleanupStart : cleanupStart + DictationTextFormatter.Budget.safetyTimeout
                 }),
             "The cost is GHS 20.75. Call at nine thirty AM.")
         check(DictationTextFormatter.format("  Hello. \n", context: nil), "Hello.")

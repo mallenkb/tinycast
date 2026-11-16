@@ -353,9 +353,9 @@ other supported stutters, clear weekday
 corrections, and spoken punctuation. It can format lists from explicit commands, ordered cues,
 headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps,
 or at transitions and questions after a substantial passage. See the
-[formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
-budget expires, Basic keeps its filler removal and tries currency formatting on its own. Advanced
-keeps the original text if its budget expires. Smart runs the
+[formatting reference](dictation-formatting.md) for examples and limits. If the formatter's fixed
+work allowance runs out, Basic keeps its filler removal and tries currency formatting on its own.
+Advanced keeps the original text. Smart runs the
 selected engine. The After dictation switch
 pauses automatic transforms without clearing the Default transform selection. Transform instructions,
 shortcuts and sample preview appear while editing that transform. Smart cleanup and transforms

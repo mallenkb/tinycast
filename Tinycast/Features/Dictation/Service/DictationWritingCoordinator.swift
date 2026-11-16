@@ -24,6 +24,7 @@ final class DictationWritingCoordinator {
     @ObservationIgnored private var preparedSections: [(source: String, result: String)] = []
     @ObservationIgnored private var sectionTask: Task<Void, Never>?
     @ObservationIgnored private var acceptingSections = false
+    @ObservationIgnored private var formatterWarmUp: Task<Void, Never>?
 
     init(
         store: DictationTransformStore, cleanup: DictationCleanupModel, settings: AppSettings, aiSettings: AISettingsStore,
@@ -80,6 +81,7 @@ final class DictationWritingCoordinator {
         recordingID = UUID()
         recordingEngine = settings.dictationCleanupEngine
         acceptingSections = true
+        if formatterWarmUp == nil { formatterWarmUp = Task(priority: .utility) { await DictationLocalCleanup.warmUp() } }
         let smart = settings.dictationSmartCleanup
         let transform = automaticTransform
         guard smart || transform != nil else { return }
