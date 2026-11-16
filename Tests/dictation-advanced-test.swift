@@ -49,10 +49,10 @@ struct DictationAdvancedTest {
         var clockReads = 0
         let expired = DictationTextFormatter.advancedCleanup(source) {
             clockReads += 1
-            return clockReads < 3 ? fixed : fixed + .milliseconds(30)
+            return clockReads < 3 ? fixed : fixed + DictationTextFormatter.Budget.safetyTimeout
         }
         guard expired == source, clockReads == 3 else {
-            fatalError("A missed deadline must return the complete original transcript")
+            fatalError("The safety timeout between passes must return the complete original transcript")
         }
 
         let families = Set(fixtures.map(\.family)).count
@@ -74,6 +74,20 @@ struct DictationAdvancedTest {
             return start.duration(to: clock.now)
         }
         print("Long transcript p95: \(p95Milliseconds(longer)) ms. Budget fallbacks: \(budgetFallbacks) of \(longer.count).")
+        guard budgetFallbacks == 0 else { fatalError("A long transcript must not depend on machine load") }
+
+        let tenMinutes = (0..<25).flatMap { _ in paragraphs }.joined(separator: " ")
+        let start = clock.now
+        let cleanedTenMinutes = DictationTextFormatter.advancedCleanup(tenMinutes, now: { clock.now })
+        print("Single-line \(tenMinutes.utf8.count)-byte transcript: \(start.duration(to: clock.now))")
+        guard cleanedTenMinutes != tenMinutes,
+              cleanedTenMinutes == DictationTextFormatter.advancedCleanup(tenMinutes, now: { fixed }) else {
+            fatalError("A long single-line transcript must be cleaned within the work cap")
+        }
+        let oversized = String(repeating: "um ", count: DictationTextFormatter.Budget.byteLimit / 3 + 1)
+        guard DictationTextFormatter.advancedCleanup(oversized, now: { fixed }) == oversized else {
+            fatalError("Input over the size cap must stay as dictated")
+        }
     }
 
     private static func p95Milliseconds(_ elapsed: [Duration]) -> String {

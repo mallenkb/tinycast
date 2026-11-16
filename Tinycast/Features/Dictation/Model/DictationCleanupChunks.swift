@@ -75,26 +75,31 @@ struct DictationCleanupChunks {
         return output
     }
 
+    // Regex isn't Sendable but publishes its compiled program atomically and is otherwise immutable.
+    nonisolated(unsafe) private static let protectedValuePattern = #/
+        (?ix:
+            [\p{N}\p{Sc}@\x22\x60“”]|\b(?:https?://|www\.)|\b(?:
+                zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|
+                fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|
+                sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|quadrillion|
+                lakh|crore|half|quarters?|percent|noon|midnight|today|tomorrow|yesterday|
+                (?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth)|
+                cedis?|pesewas?|dollars?|euros?|yen|rupees?|dinars?|riyals?|pesos?|francs?|pence|cents?|
+                january|february|april|june|july|august|september|october|november|december
+            )\b
+        )
+        /#
+    nonisolated(unsafe) private static let negationPattern =
+        /(?i:\b(?:no|not|never|none|nothing|nobody|without|cannot)\b|n['’]t\b)/
+
     static func hasProtectedValue(_ text: Substring) -> Bool {
-        text.firstMatch(of: #/
-            (?ix:
-                [\p{N}\p{Sc}@\x22\x60“”]|\b(?:https?://|www\.)|\b(?:
-                    zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|
-                    fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|
-                    sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|quadrillion|
-                    lakh|crore|half|quarters?|percent|noon|midnight|today|tomorrow|yesterday|
-                    (?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth)|
-                    cedis?|pesewas?|dollars?|euros?|yen|rupees?|dinars?|riyals?|pesos?|francs?|pence|cents?|
-                    january|february|april|june|july|august|september|october|november|december
-                )\b
-            )
-            /#) != nil
+        text.firstMatch(of: protectedValuePattern) != nil
     }
 
     static func acceptsSmartEdit(_ output: String, source: String) -> Bool {
         guard !output.isEmpty, !hasProtectedValue(output[...]) else { return false }
-        let negation = /(?i:\b(?:no|not|never|none|nothing|nobody|without|cannot)\b|n['’]t\b)/
-        guard source.matches(of: negation).count == output.matches(of: negation).count else { return false }
+        guard source.matches(of: negationPattern).count == output.matches(of: negationPattern).count
+        else { return false }
         let tokens: (String) -> [String] = {
             $0.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init)
         }
