@@ -454,7 +454,9 @@ run index -O dictation-performance Tinycast/Platform/ProcessExit.swift \
 run dictation-inference-test Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
     Tinycast/Features/Dictation/Service/DictationSpectrum.swift \
     Tinycast/Features/Dictation/Helper/DictationTensor.swift Tinycast/Features/Dictation/Helper/DictationTokenizer.swift \
-    Tinycast/Features/Dictation/Helper/DictationMel.swift
+    Tinycast/Features/Dictation/Helper/DictationMel.swift \
+    Tinycast/Features/Dictation/Helper/CoherePipeline.swift \
+    Tinycast/Features/Dictation/Helper/CohereAsrConfig.swift
 run dictation-worker-test  Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Model/DictationIdleRelease.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \

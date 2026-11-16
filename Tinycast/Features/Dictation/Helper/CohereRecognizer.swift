@@ -18,8 +18,7 @@ final class CohereRecognizer: DictationRecognizer {
             $0.englishName.caseInsensitiveCompare(language ?? "English") == .orderedSame
         }
         guard let selected else { throw DictationInferenceError.incompatibleModel }
-        let result = try pipeline.transcribeLong(audio: samples, models: models, language: selected)
-        guard result.cappedWindows == 0 else { throw DictationInferenceError.outputLimit }
-        return result.text
+        // A window that fills the decoder cache keeps the words it produced.
+        return try pipeline.transcribeLong(audio: samples, models: models, language: selected).text
     }
 }
