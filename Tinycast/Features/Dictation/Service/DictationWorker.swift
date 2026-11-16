@@ -1,11 +1,23 @@
 import Foundation
+import Synchronization
 
 final class DictationWorker: Sendable {
+    enum Purpose: Sendable {
+        case preview, segment, final
+
+        /// A dropped preview or segment keeps the loaded model; only its result is discarded.
+        var survivesCancellation: Bool { self != .final }
+    }
+
+    /// A first Core ML compile of a large model can take minutes before the helper reports ready.
+    static let loadTimeoutSeconds = 180
+
     private let process: Process
     private let input: FileHandle
     private let output: FileHandle
     private let exit: ProcessExit
     private let queue = DispatchQueue(label: "com.tinycast.dictation-worker", qos: .userInitiated)
+    private let terminated = Atomic(false)
 
     init(executable: URL = DictationWorker.executable, arguments: [String] = []) throws {
         let process = Process()
@@ -41,82 +53,118 @@ final class DictationWorker: Sendable {
         #endif
     }
 
+    var isUsable: Bool { !terminated.load(ordering: .relaxed) && process.isRunning }
+
     func transcribe(
-        _ samples: [Float], request: DictationWire.Request,
+        _ samples: [Float], request: DictationWire.Request, purpose: Purpose = .final,
         onReady: @escaping @MainActor @Sendable () -> Void
     ) async throws -> String {
-        guard (1...DictationWire.maximumSamples).contains(samples.count),
-            let text = try await exchange(samples, request: request, onReady: onReady)
-        else {
+        guard (1...DictationWire.maximumSamples).contains(samples.count) else {
             throw DictationWire.Failure.unavailable
         }
+        let text = try await Self.signposted(purpose) {
+            try await exchange(samples, request: request, purpose: purpose, onReady: onReady)
+        }
+        guard let text else { throw DictationWire.Failure.unavailable }
         return text
     }
 
     func prepare(_ request: DictationWire.Request) async throws {
-        _ = try await exchange([], request: request, onReady: nil)
+        _ = try await Signposts.interval("Dictation model load") {
+            try await exchange([], request: request, purpose: .final, onReady: nil)
+        }
+    }
+
+    private static func signposted<T>(
+        _ purpose: Purpose, _ work: () async throws -> T
+    ) async rethrows -> T {
+        switch purpose {
+        case .preview: try await Signposts.interval("Dictation preview transcription", around: work)
+        case .segment: try await Signposts.interval("Dictation segment transcription", around: work)
+        case .final: try await Signposts.interval("Dictation final transcription", around: work)
+        }
     }
 
     private func exchange(
-        _ samples: [Float], request: DictationWire.Request, onReady: (@MainActor @Sendable () -> Void)?
+        _ samples: [Float], request: DictationWire.Request, purpose: Purpose,
+        onReady: (@MainActor @Sendable () -> Void)?
     ) async throws -> String? {
         try Task.checkCancellation()
         guard samples.count == request.sampleCount else { throw DictationWire.Failure.unavailable }
-        let timeout = 60 + samples.count / DictationWire.sampleRate * 2
-        let hasExtendedLoadTimeout = request.model == .phonon2
+        let progress = ExchangeProgress()
+        let run = Task {
+            try await self.run(samples, request: request, purpose: purpose, progress: progress, onReady: onReady)
+        }
         return try await withTaskCancellationHandler {
-            var deadline = terminationDeadline(after: hasExtendedLoadTimeout ? 180 : timeout)
-            defer { deadline.cancel() }
-            let responses = AsyncThrowingStream<DictationWire.Response, Error>(
-                bufferingPolicy: .bufferingOldest(2)
-            ) { continuation in
-                queue.async {
-                    do {
-                        try DictationWire.write(request, to: self.input)
-                        guard
-                            let ready = try DictationWire.read(
-                                DictationWire.Response.self, from: self.output),
-                            ready.id == request.id, ready.status == .ready
-                        else {
-                            throw DictationWire.Failure.unavailable
-                        }
-                        continuation.yield(ready)
-                        if request.isPreparation {
-                            continuation.finish()
-                            return
-                        }
-                        try samples.withUnsafeBytes { try self.input.write(contentsOf: $0) }
-                        guard
-                            let result = try DictationWire.read(
-                                DictationWire.Response.self, from: self.output),
-                            result.id == request.id, result.status == .result
-                        else {
-                            throw DictationWire.Failure.unavailable
-                        }
-                        continuation.yield(result)
-                        continuation.finish()
-                    } catch {
-                        self.terminate()
-                        continuation.finish(throwing: error)
-                    }
-                }
-            }
-            var text: String?
-            for try await response in responses {
-                if response.status == .ready {
-                    if hasExtendedLoadTimeout, !request.isPreparation {
-                        deadline.cancel()
-                        deadline = terminationDeadline(after: timeout)
-                    }
-                    await onReady?()
-                }
-                if response.status == .result { text = response.text }
-            }
+            let text = try await run.value
             try Task.checkCancellation()
             return text
         } onCancel: {
+            guard !purpose.survivesCancellation || !progress.isLoaded else { return }
+            run.cancel()
             self.terminate()
         }
+    }
+
+    private func run(
+        _ samples: [Float], request: DictationWire.Request, purpose: Purpose,
+        progress: ExchangeProgress, onReady: (@MainActor @Sendable () -> Void)?
+    ) async throws -> String? {
+        let timeout = 60 + samples.count / DictationWire.sampleRate * 2
+        var deadline = terminationDeadline(after: Self.loadTimeoutSeconds)
+        defer { deadline.cancel() }
+        let responses = AsyncThrowingStream<DictationWire.Response, Error>(
+            bufferingPolicy: .bufferingOldest(2)
+        ) { continuation in
+            queue.async {
+                do {
+                    try DictationWire.write(request, to: self.input)
+                    guard
+                        let ready = try DictationWire.read(
+                            DictationWire.Response.self, from: self.output),
+                        ready.id == request.id, ready.status == .ready
+                    else {
+                        throw DictationWire.Failure.unavailable
+                    }
+                    progress.markLoaded()
+                    continuation.yield(ready)
+                    if request.isPreparation {
+                        continuation.finish()
+                        return
+                    }
+                    try samples.withUnsafeBytes { try self.input.write(contentsOf: $0) }
+                    guard
+                        let result = try DictationWire.read(
+                            DictationWire.Response.self, from: self.output),
+                        result.id == request.id
+                    else {
+                        throw DictationWire.Failure.unavailable
+                    }
+                    guard result.status == .result else {
+                        if !purpose.survivesCancellation { self.terminate() }
+                        continuation.finish(throwing: DictationWire.Failure.unavailable)
+                        return
+                    }
+                    continuation.yield(result)
+                    continuation.finish()
+                } catch {
+                    self.terminate()
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+        var text: String?
+        for try await response in responses {
+            if response.status == .ready {
+                if !request.isPreparation {
+                    deadline.cancel()
+                    deadline = terminationDeadline(after: timeout)
+                }
+                await onReady?()
+            }
+            if response.status == .result { text = response.text }
+        }
+        return text
     }
 
     private func terminationDeadline(after seconds: Int) -> Task<Void, Never> {
@@ -127,6 +175,7 @@ final class DictationWorker: Sendable {
     }
 
     func terminate() {
+        terminated.store(true, ordering: .relaxed)
         if process.isRunning { process.terminate() }
     }
 
@@ -141,4 +190,13 @@ final class DictationWorker: Sendable {
             }
         }
     }
+}
+
+/// Set on the worker queue once the helper reports the model loaded for one exchange.
+private final class ExchangeProgress: Sendable {
+    private let loaded = Atomic(false)
+
+    var isLoaded: Bool { loaded.load(ordering: .acquiring) }
+
+    func markLoaded() { loaded.store(true, ordering: .releasing) }
 }
