@@ -23,6 +23,10 @@ fi
 if ! node Scripts/check-localizations.js; then
     exit 1
 fi
+# A Model file reaching AppKit, AppCore or a coordinator would stop compiling into its harness.
+if ! Scripts/check-model-purity.sh; then
+    exit 1
+fi
 # A migration that a stable release has shipped is dead code, and only this notices.
 if ! Scripts/check-migrations.sh; then
     exit 1
