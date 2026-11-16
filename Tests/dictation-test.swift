@@ -56,6 +56,19 @@ struct DictationTest {
             DictationTextFormatter.format(
                 "World.", context: Context(before: "Hello ", after: ")"),
                 adaptCapitalization: false), "World.")
+        let midSentence = Context(before: "Well,", after: "")
+        check(DictationTextFormatter.format("I think so.", context: midSentence), " I think so.")
+        check(DictationTextFormatter.format("I’m ready.", context: midSentence), " I’m ready.")
+        check(DictationTextFormatter.format("I'll go.", context: midSentence), " I'll go.")
+        check(DictationTextFormatter.format("I've seen it.", context: midSentence), " I've seen it.")
+        check(DictationTextFormatter.format("I'd say yes.", context: midSentence), " I'd say yes.")
+        check(DictationTextFormatter.format("If so, fine.", context: midSentence), " if so, fine.")
+        check(DictationTextFormatter.format("NASA called.", context: midSentence), " NASA called.")
+        check(DictationTextFormatter.format("Ana called, so call Ana.", context: midSentence), " Ana called, so call Ana.")
+        check(DictationTextFormatter.format("Ana called. Ana left.", context: midSentence), " ana called. Ana left.")
+        check(DictationTextFormatter.format("Ana called.", context: midSentence), " ana called.")
+        check(
+            DictationTextFormatter.format("Ana called.", context: midSentence, properNouns: ["Ana"]), " Ana called.")
         let document = "prefix. Text to replace suffix"
         check(
             DictationTextFormatter.format(

@@ -222,6 +222,9 @@ models use CPU/Neural Engine.
   and prepared tokens, not the BPE encoding rules.
 - The `Model/` folder imports Foundation only. Context-sensitive spaces and capitalization are a
   pure decision driven by text around the caret. Capitalization adapts by default.
+  Mid-sentence, the first letter stays capitalized for "I" and its contractions, a word whose
+  second letter is uppercase, a word the transcript capitalizes mid-sentence elsewhere, and a
+  word that starts a Dictionary spelling.
   The `dictation.adaptsCapitalization` override in `settings.json` leaves contextual spaces enabled.
   Capitalization, spacing, and correction learning share one snapshot of the focused editor.
   If an app does not expose caret context through Accessibility, Tinycast inserts the plain transcript.
