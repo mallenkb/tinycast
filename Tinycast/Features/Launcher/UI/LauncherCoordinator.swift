@@ -21,6 +21,8 @@ final class LauncherCoordinator {
     private let calendarCoordinator: CalendarCoordinator
     /// The backup commands only, which need the live stores to gather from and apply to.
     private unowned let core: AppCore
+    /// The palette resolves its screen on every key press, so the launcher's list is kept here.
+    let resultsCache = LauncherResultsCache()
 
     init(
         ranking: LauncherRankingStore,

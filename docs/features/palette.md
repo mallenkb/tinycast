@@ -91,6 +91,12 @@ closes any menu, lands and refocuses, then calls `modeDidChange(to:)`, which app
 `PaletteModeTransition`: start the entered screen's session and end every other one. Both policies
 are Foundation-only and covered by `palette-coordinator-test`.
 
+The launcher's list is the costliest screen to build and the palette resolves `screen` on every
+key press. `LauncherResultsCache`, owned by `LauncherCoordinator`, computes `LauncherResults` once
+under `withObservationTracking` and reuses it until a store it read changes, the minute turns
+(`AppIndex` re-ranks with the clock) or the carded meeting changes. The `Launcher results` and
+`LauncherScreen` signposts measure both halves.
+
 Where a reset leaves the highlight is the screen's to say too. Every reset — an open, a new query, a
 new filter — goes through `RootPaletteView.land()`, which reads `landingSelection`, so handlers that
 fire in one update agree whatever order they run in. `onAppear` lands as well: the first show builds
