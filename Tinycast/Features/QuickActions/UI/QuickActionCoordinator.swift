@@ -331,7 +331,7 @@ final class QuickActionCoordinator {
         switch target {
         case .external(let app):
             injector.replaceSelection(
-                with: text, in: app, onDelivered: onDelivered, onFailed: onFailed)
+                with: text, in: app, onDelivered: onDelivered, onFailed: { _ in onFailed() })
         case .note(let note):
             guard core.notesCoordinator.editorInput == note.document,
                 note.editor.window?.isVisible == true,

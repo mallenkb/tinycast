@@ -25,8 +25,10 @@
 - **Paste Sequentially never promotes, and its walk is frozen at the first press.** `PasteSequence`
   keeps every entry's id, newest first, and resolves each against the live history, so a promotion
   cannot repeat or skip an entry and a deleted one is passed over rather than pasted.
-- **`Model/ClipboardStore.swift` keeps to Foundation plus SQLite3 and no other app source**, so
-  `clipboard-test` can compile it standalone. It uses `isolated deinit` for its SQLite teardown.
+- **`Model/` holds the pure values; SQLite and blob files live in `Service/ClipboardDatabase`.**
+  `ClipboardStore` (`Service/`) keeps the observable window and its policy and reaches the file only
+  through the database, which uses `isolated deinit` for its SQLite teardown. Both keep to Foundation
+  plus SQLite3, so `clipboard-test` compiles them standalone.
 - **An image capture keeps the generation from its pasteboard poll.** Clear History and store close
   retire it across conversion and file writing; a stale capture inserts nothing and leaves no blob.
 - A database that cannot be opened is deleted and recreated. That is sound because a history is
@@ -123,8 +125,9 @@ who turns the feature off can still erase what it kept.
 
 ## Store
 
-`ClipboardStore` is SQLite-backed: rows plus a trigram FTS5 index in `clipboard.sqlite3`, with image
-blobs as loose PNG files, all under `~/Library/Application Support/<bundle-id>/`. The newest 1000 rows
+`ClipboardStore` is SQLite-backed through `ClipboardDatabase`: rows plus a trigram FTS5 index in
+`clipboard.sqlite3`, with image blobs as loose PNG files, all under
+`~/Library/Application Support/<bundle-id>/`. The newest 1000 rows
 are mirrored in the observable `items` window; FTS search reaches older rows.
 
 **Application Support, not Caches.** `~/Library/Caches` is excluded from Time Machine and the system

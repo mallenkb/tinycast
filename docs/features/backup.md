@@ -128,7 +128,7 @@ Per category:
 
 - **Settings** merge field by field, and a file carrying custom commands or their shortcuts still hits
   `confirmExecutableImport` first.
-- **Clipboard** streams through `ClipboardStore.importStoredItems`, off the main actor and on its own
+- **Clipboard** streams through `ClipboardDatabase.importStoredItems`, off the main actor and on its own
   connection: a restored history runs past the memory window and must never sit in memory or freeze the
   UI. A row is deduped on its text, or on the path its image takes; the blob keeps the name the bundle
   gave it, so importing one file twice lands on the same path and adds nothing. Only a file inside

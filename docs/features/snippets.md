@@ -331,7 +331,7 @@ where every clause is a rule in it.
 selection as opaque text markers, and their `AXValue` either trails the editor by a few milliseconds
 or — in VSCodium — stays empty and caret-zero indefinitely while the real editor holds the text. A
 marker range is the reliable tell, so those targets never take the Accessibility write at all.
-`accessibilityTextState` skips them for the same reason: a value that never moves cannot confirm a
+`AccessibilityTextReplacer.textState` skips them for the same reason: a value that never moves cannot confirm a
 paste either.
 
 **Rule 2: too little text is not the same as the wrong text.** `TextReplacementPolicy`
@@ -346,6 +346,14 @@ nothing. `confirmsReplacement` rebuilds the exact string the write should have p
 it to what the element reports. An unchanged value is `.unavailable`, so the event tiers still get
 their turn instead of an "applied" message over untouched text; a value that changed into something
 we did not write is `.rejected`, because events would then edit a document we can no longer describe.
+
+**No caret, no keystrokes.** An insertion with no keyword to delete (a palette or hotkey expansion,
+a Quick Action reply, dictation) first asks Accessibility for the focused element. When
+there is none, or it has no selected text range and is not a marker-based renderer, delivery stops
+with `DeliveryFailure.noTextTarget` and posts nothing: typed characters there would fire app
+shortcuts or Finder's type-select. The caller decides what to offer instead; Snippets asks the reader
+to click into a text field, Quick Actions copies the reply. An automatic expansion never takes this
+path, because the keyword the reader just typed proves a caret even where Accessibility shows none.
 
 **Rule 4** keeps the same permission, consent, Secure Event Input, target-app and cancellation gates.
 The fallback deletes the keyword first, waits for deletion to settle, then inserts the expansion.

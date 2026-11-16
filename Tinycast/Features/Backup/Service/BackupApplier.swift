@@ -151,7 +151,7 @@ enum BackupApplier {
     private nonisolated static func importClipboard(
         _ bundle: BackupBundle, into store: ClipboardStore
     ) async -> Int {
-        ClipboardStore.importStoredItems(
+        ClipboardDatabase.importStoredItems(
             inDatabaseAt: store.dbURL, adoptingImagesInto: store.imagesDir,
             bundle.clipboardItems().lazy.compactMap { staged($0, in: bundle) })
     }
