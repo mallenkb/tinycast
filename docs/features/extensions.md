@@ -258,7 +258,7 @@ screens hold (see [palette.md](palette.md)).
   palette selection; an empty result reports `null`, matching the API contract.
 - **Search-bar dropdown** — `List.Dropdown` and `Grid.Dropdown` draw as
   `ExtensionSearchAccessoryButton` at the header's trailing edge and drop `ExtensionPickerList` as one
-  of the palette's `OpenMenu` cases, so the arrows, ↵, Escape and the click-away come from the one menu
+  of the palette's `PaletteMenu` cases, so the arrows, ↵, Escape and the click-away come from the one menu
   path and no second key handler exists to disagree with it. `PaletteFilterAction` routes ⌘P, so a
   command's own dropdown answers before Tinycast's clipboard filter can. The list is
   `listWidth` (240) rather than a form picker's field width: it hangs off a chip, not a field.

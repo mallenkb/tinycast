@@ -259,7 +259,8 @@ Tinycast/
                     Images/, Compression/
   Resources/        RaycastRuntime.generated.js, the embedded extension runtime
   Palette/          the palette shell: PalettePanel, PaletteWindowController, RootPaletteView,
-                    the PaletteScreen protocol, PaletteCoordinator, PaletteState, PaletteMode
+                    the PaletteScreen protocol, PaletteCoordinator, PaletteState, PaletteMode,
+                    PaletteMenuState, PaletteRouting
   Windows/          the non-palette AppKit surfaces: AppWindowController, Dialog/, HUD/, About/
   Assets.xcassets/  the app icon and the bundled image sets some catalog symbols resolve to
   Migrations/       one-shot repairs, each deleted after one stable release (migrations.md)

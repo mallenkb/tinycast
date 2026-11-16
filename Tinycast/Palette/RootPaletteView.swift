@@ -33,14 +33,6 @@ struct RootPaletteView: View {
     @FocusState private var searchFocused: Bool
     /// Kept apart from the search field's own focus. See docs/features/palette.md.
     @FocusState private var argumentFocused: String?
-    /// Which in-window menu is open; at most one, so the state cannot disagree with itself.
-    @State private var openMenu: OpenMenu?
-    /// Sampled once by `openActions`, so the running-only rows can't appear while the menu is up.
-    @State private var selectionIsRunning = false
-    @State private var menuSelection = 0
-    /// The argument field whose choices are up, so `menuContent` can rebuild the same menu.
-    @State private var argumentOptionsField: String?
-    @State private var inputOptions: PopoverMenuContent?
     @State private var menuPanel = MenuPanelController()
     /// The palette's own window, reported by `WindowReader`; the menu hangs off its frame.
     @State private var hostWindow: NSWindow?
@@ -50,6 +42,9 @@ struct RootPaletteView: View {
 
     /// Compact vs. full; the source of truth is on `AppCore`, so the two can't disagree.
     private var isCollapsed: Bool { core.paletteCoordinator.paletteIsCollapsed }
+    private var menus: PaletteMenuState<PopoverMenuContent> { core.paletteCoordinator.menus }
+    private var menuSelection: Binding<Int> { Bindable(menus).selection }
+    private var menuCorner: MenuPanelCorner? { menus.openMenu?.corner }
     private var showsWindowShadow: Bool { isCollapsed || colorScheme == .dark }
 
     private var renderingOutset: CGFloat {
@@ -63,7 +58,7 @@ struct RootPaletteView: View {
             return Signposts.interval("LauncherScreen") {
                 LauncherScreen(
                     appIndex: appIndex, favorites: favorites, visibility: visibility,
-                    currencyRates: currencyRates, core: core, vm: vm, running: selectionIsRunning,
+                    currencyRates: currencyRates, core: core, vm: vm, running: menus.selectionIsRunning,
                     meeting: core.calendarCoordinator.cardedMeeting, now: meetingClock.now,
                     openActions: openActions, openArgumentOptions: openArgumentOptions,
                     scrollToFollow: { scroll = ScrollIntent(kind: .follow) })
@@ -181,7 +176,7 @@ struct RootPaletteView: View {
         selection(count: screen.rows.count)
     }
 
-    private var menuOpen: Bool { openMenu != nil }
+    private var menuOpen: Bool { menus.isOpen }
 
     private var showsSearchProgress: Bool {
         guard vm.isVisible else { return false }
@@ -190,103 +185,33 @@ struct RootPaletteView: View {
             && (vm.mode == .fileSearch || (vm.mode == .launcher && core.fileSearchCoordinator.showsFilesInLauncher))
     }
 
-    // MARK: - Popover menu content
-
-    /// The clipboard type filter's rows; activating one is the only way the filter changes.
-    private var clipboardFilterContent: PopoverMenuContent {
-        PopoverMenuContent(
-            items: ClipboardFilter.allCases.enumerated().map { index, filter in
-                PopoverMenuItem(
-                    title: filter.title, systemImage: filter.systemImage,
-                    startsSection: index == 1
-                ) {
-                    vm.clipboardFilter = filter
-                }
-            })
-    }
-
-    private var fileSearchFilterContent: PopoverMenuContent {
-        PopoverMenuContent(
-            items: FileSearchFilter.allCases.map { filter in
-                PopoverMenuItem(title: filter.title, systemImage: filter.systemImage) {
-                    vm.fileSearchFilter = filter
-                }
-            })
-    }
-
-    /// All Categories stays above the divider; the remaining rows match their section order.
-    private var emojiCategoryContent: PopoverMenuContent {
-        PopoverMenuContent(
-            items: EmojiCategoryFilter.allCases.enumerated().map { index, filter in
-                PopoverMenuItem(
-                    title: filter.title, systemImage: filter.systemImage,
-                    startsSection: index == 1
-                ) {
-                    vm.emojiCategoryFilter = filter
-                }
-            })
-    }
-
-    private var appMenuContent: PopoverMenuContent {
-        let appName = Bundle.main.appDisplayName
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        let title = version.map { "\(appName) v\($0)" } ?? appName
-        return PopoverMenuContent(
-            header: title,
-            items: [
-                PopoverMenuItem(
-                    title: String(localized: "Changelog"),
-                    systemImage: "clock.arrow.trianglehead.2.counterclockwise.rotate.90"
-                ) {
-                    if let url = URL(string: "https://github.com/\(ReleaseFeed.repository)/releases") {
-                        openURL(url)
-                    }
-                },
-                PopoverMenuItem(title: String(localized: "About Tinycast"), systemImage: "info.circle") {
-                    core.settingsCoordinator.showAbout()
-                },
-                PopoverMenuItem(title: String(localized: "Support Tinycast"), systemImage: "heart") {
-                    core.supportCoordinator.showSupport()
-                },
-                PopoverMenuItem(
-                    title: String(localized: "Settings"), systemImage: "gearshape", shortcut: "⌘,"
-                ) {
-                    core.settingsCoordinator.showSettings()
-                },
-                PopoverMenuItem(
-                    title: String(localized: "Quit \(appName)"),
-                    systemImage: "rectangle.portrait.and.arrow.right",
-                    isDestructive: true
-                ) {
-                    NSApp.terminate(nil)
-                }
-            ])
-    }
-
     /// The one source every menu path addresses rows through, so none can disagree.
     private var menuContent: PaletteMenuContent? {
-        switch openMenu {
+        switch menus.openMenu {
         case .actions:
             let screen = screen
             return screen.menuContent(
                 at: selection(in: screen), searchQuery: ActionMenuSearchQuery(vm.menuQuery),
-                menuSelection: $menuSelection,
+                menuSelection: menuSelection,
                 onActivate: activateMenuItem)
         case .app:
-            let filtered = appMenuContent.matching(ActionMenuSearchQuery(vm.menuQuery))
+            let filtered = PaletteMenuItems.app(core: core, openURL: openURL)
+                .matching(ActionMenuSearchQuery(vm.menuQuery))
             return PaletteMenuContent(
-                popover: filtered.content, selection: $menuSelection,
+                popover: filtered.content, selection: menuSelection,
                 visibleRows: Theme.Size.appMenuVisibleRows,
                 search: PopoverMenu.Search(
                     placeholder: String(localized: "Search for actions…"), placement: .bottom),
                 onActivate: activateMenuItem, preferredSelection: filtered.bestMatch)
         case .clipboardFilter:
             return headerMenu(
-                clipboardFilterContent, width: metrics.size.clipboardFilterMenuWidth)
+                PaletteMenuItems.clipboardFilter(vm), width: metrics.size.clipboardFilterMenuWidth)
         case .fileSearchFilter:
-            return headerMenu(fileSearchFilterContent, width: metrics.size.fileSearchFilterMenuWidth)
+            return headerMenu(
+                PaletteMenuItems.fileSearchFilter(vm), width: metrics.size.fileSearchFilterMenuWidth)
         case .emojiCategory:
-            return headerMenu(emojiCategoryContent, width: metrics.size.emojiCategoryMenuWidth)
+            return headerMenu(
+                PaletteMenuItems.emojiCategory(vm), width: metrics.size.emojiCategoryMenuWidth)
         case .aiModel:
             return headerMenu(
                 AIModelMenu.models(coordinator: core.aiChatCoordinator, chat: quickAI),
@@ -303,12 +228,12 @@ struct RootPaletteView: View {
                     coordinator: core.aiChatCoordinator, chat: quickAI),
                 width: metrics.size.menuWidth)
         case .argumentOptions:
-            guard let field = argumentOptionsField,
+            guard let field = menus.argumentOptionsField,
                 let popover = headerAccessory?.optionsMenu(field)
             else { return nil }
             return headerMenu(popover, width: metrics.size.menuWidth)
         case .inputOptions(let corner):
-            guard let inputOptions else { return nil }
+            guard let inputOptions = menus.inputOptions else { return nil }
             let width: CGFloat =
                 switch corner {
                 case .belowControl(let frame, _): max(metrics.size.formMenuMinimumWidth, frame.width)
@@ -322,7 +247,7 @@ struct RootPaletteView: View {
         case .extensionAccessory:
             return extensionCommandScreen?.searchAccessoryMenu(
                 searchQuery: ActionMenuSearchQuery(vm.menuQuery),
-                menuSelection: $menuSelection, onActivate: activateMenuItem)
+                menuSelection: menuSelection, onActivate: activateMenuItem)
         case nil: return nil
         }
     }
@@ -350,11 +275,14 @@ struct RootPaletteView: View {
                 .safeAreaInset(edge: .top, spacing: 0) { header }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if !isCollapsed {
-                        bottomBar(
+                        PaletteBottomBar(
                             pillLabel: screen.primaryActionTitle, showActionGroup: showActionGroup,
                             formPrimaryShortcut: screen.hidesSearchField && screen.actsWithoutRows,
                             primaryActionEnabled: screen.isPrimaryActionEnabled(at: sel),
-                            showActions: screen.hasActions(at: sel))
+                            showActions: screen.hasActions(at: sel),
+                            appMenuOpen: menus.openMenu == .app, onAppMenu: toggleAppMenu,
+                            onSavedWords: toggleSavedWords, onPrimary: activateSelection,
+                            onActions: toggleActions)
                     }
                 }
                 // No title bar, so this thin top margin is the only place left to grab the panel.
@@ -474,20 +402,7 @@ struct RootPaletteView: View {
             }
             // A preserved screen re-summons as it was left, so a menu must end with the palette.
             .modifier(PaletteHideObserver { if menuOpen { closeMenus() } })
-            .onChange(of: vm.query) {
-                resetCompactSelection()
-                if vm.collapseQueryLineBreaks() { return }
-                land(restoringSelection: true)
-                if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
-                if vm.mode == .launcher { core.fileSearchCoordinator.searchFromLauncher(vm.query) }
-                if vm.mode == .dictionary { dictionary.lookUp(vm.query) }
-                if vm.mode == .menuSearch { menuSearch.filter(vm.query) }
-                if vm.mode == .switchWindows { windowSwitch.filter(vm.query) }
-                // A command that took over the search text filters its own list.
-                if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
-                    extensions.dispatch(handler: handler, arguments: [vm.query])
-                }
-            }
+            .onChange(of: vm.query) { queryChanged() }
             // Anything typed while the command was still starting predates its handler.
             .onChange(of: extensionScreen.searchTextHandler) { previous, handler in
                 guard previous == nil, let handler, !vm.query.isEmpty else { return }
@@ -501,37 +416,7 @@ struct RootPaletteView: View {
                 land()
                 fileSearch.search(vm.query, filter: vm.fileSearchFilter)
             }
-            .onChange(of: vm.mode) {
-                vm.clipboardFilter = .all
-                vm.fileSearchFilter = .all
-                vm.emojiCategoryFilter = .all
-                vm.emojiGridColumnsOverride = nil
-                if menuOpen { closeMenus() }
-                land(restoringSelection: true)
-                searchFocused = !screen.hidesSearchField
-                if vm.mode != .uninstall { uninstall.cancel() }
-                // Entering with no query is the blank screen's own request for recents.
-                if vm.mode == .fileSearch {
-                    fileSearch.search(vm.query, filter: vm.fileSearchFilter)
-                } else if vm.mode == .launcher {
-                    core.fileSearchCoordinator.searchFromLauncher(vm.query)
-                } else {
-                    fileSearch.cancel()
-                }
-                if vm.mode == .dictionary {
-                    dictionary.lookUp(vm.query)
-                } else {
-                    dictionary.reset()
-                }
-                if vm.mode != .menuSearch { menuSearch.reset() }
-                if vm.mode != .switchWindows { windowSwitch.reset() }
-                if vm.mode != .meetingDetails { calendarStore.clearDetails() }
-                if vm.mode != .rooms, vm.mode != .roomWindows { core.roomCoordinator.screensDidClose() }
-                // Leaving the screen any other way than Escape still ends the command's session.
-                if vm.mode != .extensionCommand, extensions.running != nil {
-                    Task { await extensions.stop() }
-                }
-            }
+            .onChange(of: vm.mode) { modeChanged() }
             // `prepare` may change nothing else, so this still lands the list as freshly opened.
             .onChange(of: vm.resetToken) {
                 if menuOpen { closeMenus() }
@@ -549,15 +434,16 @@ struct RootPaletteView: View {
                 if let index = vm.favoriteSlotIndex { performShortcut(.favoriteSlot(index)) }
             }
             // One optional makes "exactly one menu" structural; this only presents it.
-            .onChange(of: openMenu) {
+            .onChange(of: menus.openMenu) {
                 guard menuOpen else { return }
                 syncMenuPanel(presenting: true)
             }
             // The hosted tree is its own hierarchy, so the highlight has to be pushed into it.
-            .onChange(of: menuSelection) { syncMenuPanel(presenting: false) }
+            .onChange(of: menus.selection) { syncMenuPanel(presenting: false) }
             .onChange(of: vm.menuQuery) { menuQueryChanged() }
             .onDisappear {
                 menuPanel.hide()
+                menus.discard()
                 (hostWindow as? PalettePanel)?.onHeaderFieldBoundaryArrow = nil
             }
             // The first show builds this view after `prepare`, so no handler saw that reset.
@@ -635,7 +521,7 @@ struct RootPaletteView: View {
                 let command = press.modifiers.contains(.command)
                 let option = press.modifiers.contains(.option)
                 if menuOpen, !command, !option {
-                    activateMenuItem(menuSelection)
+                    activateMenuItem(menus.selection)
                     return .handled
                 }
                 if isCollapsed, !command, !option {
@@ -753,6 +639,24 @@ struct RootPaletteView: View {
                 else { return .ignored }
                 return performFilterAction() ? .handled : .ignored
             }
+    }
+
+    /// Selection and focus are the view's; which session hears the query is the coordinator's.
+    private func queryChanged() {
+        resetCompactSelection()
+        if vm.collapseQueryLineBreaks() { return }
+        land(restoringSelection: true)
+        core.paletteCoordinator.queryDidChange(
+            vm.query, extensionSearchTextHandler: extensionScreen.searchTextHandler)
+    }
+
+    /// Filters reset before the landing reads the rows; sessions follow, as they always did.
+    private func modeChanged() {
+        vm.resetScreenFilters()
+        if menuOpen { closeMenus() }
+        land(restoringSelection: true)
+        searchFocused = !screen.hidesSearchField
+        core.paletteCoordinator.modeDidChange(to: vm.mode)
     }
 
     private var topDragStrip: some View {
@@ -880,14 +784,14 @@ struct RootPaletteView: View {
             if !isCollapsed, vm.mode == .clipboard {
                 headerGutter(width: metrics.spacing.md)
                 ClipboardFilterButton(
-                    filter: vm.clipboardFilter, isOpen: openMenu == .clipboardFilter,
+                    filter: vm.clipboardFilter, isOpen: menus.openMenu == .clipboardFilter,
                     action: toggleClipboardFilter)
             }
             if !isCollapsed, vm.mode == .fileSearch {
                 headerGutter(width: metrics.spacing.md)
                 HeaderMenuButton(
                     title: vm.fileSearchFilter.title, systemImage: vm.fileSearchFilter.systemImage,
-                    isOpen: openMenu == .fileSearchFilter,
+                    isOpen: menus.openMenu == .fileSearchFilter,
                     help: String(localized: "Filter by type  ⌘P"),
                     action: toggleFileSearchFilter)
             }
@@ -896,7 +800,7 @@ struct RootPaletteView: View {
                 HeaderMenuButton(
                     title: vm.emojiCategoryFilter.title,
                     systemImage: vm.emojiCategoryFilter.systemImage,
-                    isOpen: openMenu == .emojiCategory,
+                    isOpen: menus.openMenu == .emojiCategory,
                     help: String(localized: "Filter by category  ⌘P"),
                     action: toggleEmojiCategory)
             }
@@ -905,13 +809,13 @@ struct RootPaletteView: View {
                 AIModelButton(
                     title: core.aiChatCoordinator.selectedModelTitle(for: quickAI),
                     icon: core.aiChatCoordinator.selectedModelIcon(for: quickAI),
-                    isOpen: openMenu == .aiModel,
+                    isOpen: menus.openMenu == .aiModel,
                     action: toggleAIModel)
                 if !core.aiChatCoordinator.reasoningEfforts(for: quickAI).isEmpty {
                     headerGutter(width: metrics.spacing.md)
                     AIReasoningButton(
                         title: core.aiChatCoordinator.selectedReasoningTitle(for: quickAI),
-                        isOpen: openMenu == .aiReasoning,
+                        isOpen: menus.openMenu == .aiReasoning,
                         action: toggleAIReasoning)
                 }
             }
@@ -920,7 +824,7 @@ struct RootPaletteView: View {
             {
                 headerGutter(width: metrics.spacing.md)
                 command.searchAccessoryButton(
-                    accessory, isOpen: openMenu == .extensionAccessory,
+                    accessory, isOpen: menus.openMenu == .extensionAccessory,
                     action: toggleExtensionSearchAccessory)
             }
             headerGutter(width: metrics.spacing.md * 2)
@@ -1058,143 +962,40 @@ struct RootPaletteView: View {
             }
     }
 
-    /// The Uninstall screen's primary action is destructive, so its pill isn't white.
-    private var pillTint: Color {
-        vm.mode == .uninstall ? Theme.Colors.destructive : .primary
+    private func toggleAppMenu() { toggle(.app, highlighting: 0) }
+
+    private func toggleSavedWords() {
+        closeMenus()
+        core.dictionaryCoordinator.toggleSavedWords()
     }
 
-    private func bottomBar(
-        pillLabel: String, showActionGroup: Bool, formPrimaryShortcut: Bool,
-        primaryActionEnabled: Bool, showActions: Bool
-    ) -> some View {
-        // Floating controls, no bar; the edge dissolve ghosts the rows passing beneath.
-        HStack(spacing: 0) {
-            HStack(spacing: metrics.spacing.sm) {
-                appMenuButton
-                if vm.mode == .dictionary || vm.mode == .dictionarySavedWords {
-                    DictionarySavedWordsButton(isOpen: vm.mode == .dictionarySavedWords) {
-                        closeMenus()
-                        core.dictionaryCoordinator.toggleSavedWords()
-                    }
-                }
-            }
-            .modifier(ExtensionToastSlot(extensions: extensions, showing: vm.mode == .extensionCommand))
-            if showActionGroup {
-                actionGroup(
-                    pillLabel: pillLabel, formPrimaryShortcut: formPrimaryShortcut,
-                    primaryActionEnabled: primaryActionEnabled,
-                    showActions: showActions
-                )
-                .fixedSize()
-            }
-        }
-        .padding(.horizontal, metrics.spacing.md)
-        .frame(height: metrics.size.bottomBarHeight)
-        .frame(maxWidth: .infinity)
-    }
-
-    @ViewBuilder private var appMenuButton: some View {
-        if vm.mode == .launcher {
-            MenuCircleButton(action: toggleAppMenu)
-        } else {
-            BarButton(isSelected: openMenu == .app, action: toggleAppMenu) {
-                HStack(spacing: metrics.spacing.sm) {
-                    if vm.mode == .dictionary || vm.mode == .dictionarySavedWords {
-                        FeatureIconView(name: "FeatureDictionary", size: metrics.size.resultRowIcon)
-                    } else if let tab = vm.mode.featureTab {
-                        FeatureIconView(name: tab.iconAsset, size: metrics.size.resultRowIcon)
-                    } else {
-                        SymbolImage(
-                            name: vm.mode.systemImage,
-                            size: metrics.size.barButtonHeight - metrics.spacing.md)
-                    }
-                    Text(vm.mode.featureTitle)
-                        .font(metrics.typography.bar)
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(metrics.spacing.xs)
-            .frame(height: metrics.size.barButtonHeight + metrics.spacing.xs * 2)
-            .frosted(in: Capsule())
-            .accessibilityLabel(Text("\(vm.mode.featureTitle), menu"))
-        }
-    }
-
-    private func toggleAppMenu() {
-        if openMenu == .app { closeMenus() } else { open(.app, highlighting: 0) }
-    }
-
-    private func actionGroup(
-        pillLabel: String, formPrimaryShortcut: Bool, primaryActionEnabled: Bool, showActions: Bool
-    ) -> some View {
-        HStack(spacing: 2) {
-            BarButton(action: activateSelection) {
-                HStack(spacing: metrics.spacing.sm) {
-                    Text(pillLabel)
-                        .font(metrics.typography.bar)
-                        .foregroundStyle(pillTint)
-                    if formPrimaryShortcut {
-                        HStack(spacing: metrics.spacing.xxs) {
-                            KeyCapChip(text: "⌘", style: .outline)
-                            KeyCapChip(text: "↵", style: .outline)
-                        }
-                    } else {
-                        KeyCapChip(text: "↵", style: .outline)
-                    }
-                }
-            }
-            .disabled(!primaryActionEnabled)
-            if showActions {
-                BarButton(action: toggleActions) {
-                    HStack(spacing: metrics.spacing.sm) {
-                        Text("Actions")
-                            .font(metrics.typography.bar)
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                        HStack(spacing: metrics.spacing.xxs) {
-                            KeyCapChip(text: "⌘", style: .outline)
-                            KeyCapChip(text: "K", style: .outline)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(metrics.spacing.xs)
-        .frosted(in: Capsule())
+    /// A second press on the control that opened a menu closes it.
+    private func toggle(_ menu: PaletteMenu, highlighting row: @autoclosure () -> Int) {
+        if menus.openMenu == menu { closeMenus() } else { menus.open(menu, highlighting: row()) }
     }
 
     /// The one path opening the Actions menu, sampling the state its rows depend on.
     private func openActions() {
         let launcher = screen as? LauncherScreen
-        selectionIsRunning = launcher.map { $0.isRunning(at: selection(in: $0)) } ?? false
-        open(.actions, highlighting: 0)
+        menus.openActions(
+            selectionIsRunning: launcher.map { $0.isRunning(at: selection(in: $0)) } ?? false)
     }
 
     private func toggleActions() {
-        if openMenu == .actions {
-            closeMenus()
-        } else {
-            openActions()
-        }
+        if menus.openMenu == .actions { closeMenus() } else { openActions() }
     }
 
     /// Opens on the active filter, so the current value is the highlighted row like a pop-up's.
     private func toggleClipboardFilter() {
-        if openMenu == .clipboardFilter {
-            closeMenus()
-            return
-        }
-        let active = ClipboardFilter.allCases.firstIndex(of: vm.clipboardFilter) ?? 0
-        open(.clipboardFilter, highlighting: active)
+        toggle(
+            .clipboardFilter,
+            highlighting: ClipboardFilter.allCases.firstIndex(of: vm.clipboardFilter) ?? 0)
     }
 
     private func toggleFileSearchFilter() {
-        if openMenu == .fileSearchFilter {
-            closeMenus()
-            return
-        }
-        let active = FileSearchFilter.allCases.firstIndex(of: vm.fileSearchFilter) ?? 0
-        open(.fileSearchFilter, highlighting: active)
+        toggle(
+            .fileSearchFilter,
+            highlighting: FileSearchFilter.allCases.firstIndex(of: vm.fileSearchFilter) ?? 0)
     }
 
     private func performFilterAction() -> Bool {
@@ -1213,35 +1014,32 @@ struct RootPaletteView: View {
     }
 
     private func toggleEmojiCategory() {
-        if openMenu == .emojiCategory {
-            closeMenus()
-            return
-        }
-        let active = EmojiCategoryFilter.allCases.firstIndex(of: vm.emojiCategoryFilter) ?? 0
-        open(.emojiCategory, highlighting: active)
+        toggle(
+            .emojiCategory,
+            highlighting: EmojiCategoryFilter.allCases.firstIndex(of: vm.emojiCategoryFilter) ?? 0)
     }
 
     private func toggleExtensionSearchAccessory() {
-        if openMenu == .extensionAccessory {
+        if menus.openMenu == .extensionAccessory {
             closeMenus()
             return
         }
         guard let accessory = extensionCommandScreen?.searchAccessory else { return }
         let value = extensions.accessorySelection(accessory)
-        open(.extensionAccessory, highlighting: accessory.index(of: value))
+        menus.open(.extensionAccessory, highlighting: accessory.index(of: value))
     }
 
     private func toggleAIModel() {
-        if openMenu == .aiModel {
+        if menus.openMenu == .aiModel {
             closeMenus()
             return
         }
         let refreshTask = core.aiChatCoordinator.prepareModelSwitcher()
-        open(.aiModel, highlighting: aiModelHighlight)
+        menus.open(.aiModel, highlighting: aiModelHighlight)
         Task { @MainActor in
             await refreshTask.value
-            guard openMenu == .aiModel else { return }
-            menuSelection = aiModelHighlight
+            guard menus.openMenu == .aiModel else { return }
+            menus.selection = aiModelHighlight
             syncMenuPanel(presenting: false)
         }
     }
@@ -1252,20 +1050,10 @@ struct RootPaletteView: View {
         AIModelMenu.modelHighlight(coordinator: core.aiChatCoordinator, chat: quickAI)
     }
 
-    private func toggleAIAttachments() {
-        if openMenu == .aiAttachments {
-            closeMenus()
-            return
-        }
-        open(.aiAttachments, highlighting: 0)
-    }
+    private func toggleAIAttachments() { toggle(.aiAttachments, highlighting: 0) }
 
     private func toggleAIReasoning() {
-        if openMenu == .aiReasoning {
-            closeMenus()
-            return
-        }
-        open(
+        toggle(
             .aiReasoning,
             highlighting: AIModelMenu.reasoningHighlight(
                 coordinator: core.aiChatCoordinator, chat: quickAI))
@@ -1277,46 +1065,26 @@ struct RootPaletteView: View {
     ) -> PaletteMenuContent {
         let filtered = popover.matching(ActionMenuSearchQuery(vm.menuQuery))
         return PaletteMenuContent(
-            popover: filtered.content, selection: $menuSelection, width: width,
+            popover: filtered.content, selection: menuSelection, width: width,
             search: PopoverMenu.Search(placeholder: String(localized: "Search…"), placement: .top),
             onActivate: activateMenuItem, preferredSelection: filtered.bestMatch,
             extraRowsHeight: extraRowsHeight)
     }
 
-    /// Every open path lands here, so the highlight is always stated rather than left behind.
-    private func open(_ menu: OpenMenu, highlighting row: Int) {
-        vm.menuQuery = ""
-        menuSelection = row
-        vm.noteMenuPresentation()
-        openMenu = menu
-        vm.menuOpen = true
-    }
-
     private func closeMenus() {
         menuPanel.hide()
         if menuOpen { searchFocused = !screen.hidesSearchField }
-        openMenu = nil
-        argumentOptionsField = nil
-        inputOptions = nil
-        vm.menuQuery = ""
-        // Stated here rather than mirrored later: the window delegate reads it during this turn.
-        vm.menuOpen = false
+        menus.close()
     }
 
     private func openInputOptions(
         _ content: PopoverMenuContent, corner: MenuPanelCorner, selection: Int
     ) {
-        inputOptions = content
-        open(.inputOptions(corner), highlighting: selection)
+        menus.openInputOptions(content, corner: corner, selection: selection)
     }
 
     private func menuQueryChanged() {
-        guard menuOpen, let content = menuContent else { return }
-        let next =
-            content.preferredSelection
-            ?? (0..<content.rowCount).first(where: content.isSelectable) ?? 0
-        if next != menuSelection { menuSelection = next }
-        syncMenuPanel(presenting: false)
+        if menus.menuQueryDidChange(rows: menuContent) { syncMenuPanel(presenting: false) }
     }
 
     private func syncMenuPanel(presenting: Bool) {
@@ -1368,7 +1136,7 @@ struct RootPaletteView: View {
             if modifiers.contains(.option) {
                 return screen.pasteKeepingWindowOpen(at: selection)
             }
-            activateMenuItem(menuSelection)
+            activateMenuItem(menus.selection)
             return true
         case .some(.tab), .some(.backTab):
             return true
@@ -1414,16 +1182,12 @@ struct RootPaletteView: View {
     }
 
     private func escapeMenu() {
-        if vm.menuQuery.isEmpty {
-            closeMenus()
-        } else {
-            vm.menuQuery = ""
-        }
+        if menus.escapeCloses() { closeMenus() }
     }
 
     /// An action can remove the last visible pin; never leave an invisible menu owning input.
     private func refreshActionsMenu() {
-        guard openMenu == .actions else { return }
+        guard menus.openMenu == .actions else { return }
         guard menuContent != nil else {
             closeMenus()
             return
@@ -1433,26 +1197,13 @@ struct RootPaletteView: View {
 
     /// A row is addressed by index, so a file staged or dropped under the open menu re-lays it.
     private func refreshAttachmentsMenu() {
-        guard openMenu == .aiAttachments else { return }
+        guard menus.openMenu == .aiAttachments else { return }
         guard let content = menuContent else {
             closeMenus()
             return
         }
-        menuSelection = min(menuSelection, max(content.rowCount - 1, 0))
+        menus.clampSelection(rowCount: content.rowCount)
         syncMenuPanel(presenting: false)
-    }
-
-    private var menuCorner: MenuPanelCorner? {
-        switch openMenu {
-        case .app: .bottomLeading
-        case .actions: .bottomTrailing
-        case .argumentOptions: .belowHeaderTrailing
-        case .inputOptions(let corner): corner
-        case .clipboardFilter, .fileSearchFilter, .emojiCategory, .aiModel, .aiReasoning,
-            .aiAttachments, .extensionAccessory:
-            .belowHeaderTrailing
-        case nil: nil
-        }
     }
 
     // MARK: - Actions
@@ -1515,20 +1266,11 @@ struct RootPaletteView: View {
     }
 
     private func moveMenu(_ delta: Int) {
-        guard let content = menuContent else { return }
-        var row = menuSelection + delta
-        while (0..<content.rowCount).contains(row) {
-            if content.isSelectable(row) {
-                menuSelection = row
-                return
-            }
-            row += delta
-        }
+        menus.move(delta, in: menuContent)
     }
 
     private func activateMenuItem(_ index: Int) {
-        guard let content = menuContent, (0..<content.rowCount).contains(index) else { return }
-        guard content.isSelectable(index) else { return }
+        guard let content = menuContent, menus.canActivate(index, in: content) else { return }
         // Close first: an action opening a window must find the palette key, or nothing hides it.
         closeMenus()
         // A mouse click on a row takes the caret with it; menus close back into the field.
@@ -1617,8 +1359,7 @@ struct RootPaletteView: View {
         guard let accessory = headerAccessory, accessory.optionsMenu(field) != nil else { return }
         argumentFocused = field
         searchFocused = false
-        argumentOptionsField = field
-        open(.argumentOptions, highlighting: 0)
+        menus.openArgumentOptions(for: field)
     }
 
     private func returnToLauncher() {
@@ -1673,21 +1414,6 @@ struct RootPaletteView: View {
 
 }
 
-/// The palette's in-window menus. One optional of these is the whole "only one is open" invariant.
-private enum OpenMenu: Equatable {
-    case actions
-    case extensionAccessory
-    case argumentOptions
-    case inputOptions(MenuPanelCorner)
-    case app
-    case clipboardFilter
-    case fileSearchFilter
-    case emojiCategory
-    case aiModel
-    case aiReasoning
-    case aiAttachments
-}
-
 /// Reads visibility in its own body, so a summon never re-renders the palette's.
 private struct PaletteHideObserver: ViewModifier {
     @Environment(PaletteState.self) private var vm
@@ -1707,29 +1433,6 @@ private struct SearchFieldHiding: ViewModifier {
 
     func body(content: Content) -> some View {
         content.onChange(of: hidden) { _, hidden in apply(hidden) }
-    }
-}
-
-/// The footer's menu circle; hover lives here, so a sweep never re-renders the body.
-private struct MenuCircleButton: View {
-    let action: () -> Void
-    @State private var hovered = false
-    @Environment(\.metrics) private var metrics
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 3) {
-                Capsule().frame(width: 14, height: 1.5)
-                Capsule().frame(width: 8, height: 1.5)
-            }
-            .foregroundStyle(Theme.Colors.textSecondary)
-            .frame(width: metrics.size.menuButton, height: metrics.size.menuButton)
-            .background(Circle().fill(hovered ? Theme.Colors.rowHover : Color.clear))
-            .contentShape(.circle)
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
-        .frosted(in: Circle())
     }
 }
 
@@ -1753,37 +1456,5 @@ private struct HeaderBackButton: View {
         .onHover { hovered = $0 }
         .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
         .help(help)
-    }
-}
-
-private extension PaletteMode {
-    var featureTab: SettingsTab? {
-        switch self {
-        case .launcher: nil
-        case .clipboard: .clipboard
-        case .dictationHistory: .dictation
-        case .ai, .aiHistory: .ai
-        case .calculatorHistory, .dictionary, .dictionarySavedWords: nil
-        case .emoji: .emoji
-        case .fileSearch, .uninstall: .fileSearch
-        case .menuSearch, .switchWindows: .navigation
-        case .rooms, .roomWindows: .windowManagement
-        case .schedule, .eventEditor, .meetingDetails: .calendar
-        case .customCommands, .customCommandEditor: .commands
-        case .quicklinks, .quicklinkEditor: .quicklinks
-        case .snippets, .snippetEditor: .snippets
-        case .extensionCommand: .extensions
-        }
-    }
-
-    var featureTitle: String {
-        switch self {
-        case .clipboard: String(localized: "Clipboard History")
-        case .dictationHistory: String(localized: "Dictation History")
-        case .calculatorHistory: String(localized: "Calculator History")
-        case .dictionary, .dictionarySavedWords: String(localized: "Dictionary")
-        case .launcher: String(localized: "Tinycast")
-        default: featureTab?.title ?? ""
-        }
     }
 }
