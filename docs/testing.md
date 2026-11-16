@@ -11,7 +11,7 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | --- | --- |
 | The harnesses | `./Scripts/run-tests.sh` |
 | Lint, settings search, translations and migrations | `./Scripts/lint.sh` |
-| Pure-layer purity | `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` |
+| Pure-layer purity | `Scripts/check-model-purity.sh` (also run by `lint.sh`): no AppKit, SwiftUI or Cocoa import, and no `AppCore` or coordinator, under `Features/*/Model/` |
 | A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
 
@@ -208,6 +208,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `text-diff-test` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
 | `settings-preference-test` | `Settings/Model/Preference.swift` — defaults, absent versus stored values, unknown raw values, and the plist type each preference writes |
+| `settings-backup-roundtrip-test` | `Backup/Service/SettingsDataMapping.swift` against a stand-in `AppSettings` — every carried field gathers, encodes, decodes and applies back, and no capability flag is written or granted |
 | `settings-file-test` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |
 | `window-file-test` | `WindowManagement/Model/WindowManagementFileFormat.swift` — command shortcuts, custom sizes, layouts and rooms as settings.json spells them, hand edits and bad records |
 | `launcher-settings-file-test` | Launcher settings application — invalid records, partial edits, deferred bundles, shortcut moves and records outside search scopes; isolated preferences and in-memory scan/Carbon effects |
@@ -240,13 +241,14 @@ same commit with the reason in the message.
 
 ### Purity checks
 
-The layering rule reduces to one grep, and it must return nothing:
+The layering rule reduces to one script, which `lint.sh` also runs. It fails on an AppKit, SwiftUI or
+Cocoa import under `Features/*/Model/`, and on code there that names `AppCore` or a coordinator:
 
 ```sh
-grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/
+Scripts/check-model-purity.sh
 ```
 
-Beyond the imports, the injected-environment half is not mechanically checkable, so it is worth an eye
+Beyond that, the injected-environment half is not mechanically checkable, so it is worth an eye
 when touching a pure file:
 
 - `Calculator/Model/` still takes its clock via `now`/`calendar`, its rates via `rates` and its
