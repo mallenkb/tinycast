@@ -345,7 +345,8 @@ final class DictationCoordinator {
                 let formatted = DictationTextFormatter.format(
                     processed,
                     context: insertion?.context,
-                    adaptCapitalization: settings.dictationAdaptsCapitalization)
+                    adaptCapitalization: settings.dictationAdaptsCapitalization,
+                    properNouns: Set(corrections.entries.map(\.spelling)))
                 let text = DictationCorrection.applying(corrections.entries, to: formatted)
                 let original = processed == transcript && text == formatted ? nil : transcript
                 guard !text.isEmpty else { reset(cancelTranscription: false); return }

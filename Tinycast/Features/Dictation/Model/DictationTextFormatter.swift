@@ -1329,8 +1329,9 @@ enum DictationTextFormatter {
         return (words[0] == "twenty" ? 2_000 : 1_900) + tail
     }
 
-    static func format(_ transcription: String, context: Context?, adaptCapitalization: Bool = true) -> String
-    {
+    static func format(
+        _ transcription: String, context: Context?, adaptCapitalization: Bool = true, properNouns: Set<String> = []
+    ) -> String {
         var text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, let context else { return text }
         if adaptCapitalization, let first = text.first, first.isLetter {
@@ -1339,6 +1340,8 @@ enum DictationTextFormatter {
                 || context.lastNonWhitespace.map({ ".!?".contains($0) }) == true
             {
                 replacement = String(first).uppercased()
+            } else if keepsLeadingCapital(text, properNouns: properNouns) {
+                replacement = String(first)
             } else {
                 replacement = String(first).lowercased()
             }
@@ -1357,5 +1360,27 @@ enum DictationTextFormatter {
             text += " "
         }
         return text
+    }
+
+    private static let pronounI: Set<String> = ["I", "I'm", "I'll", "I've", "I'd"]
+
+    private static func keepsLeadingCapital(_ text: String, properNouns: Set<String>) -> Bool {
+        let tokens = text.split(whereSeparator: \.isWhitespace)
+        guard let firstToken = tokens.first, firstToken.first?.isUppercase == true else { return false }
+        let word = capitalizationWord(firstToken)
+        if pronounI.contains(word.replacing("’", with: "'")) { return true }
+        if word.dropFirst().first?.isUppercase == true { return true }
+        if properNouns.contains(where: { $0 == word || $0.hasPrefix(word + " ") }) { return true }
+        for index in tokens.indices.dropFirst() where capitalizationWord(tokens[index]) == word {
+            let previous = tokens[index - 1]
+            let gap = text[previous.endIndex..<tokens[index].startIndex]
+            if previous.last.map({ ".!?:".contains($0) }) == false, !gap.contains(where: \.isNewline) { return true }
+        }
+        return false
+    }
+
+    private static func capitalizationWord(_ token: Substring) -> String {
+        let letters = token.drop { !$0.isLetter }
+        return String(letters.prefix { $0.isLetter || $0 == "'" || $0 == "’" || $0 == "-" })
     }
 }
