@@ -486,8 +486,8 @@ final class AppCore {
 
             hotKeys.onTogglePalette = { [weak self] in self?.paletteCoordinator.togglePalette() }
             hotKeys.dictationEnabled = settings.dictationEnabled
-            dictationCoordinator.onRecordingStarted = { [weak self] in
-                self?.dictationWriting.beginRecording()
+            dictationCoordinator.onRecordingStarted = { [weak self] targetBundleID in
+                self?.dictationWriting.beginRecording(targetBundleID: targetBundleID)
             }
             dictationCoordinator.onStableTranscript = { [weak self] text, isEnglish in
                 self?.dictationWriting.prepareStableTranscript(text, isEnglish: isEnglish)

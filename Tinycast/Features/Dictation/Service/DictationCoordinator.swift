@@ -26,7 +26,7 @@ final class DictationCoordinator {
     private let showMessage: (String, DialogTone) -> Void
     private let confirmEnable: () async -> Bool
     private let setupModels: () async -> Void
-    var onRecordingStarted: (() -> Void)?
+    var onRecordingStarted: ((_ targetBundleID: String?) -> Void)?
     var onRecordingEnded: (() -> Void)?
     var onStableTranscript: ((String, Bool?) -> Void)?
     var processTranscript: ((String, Bool?) async -> String)?
@@ -188,7 +188,9 @@ final class DictationCoordinator {
         phase = .starting
         self.shortcutMode = shortcutMode
         finishWhenStarted = false
-        cleanupMode = settings.dictationCleanupMode
+        let targetBundleID = (target ?? InjectionTarget.current())?.externalApp?.bundleIdentifier
+        cleanupMode = DictationAppOverride.resolve(bundleID: targetBundleID, in: settings.dictationAppOverrides)?
+            .cleanup ?? settings.dictationCleanupMode
         self.target = target
         pendingStartCue = settings.dictationPlaysSounds ? current : nil
         let microphoneID = settings.dictationMicrophone
@@ -243,7 +245,7 @@ final class DictationCoordinator {
         panel.state.animatesTranscript = settings.dictationAnimateTranscript
         panel.state.twoLinePreview = settings.dictationTwoLinePreview
         panel.showStarting(style: settings.dictationIndicatorStyle)
-        onRecordingStarted?()
+        onRecordingStarted?(targetBundleID)
     }
 
     /// A Bluetooth headset's output resumes up to a quarter second after the first samples.

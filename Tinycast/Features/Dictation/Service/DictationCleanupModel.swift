@@ -90,6 +90,7 @@ final class DictationCleanupModel {
         }
     }
 
+    static let transformCharacterLimit = 3_500
     private let directory = AppPaths.caches().appending(path: "DictationCleanup")
     private var installed: Set<Variant> = []
     private(set) var downloading: Variant?
@@ -224,10 +225,10 @@ final class DictationCleanupModel {
     }
 
     func respond(to text: String, using variant: Variant, instructions: String, maxOutputTokens: Int) async throws -> String {
-        try checkAvailability(variant)
-        guard text.count <= 3_500 else {
-            throw AIProviderError.responseFailed(String(localized: "This transcript is too long to transform on this Mac."))
-        }
+        try Task.checkCancellation()
+        guard isInstalled(variant) else { throw DictationTransformFailure.needsModel(variant.name) }
+        guard !busy else { throw DictationWire.Failure.busy }
+        guard text.count <= Self.transformCharacterLimit else { throw DictationTransformFailure.tooLong }
         return try await withServer(variant) { server, session in
             try await response(
                 to: text, instructions: instructions, maxOutputTokens: maxOutputTokens, server: server, session: session)

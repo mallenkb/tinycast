@@ -23180,6 +23180,58 @@
         }
       }
     },
+    "App overrides" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App-Ausnahmen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes por app"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages par app"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリごとの設定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱별 설정"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes por app"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки для приложений"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按应用设置"
+          }
+        }
+      }
+    },
     "App · Opens with the room" : {
       "localizations" : {
         "de" : {
@@ -35265,6 +35317,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要清理 %@ 吗？"
+          }
+        }
+      }
+    },
+    "Cleanup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereinigung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpieza"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettoyage"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整形"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정리"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpeza"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обработка"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理"
           }
         }
       }
@@ -49568,6 +49672,58 @@
         }
       }
     },
+    "Download %@ in Dictation settings to run transforms." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade %@ in den Diktiereinstellungen herunter, um Transformationen auszuführen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descarga %@ en los ajustes de Dictado para ejecutar transformaciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargez %@ dans les réglages de Dictée pour exécuter des transformations."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換を実行するには、音声入力の設定で%@をダウンロードしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환을 실행하려면 받아쓰기 설정에서 %@을(를) 다운로드하세요."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baixe %@ nos ajustes de Ditado para executar transformações."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузите %@ в настройках диктовки, чтобы выполнять преобразования."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在听写设置中下载 %@ 以运行转换。"
+          }
+        }
+      }
+    },
     "Download %@ to use this engine." : {
       "localizations" : {
         "de" : {
@@ -51656,54 +51812,54 @@
         }
       }
     },
-    "Emberon-2 handles Smart cleanup. After dictation uses S1-mini." : {
+    "Emberon-2 handles Smart cleanup. With After dictation, S1-mini does both in one pass." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 übernimmt die intelligente Bereinigung. Nach dem Diktat wird S1-mini verwendet."
+            "value" : "Emberon-2 übernimmt die intelligente Bereinigung. Mit „Nach dem Diktieren“ erledigt S1-mini beides in einem Durchgang."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 se encarga de la limpieza inteligente. Después del dictado se usa S1-mini."
+            "value" : "Emberon-2 se encarga de la limpieza inteligente. Con Después del dictado, S1-mini hace ambas cosas en una sola pasada."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 assure le nettoyage intelligent. Après la dictée, S1-mini prend le relais."
+            "value" : "Emberon-2 assure le nettoyage intelligent. Avec Après la dictée, S1-mini fait les deux en une seule passe."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スマートクリーンアップには Emberon-2 を使用します。音声入力後の処理には S1-mini を使用します。"
+            "value" : "スマート整形には Emberon-2 を使用します。「音声入力後」がオンのときは、S1-mini が両方を一度に処理します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "스마트 정리에는 Emberon-2를 사용합니다. 받아쓰기 후 처리에는 S1-mini를 사용합니다."
+            "value" : "스마트 정리에는 Emberon-2를 사용합니다. 받아쓰기 후가 켜져 있으면 S1-mini가 두 작업을 한 번에 처리합니다."
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Emberon-2 faz a limpeza inteligente. Depois do ditado, é usado o S1-mini."
+            "value" : "O Emberon-2 faz a limpeza inteligente. Com Após o ditado, o S1-mini faz as duas coisas de uma só vez."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 выполняет умную очистку. После диктовки используется S1-mini."
+            "value" : "Emberon-2 выполняет умную очистку. С параметром «После диктовки» S1-mini делает и то и другое за один проход."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 负责智能清理。听写后处理使用 S1-mini。"
+            "value" : "Emberon-2 负责智能整理。开启“听写后”时，S1-mini 一次完成两项处理。"
           }
         }
       }
@@ -72115,53 +72271,53 @@
       }
     },
     "Learn spelling corrections while the dictation field is focused." : {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rechtschreibkorrekturen lernen, solange das Diktatfeld aktiv ist."
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtschreibkorrekturen lernen, solange das Diktatfeld aktiv ist."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aprender correcciones ortográficas mientras el campo de dictado está activo."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprender correcciones ortográficas mientras el campo de dictado está activo."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apprendre les corrections orthographiques tant que le champ de dictée est actif."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apprendre les corrections orthographiques tant que le champ de dictée est actif."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "音声入力欄にフォーカスがある間、つづりの修正を学習します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声入力欄にフォーカスがある間、つづりの修正を学習します。"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "받아쓰기 입력란에 포커스가 있는 동안 철자 수정을 학습합니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "받아쓰기 입력란에 포커스가 있는 동안 철자 수정을 학습합니다."
           }
         },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aprender correções ortográficas enquanto o campo de ditado estiver ativo."
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprender correções ortográficas enquanto o campo de ditado estiver ativo."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запоминать исправления, пока поле диктовки активно."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запоминать исправления, пока поле диктовки активно."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "听写输入框处于焦点时学习拼写更正。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "听写输入框处于焦点时学习拼写更正。"
           }
         }
       }
@@ -103369,6 +103525,58 @@
         }
       }
     },
+    "Remove override for %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellung für %@ entfernen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar el ajuste de %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le réglage de %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@の設定を削除"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 설정 제거"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remover o ajuste de %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить настройку для %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除 %@ 的设置"
+          }
+        }
+      }
+    },
     "Remove repetition and unnecessary wording. Preserve every important detail." : {
       "localizations" : {
         "de" : {
@@ -122958,58 +123166,6 @@
         }
       }
     },
-    "Text cleanup failed. Using the original transcript." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Textbereinigung ist fehlgeschlagen. Das Original wird verwendet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Falló la limpieza del texto. Se usa la transcripción original."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le nettoyage a échoué. La transcription originale est utilisée."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テキストの整形に失敗しました。元の文字起こしを使用します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 정리에 실패했습니다. 원본 텍스트를 사용합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A limpeza falhou. A transcrição original será usada."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось обработать текст. Используется исходная расшифровка."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "文本整理失败。正在使用原始转录。"
-          }
-        }
-      }
-    },
     "Text cleanup timed out." : {
       "localizations" : {
         "de" : {
@@ -129122,6 +129278,58 @@
         }
       }
     },
+    "The transform couldn't finish, so the transcript was kept without it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Transformation konnte nicht abgeschlossen werden. Das Transkript wurde ohne sie übernommen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transformación no pudo terminar, así que se conservó la transcripción sin ella."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transformation n’a pas pu aboutir. La transcription a été conservée sans elle."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換を完了できなかったため、変換せずに文字起こしを使用しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환을 완료하지 못해 변환 없이 텍스트를 유지했습니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A transformação não pôde terminar, então a transcrição foi mantida sem ela."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось выполнить преобразование, поэтому расшифровка сохранена без него."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转换未能完成，因此保留了未转换的转录。"
+          }
+        }
+      }
+    },
     "The value of “%@” contains a line break or control character." : {
       "localizations" : {
         "de" : {
@@ -131824,54 +132032,54 @@
         }
       }
     },
-    "This transcript is too long to transform on this Mac." : {
+    "This transcript is too long for this transform." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Transkript ist für die Transformation auf diesem Mac zu lang."
+            "value" : "Dieses Transkript ist für diese Transformation zu lang."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta transcripción es demasiado larga para transformarla en este Mac."
+            "value" : "Esta transcripción es demasiado larga para esta transformación."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette transcription est trop longue pour être transformée sur ce Mac."
+            "value" : "Cette transcription est trop longue pour cette transformation."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この文字起こしは長すぎるため、このMacでは変換できません。"
+            "value" : "この文字起こしはこの変換には長すぎます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 텍스트는 이 Mac에서 변환하기에 너무 깁니다."
+            "value" : "이 텍스트는 이 변환에 사용하기에 너무 깁니다."
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta transcrição é longa demais para transformar neste Mac."
+            "value" : "Esta transcrição é longa demais para esta transformação."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Эта расшифровка слишком длинная для преобразования на этом Mac."
+            "value" : "Эта расшифровка слишком длинная для этого преобразования."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此转录过长，无法在此 Mac 上转换。"
+            "value" : "此转录过长，无法用于此转换。"
           }
         }
       }
@@ -133548,53 +133756,53 @@
       }
     },
     "Tinycast needs microphone access for dictation and Accessibility to paste into other apps. Audio is processed on this Mac. Tinycast watches the pasted dictation while its field is focused and saves spelling corrections on this Mac." : {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast benötigt Mikrofonzugriff für das Diktat und Bedienungshilfen zum Einsetzen in andere Apps. Audio wird auf diesem Mac verarbeitet. Tinycast beobachtet das eingefügte Diktat, solange das Feld aktiv ist, und speichert Rechtschreibkorrekturen auf diesem Mac."
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast benötigt Mikrofonzugriff für das Diktat und Bedienungshilfen zum Einsetzen in andere Apps. Audio wird auf diesem Mac verarbeitet. Tinycast beobachtet das eingefügte Diktat, solange das Feld aktiv ist, und speichert Rechtschreibkorrekturen auf diesem Mac."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast necesita acceso al micrófono para dictar y a Accesibilidad para pegar en otras apps. El audio se procesa en este Mac. Tinycast observa el dictado pegado mientras el campo está activo y guarda las correcciones ortográficas en este Mac."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast necesita acceso al micrófono para dictar y a Accesibilidad para pegar en otras apps. El audio se procesa en este Mac. Tinycast observa el dictado pegado mientras el campo está activo y guarda las correcciones ortográficas en este Mac."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast a besoin du micro pour la dictée et de l’accessibilité pour coller dans les autres apps. Le son est traité sur ce Mac. Tinycast surveille la dictée collée tant que le champ est actif et enregistre les corrections orthographiques sur ce Mac."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast a besoin du micro pour la dictée et de l’accessibilité pour coller dans les autres apps. Le son est traité sur ce Mac. Tinycast surveille la dictée collée tant que le champ est actif et enregistre les corrections orthographiques sur ce Mac."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycastは音声入力にマイクへのアクセス権、ほかのアプリへのペーストにアクセシビリティのアクセス権が必要です。音声はこのMacで処理されます。入力欄にフォーカスがある間、Tinycastはペーストした音声入力を監視し、つづりの修正をこのMacに保存します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycastは音声入力にマイクへのアクセス権、ほかのアプリへのペーストにアクセシビリティのアクセス権が必要です。音声はこのMacで処理されます。入力欄にフォーカスがある間、Tinycastはペーストした音声入力を監視し、つづりの修正をこのMacに保存します。"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast는 받아쓰기에 마이크 접근 권한이, 다른 앱에 붙여넣기에 손쉬운 사용 권한이 필요합니다. 오디오는 이 Mac에서 처리됩니다. Tinycast는 입력란에 포커스가 있는 동안 붙여넣은 받아쓰기를 확인하고 철자 수정을 이 Mac에 저장합니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast는 받아쓰기에 마이크 접근 권한이, 다른 앱에 붙여넣기에 손쉬운 사용 권한이 필요합니다. 오디오는 이 Mac에서 처리됩니다. Tinycast는 입력란에 포커스가 있는 동안 붙여넣은 받아쓰기를 확인하고 철자 수정을 이 Mac에 저장합니다."
           }
         },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Tinycast precisa de acesso ao microfone para ditado e à Acessibilidade para colar em outros apps. O áudio é processado neste Mac. O Tinycast acompanha o ditado colado enquanto o campo estiver ativo e salva as correções ortográficas neste Mac."
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Tinycast precisa de acesso ao microfone para ditado e à Acessibilidade para colar em outros apps. O áudio é processado neste Mac. O Tinycast acompanha o ditado colado enquanto o campo estiver ativo e salva as correções ortográficas neste Mac."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast нужен доступ к микрофону для диктовки и к Универсальному доступу для вставки в другие приложения. Аудио обрабатывается на этом Mac. Tinycast отслеживает вставленный текст, пока поле активно, и сохраняет исправления на этом Mac."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast нужен доступ к микрофону для диктовки и к Универсальному доступу для вставки в другие приложения. Аудио обрабатывается на этом Mac. Tinycast отслеживает вставленный текст, пока поле активно, и сохраняет исправления на этом Mac."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast 需要麦克风访问权限来进行听写，以及辅助功能权限来粘贴到其他 App。音频在这台 Mac 上处理。当输入框处于焦点时，Tinycast 会观察粘贴的听写文本，并将拼写更正保存在这台 Mac 上。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast 需要麦克风访问权限来进行听写，以及辅助功能权限来粘贴到其他 App。音频在这台 Mac 上处理。当输入框处于焦点时，Tinycast 会观察粘贴的听写文本，并将拼写更正保存在这台 Mac 上。"
           }
         }
       }
@@ -135843,6 +136051,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在转写…"
+          }
+        }
+      }
+    },
+    "Transform" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformação"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преобразование"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转换"
           }
         }
       }
@@ -140359,6 +140619,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用工具"
+          }
+        }
+      }
+    },
+    "Use a different cleanup or transform when dictating into these apps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende eine andere Bereinigung oder Transformation beim Diktieren in diese Apps."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa otra limpieza o transformación al dictar en estas apps."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez un autre nettoyage ou une autre transformation quand vous dictez dans ces apps."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "これらのアプリに音声入力するときは、別の整形または変換を使います。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱에 받아쓰기할 때 다른 정리나 변환을 사용합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use outra limpeza ou transformação ao ditar nestes apps."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать другую обработку или преобразование при диктовке в эти приложения."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在这些应用中听写时使用其他整理方式或转换。"
           }
         }
       }
