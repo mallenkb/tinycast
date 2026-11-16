@@ -89,14 +89,19 @@ The rules skip transcripts with quotation or code markers and skip lines that lo
 email addresses, or paths. They leave out-of-scope values such as unsupported spoken scales and invalid
 dates in the transcript. Phone formatting requires an explicit cue and ten spoken digits.
 Websites need a spoken “www” prefix and emails need a spoken “at” and “dot” with a supported
-domain ending. The formatter has a 16 KB input limit and a 30 ms time budget. If it runs out of
-time, Basic keeps its filler removal and gives currency formatting a separate 30 ms pass.
-Advanced keeps the original text when it reaches either limit.
+domain ending. The formatter has a 16 KB input limit and a fixed work allowance that it checks
+between rule passes, so a transcript gets the same result whatever else the Mac is doing. A
+three-second safety timeout backs the allowance. If Basic reaches a limit, it keeps its filler
+removal and runs currency formatting on its own. Advanced keeps the original text when it reaches
+either limit. The first recording loads the formatting library and prepares the rules in the
+background, so the first cleanup does not wait for them. Currency formatting scans only the
+clauses that name a currency, and amounts more than 600 characters from that name stay as spoken.
 
 **Off** skips cleanup. **Basic** removes common fillers and formats spoken values.
 **Advanced** adds the corrections and formatting commands above.
 **Smart** uses the selected cleanup engine for context-dependent edits. **After dictation** can
-apply a separate transform such as Shorten or Prompt Engineer.
+apply a separate transform such as Shorten or Prompt Engineer. App overrides can pick a different
+level or transform for a single app.
 
 Public references include [Microsoft’s speech formatting examples](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/display-text-format),
 [NVIDIA NeMo’s spoken and written test pairs](https://github.com/NVIDIA/NeMo-text-processing/tree/main/tests/nemo_text_processing/en/data_inverse_text_normalization),

@@ -52,7 +52,7 @@ final class DictationCoordinator {
     private let showMessage: (String, DialogTone) -> Void
     private let confirmEnable: () async -> Bool
     private let setupModels: () async -> Void
-    var onRecordingStarted: (() -> Void)?
+    var onRecordingStarted: ((_ targetBundleID: String?) -> Void)?
     var onRecordingEnded: (() -> Void)?
     var onStableTranscript: ((String, Bool?) -> Void)?
     var processTranscript: ((String, Bool?) async -> String)?
@@ -234,7 +234,9 @@ final class DictationCoordinator {
         phase = .starting
         self.shortcutMode = shortcutMode
         finishWhenStarted = false
-        cleanupMode = settings.dictationCleanupMode
+        let targetBundleID = (target ?? InjectionTarget.current())?.externalApp?.bundleIdentifier
+        cleanupMode = DictationAppOverride.resolve(bundleID: targetBundleID, in: settings.dictationAppOverrides)?
+            .cleanup ?? settings.dictationCleanupMode
         self.target = target
         pendingStartCue = settings.dictationPlaysSounds ? current : nil
         let microphoneID = settings.dictationMicrophone
@@ -291,7 +293,7 @@ final class DictationCoordinator {
         panel.state.animatesTranscript = settings.dictationAnimateTranscript
         panel.state.twoLinePreview = settings.dictationTwoLinePreview
         panel.showStarting(style: settings.dictationIndicatorStyle)
-        onRecordingStarted?()
+        onRecordingStarted?(targetBundleID)
     }
 
     /// A Bluetooth headset's output resumes up to a quarter second after the first samples.
@@ -442,7 +444,8 @@ final class DictationCoordinator {
         let formatted = DictationTextFormatter.format(
             processed,
             context: insertion?.context,
-            adaptCapitalization: settings.dictationAdaptsCapitalization)
+            adaptCapitalization: settings.dictationAdaptsCapitalization,
+            properNouns: Set(corrections.entries.map(\.spelling)))
         let text = DictationCorrection.applying(corrections.entries, to: formatted)
         let original = processed == transcript && text == formatted ? nil : transcript
         guard !text.isEmpty else {
@@ -559,7 +562,8 @@ final class DictationCoordinator {
         }
         let insertion = DictationInsertionContext.read(in: destination, learnsCorrections: false)
         let text = DictationTextFormatter.format(
-            transcript, context: insertion?.context, adaptCapitalization: settings.dictationAdaptsCapitalization)
+            transcript, context: insertion?.context, adaptCapitalization: settings.dictationAdaptsCapitalization,
+            properNouns: Set(corrections.entries.map(\.spelling)))
         injector.deliver(
             InjectedText(text), target: destination, expectedKeyword: nil,
             keywordLength: 0, automaticGeneration: nil,

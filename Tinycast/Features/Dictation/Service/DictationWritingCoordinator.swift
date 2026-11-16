@@ -24,6 +24,8 @@ final class DictationWritingCoordinator {
     @ObservationIgnored private var preparedSections: [(source: String, result: String)] = []
     @ObservationIgnored private var sectionTask: Task<Void, Never>?
     @ObservationIgnored private var acceptingSections = false
+    @ObservationIgnored private var formatterWarmUp: Task<Void, Never>?
+    @ObservationIgnored private var appOverride: DictationAppOverride?
 
     init(
         store: DictationTransformStore, cleanup: DictationCleanupModel, settings: AppSettings, aiSettings: AISettingsStore,
@@ -40,6 +42,14 @@ final class DictationWritingCoordinator {
 
     var unavailableReason: String? {
         if let model = selectedLocalModel { return cleanup.unavailableReason(for: model) }
+        return appleIntelligenceUnavailableReason
+    }
+
+    var transformUnavailableReason: String? {
+        if let model = selectedLocalModel {
+            return cleanup.isInstalled(model.transformEngine)
+                ? nil : DictationTransformFailure.needsModel(model.transformEngine.name).errorDescription
+        }
         return appleIntelligenceUnavailableReason
     }
 
@@ -68,23 +78,46 @@ final class DictationWritingCoordinator {
             try store.remove(transform.id)
             hotKeys.setBinding(nil, for: .dictationTransform(id: transform.id))
             if settings.dictationTransformID == transform.id.uuidString { settings.dictationAutoTransform = false }
+            for (bundleID, stored) in settings.dictationAppOverrides {
+                guard var override = DictationAppOverride(stored: stored), override.transform == .transform(transform.id)
+                else { continue }
+                override.transform = .off
+                settings.dictationAppOverrides[bundleID] = override.stored
+            }
         } catch { report(error.localizedDescription, .danger) }
     }
 
-    private var automaticTransform: DictationTransform? {
-        guard settings.dictationAutoTransform else { return nil }
-        return store.savedTransforms.first { $0.id.uuidString == settings.dictationTransformID }
+    private var usesSmartCleanup: Bool {
+        appOverride?.cleanup.map { $0 == .smart } ?? settings.dictationSmartCleanup
     }
 
-    func beginRecording() {
+    private var automaticTransform: DictationTransform? {
+        switch appOverride?.transform {
+        case .off: return nil
+        case .transform(let id): return store.savedTransforms.first { $0.id == id }
+        case nil:
+            guard settings.dictationAutoTransform else { return nil }
+            return store.savedTransforms.first { $0.id.uuidString == settings.dictationTransformID }
+        }
+    }
+
+    // Emberon-2 can't follow transform instructions, so S1-mini does Smart cleanup in the same pass.
+    private func combinesSmart(_ smart: Bool, transform: DictationTransform?) -> Bool {
+        guard smart, transform != nil else { return false }
+        return selectedLocalModel.map { $0.transformEngine != $0 } ?? true
+    }
+
+    func beginRecording(targetBundleID: String? = nil) {
         recordingID = UUID()
         recordingEngine = settings.dictationCleanupEngine
+        appOverride = DictationAppOverride.resolve(bundleID: targetBundleID, in: settings.dictationAppOverrides)
         acceptingSections = true
-        let smart = settings.dictationSmartCleanup
+        if formatterWarmUp == nil { formatterWarmUp = Task(priority: .utility) { await DictationLocalCleanup.warmUp() } }
+        let smart = usesSmartCleanup
         let transform = automaticTransform
         guard smart || transform != nil else { return }
         if let model = selectedLocalModel {
-            cleanup.beginRecording(smart ? model : model.transformEngine)
+            cleanup.beginRecording(transform == nil ? model : model.transformEngine)
         } else if settings.dictationCleanupEngine == "appleIntelligence", appleIntelligenceUnavailableReason == nil {
             let instructions = instructions(smart: smart, transform: transform)
             let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: instructions)
@@ -96,6 +129,7 @@ final class DictationWritingCoordinator {
     func endRecording() {
         recordingID = nil
         recordingEngine = nil
+        appOverride = nil
         acceptingSections = false
         sectionTask?.cancel()
         sectionTask = nil
@@ -106,7 +140,7 @@ final class DictationWritingCoordinator {
     }
 
     func prepareStableTranscript(_ raw: String, isEnglish: Bool?) {
-        guard acceptingSections, settings.dictationSmartCleanup, automaticTransform == nil,
+        guard acceptingSections, usesSmartCleanup, automaticTransform == nil,
               recordingEngine == settings.dictationCleanupEngine,
               isEnglish == true || (isEnglish == nil && NLLanguageRecognizer.dominantLanguage(for: raw) == .english),
               selectedLocalModel != nil else { return }
@@ -156,65 +190,86 @@ final class DictationWritingCoordinator {
         acceptingSections = false
         await sectionTask?.value
         guard !Task.isCancelled else { return original }
-        let smart = settings.dictationSmartCleanup
+        let smart = usesSmartCleanup
         let engine = settings.dictationCleanupEngine
         let model = selectedLocalModel
-        let usesAppleIntelligence = engine == "appleIntelligence"
         let transform = automaticTransform
+        let combined = combinesSmart(smart, transform: transform)
         let prepared = prewarmedApple
         prewarmedApple = nil
         guard smart || transform != nil else { return original }
-        do {
-            var result = original
-            if smart, let model {
-                var tail = original[...]
-                var prefix = ""
-                if transform == nil, isEnglish != false, recordingEngine == engine {
-                    for section in preparedSections {
-                        guard tail.utf8.starts(with: section.source.utf8),
-                              let end = String.Index(tail.utf8.index(tail.utf8.startIndex,
-                                                   offsetBy: section.source.utf8.count), within: tail),
-                              end == tail.endIndex || tail[end].isWhitespace || section.source.last?.isWhitespace == true
-                        else { break }
-                        prefix += section.result
-                        tail = tail[end...]
-                    }
-                }
-                result = prefix + (try await smartCleanup(String(tail), model: model, engine: engine,
-                                                          isEnglish: isEnglish, onFailure: reportSmartFailure))
-            }
-            try checkCurrent(engine)
-            if smart, usesAppleIntelligence, transform == nil {
+        var result = original
+        if smart, !combined {
+            do {
                 let prompt = instructions(smart: true, transform: nil)
-                result = try await cleanWithAppleIntelligence(
-                    result, engine: engine, instructions: prompt,
-                    prewarmedSession: prepared?.instructions == prompt ? prepared?.session : nil,
-                    isEnglish: isEnglish, onFailure: reportSmartFailure)
-            } else if transform != nil {
-                let prompt = instructions(smart: smart && usesAppleIntelligence, transform: transform)
-                result = try await generate(
-                    result, model: model, instructions: prompt,
+                result = try await cleanRecording(
+                    original, model: model, engine: engine, isEnglish: isEnglish,
                     prewarmedSession: prepared?.instructions == prompt ? prepared?.session : nil)
-            }
-            try checkCurrent(engine)
-            return result
-        } catch {
-            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
-            logger.error("Text cleanup failed: \(error.localizedDescription, privacy: .public)")
-            if smart {
-                let fallback = await DictationLocalCleanup.clean(original, mode: .advanced, isEnglish: isEnglish)
+            } catch {
+                guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
+                logger.error("Text cleanup failed: \(error.localizedDescription, privacy: .public)")
+                result = await DictationLocalCleanup.clean(original, mode: .advanced, isEnglish: isEnglish)
                 guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
                 reportSmartFailure(error)
-                return fallback
             }
-            report(String(localized: "Text cleanup failed. Using the original transcript."), .neutral)
-            return original
+        }
+        guard let transform else { return result }
+        do {
+            let prompt = instructions(smart: combined, transform: transform)
+            let output = try await transformed(
+                result, with: transform, model: model, instructions: prompt,
+                prewarmedSession: prepared?.instructions == prompt ? prepared?.session : nil)
+            try checkCurrent(engine)
+            return output
+        } catch {
+            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
+            logger.error("Transform failed: \(error.localizedDescription, privacy: .public)")
+            reportTransformFailure(error)
+            guard combined else { return result }
+            let fallback = await DictationLocalCleanup.clean(original, mode: .advanced, isEnglish: isEnglish)
+            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
+            return fallback
         }
     }
 
+    private func cleanRecording(
+        _ original: String, model: DictationCleanupModel.Variant?, engine: String, isEnglish: Bool?,
+        prewarmedSession: LanguageModelSession?
+    ) async throws -> String {
+        guard let model else {
+            return try await cleanWithAppleIntelligence(
+                original, engine: engine, instructions: instructions(smart: true, transform: nil),
+                prewarmedSession: prewarmedSession, isEnglish: isEnglish, onFailure: reportSmartFailure)
+        }
+        var tail = original[...]
+        var prefix = ""
+        if isEnglish != false, recordingEngine == engine {
+            for section in preparedSections {
+                guard tail.utf8.starts(with: section.source.utf8),
+                      let end = String.Index(tail.utf8.index(tail.utf8.startIndex,
+                                                             offsetBy: section.source.utf8.count), within: tail),
+                      end == tail.endIndex || tail[end].isWhitespace || section.source.last?.isWhitespace == true
+                else { break }
+                prefix += section.result
+                tail = tail[end...]
+            }
+        }
+        return prefix + (try await smartCleanup(String(tail), model: model, engine: engine,
+                                                isEnglish: isEnglish, onFailure: reportSmartFailure))
+    }
+
     private func reportSmartFailure(_ error: any Error) {
-        report(String(localized: "Smart cleanup failed. Used Advanced cleanup.") + "\n" + error.localizedDescription,
-               .neutral)
+        if case AIProviderError.unavailable(let reason) = error { return report(reason, .neutral) }
+        report(String(localized: "Smart cleanup failed. Used Advanced cleanup."), .neutral)
+    }
+
+    private func reportTransformFailure(_ error: any Error) {
+        switch error {
+        case let failure as DictationTransformFailure: report(failure.localizedDescription, .neutral)
+        case AIProviderError.unavailable(let reason), AIProviderError.responseFailed(let reason):
+            report(reason, .neutral)
+        default: report(DictationTransformFailure.failed.localizedDescription, .neutral)
+        }
     }
 
     private func smartCleanup(
@@ -293,30 +348,29 @@ final class DictationWritingCoordinator {
         let smart = settings.dictationSmartCleanup
         let engine = settings.dictationCleanupEngine
         let model = selectedLocalModel
-        let usesAppleIntelligence = engine == "appleIntelligence"
+        let combined = combinesSmart(smart, transform: transform)
         var result = await DictationLocalCleanup.clean(text, mode: settings.dictationCleanupMode)
         try checkCurrent(engine)
-        do {
-            if smart, let model {
-                result = try await smartCleanup(result, model: model, engine: engine, isEnglish: nil)
+        if smart, !combined {
+            do {
+                if let model {
+                    result = try await smartCleanup(result, model: model, engine: engine, isEnglish: nil)
+                } else {
+                    result = try await cleanWithAppleIntelligence(
+                        result, engine: engine, instructions: instructions(smart: true, transform: nil))
+                }
+            } catch {
+                try checkCurrent(engine)
+                guard transform == nil else { throw error }
+                result = await DictationLocalCleanup.clean(text, mode: .advanced)
             }
             try checkCurrent(engine)
-            if smart, usesAppleIntelligence, transform == nil {
-                result = try await cleanWithAppleIntelligence(
-                    result, engine: engine, instructions: instructions(smart: true, transform: nil))
-            } else if transform != nil {
-                result = try await generate(result, model: model, instructions: instructions(
-                    smart: smart && usesAppleIntelligence, transform: transform))
-            }
-            try checkCurrent(engine)
-            return result
-        } catch {
-            try checkCurrent(engine)
-            guard smart, transform == nil else { throw error }
-            let fallback = await DictationLocalCleanup.clean(text, mode: .advanced)
-            try checkCurrent(engine)
-            return fallback
         }
+        guard let transform else { return result }
+        result = try await transformed(
+            result, with: transform, model: model, instructions: instructions(smart: combined, transform: transform))
+        try checkCurrent(engine)
+        return result
     }
 
     func apply(
@@ -333,7 +387,8 @@ final class DictationWritingCoordinator {
             do {
                 let text = try await (transform.id == DictationTransform.paragraphsID
                     ? formatParagraphs(entry.text, model: model)
-                    : generate(entry.text, model: model, instructions: instructions(smart: false, transform: transform)))
+                    : transformed(entry.text, with: transform, model: model,
+                                  instructions: instructions(smart: false, transform: transform)))
                 guard !Task.isCancelled, operation == current,
                       settings.dictationCleanupEngine == engine,
                       history.entries.first(where: { $0.id == entry.id })?.text == entry.text else { return }
@@ -410,25 +465,59 @@ final class DictationWritingCoordinator {
         _ text: String, engine: String, instructions: String, prewarmedSession: LanguageModelSession? = nil,
         isEnglish: Bool? = nil, onFailure: ((any Error) -> Void)? = nil
     ) async throws -> String {
+        let deadline = Self.appleIntelligenceDeadline(for: text)
         var session = prewarmedSession
         return try await editSmartSections(text, engine: engine, isEnglish: isEnglish, onFailure: onFailure) { chunk in
-            defer { session = nil }
-            return try await generate(chunk, model: nil, instructions: instructions, prewarmedSession: session)
+            let current = session
+            session = Self.prewarmedAppleSession(instructions)
+            return try await generate(
+                chunk, model: nil, instructions: instructions, prewarmedSession: current, deadline: deadline)
         }
+    }
+
+    private func transformed(
+        _ text: String, with transform: DictationTransform, model: DictationCleanupModel.Variant?,
+        instructions: String, prewarmedSession: LanguageModelSession? = nil
+    ) async throws -> String {
+        let limit = model == nil ? Self.appleIntelligenceCharacterLimit : DictationCleanupModel.transformCharacterLimit
+        let deadline = Self.appleIntelligenceDeadline(for: text)
+        guard text.count > limit else {
+            return try await generate(
+                text, model: model, instructions: instructions, prewarmedSession: prewarmedSession, deadline: deadline)
+        }
+        guard transform.allowsSections else { throw DictationTransformFailure.tooLong }
+        var session = prewarmedSession
+        return try await DictationCleanupChunks(tokenizing: text).cleaned { chunk in
+            let current = session
+            if model == nil { session = Self.prewarmedAppleSession(instructions) }
+            return try await generate(
+                chunk, model: model, instructions: instructions, prewarmedSession: current, deadline: deadline)
+        }
+    }
+
+    private static let appleIntelligenceCharacterLimit = 8_000
+
+    // One deadline covers every section, so a long transcript can't stack a full timeout per section.
+    private static func appleIntelligenceDeadline(for text: String) -> ContinuousClock.Instant {
+        .now + .seconds(15) + .milliseconds(text.utf8.count * 8)
+    }
+
+    private static func prewarmedAppleSession(_ instructions: String) -> LanguageModelSession {
+        let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: instructions)
+        session.prewarm()
+        return session
     }
 
     private func generate(
         _ text: String, model: DictationCleanupModel.Variant?, instructions: String, maxOutputTokens: Int = 2_048,
-        prewarmedSession: LanguageModelSession? = nil
+        prewarmedSession: LanguageModelSession? = nil, deadline: ContinuousClock.Instant = .now + .seconds(15)
     ) async throws -> String {
         if let model {
             return try await cleanup.respond(
                 to: text, using: model.transformEngine, instructions: instructions, maxOutputTokens: maxOutputTokens)
         }
         if let reason = appleIntelligenceUnavailableReason { throw AIProviderError.unavailable(reason) }
-        guard text.count <= 8_000 else {
-            throw AIProviderError.responseFailed(String(localized: "This transcript is too long to transform on this Mac."))
-        }
+        guard text.count <= Self.appleIntelligenceCharacterLimit else { throw DictationTransformFailure.tooLong }
         let request = AIRequest(
             instructions: instructions, messages: [.init(role: .user, text: text)], maxOutputTokens: maxOutputTokens)
         return try await withThrowingTaskGroup(of: String.self) { group in
@@ -443,7 +532,7 @@ final class DictationWritingCoordinator {
                 return output
             }
             group.addTask {
-                try await Task.sleep(for: .seconds(15))
+                try await Task.sleep(until: deadline)
                 throw AIProviderError.responseFailed(String(localized: "Text cleanup timed out."))
             }
             defer { group.cancelAll() }

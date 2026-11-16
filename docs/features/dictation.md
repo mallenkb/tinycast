@@ -275,6 +275,9 @@ models use CPU/Neural Engine.
   decoding tables and prepared tokens, not the BPE encoding rules.
 - The `Model/` folder imports Foundation only. Context-sensitive spaces and capitalization are a
   pure decision driven by text around the caret. Capitalization adapts by default.
+  Mid-sentence, the first letter stays capitalized for "I" and its contractions, a word whose
+  second letter is uppercase, a word the transcript capitalizes mid-sentence elsewhere, and a
+  word that starts a Dictionary spelling.
   The `dictation.adaptsCapitalization` override in `settings.json` leaves contextual spaces enabled.
   Capitalization, spacing, and correction learning share one snapshot of the focused editor.
   If an app does not expose caret context through Accessibility, Tinycast inserts the plain transcript.
@@ -342,17 +345,22 @@ between sections. Text without a safe break within that limit stays as dictated.
 one helper serves sections sequentially. Sentences with recognized numbers, currency, and literal
 text use local rules. If a model response loses too many source words or adds a protected value,
 the source section stays in the transcript. If a model request fails, completed sections are kept
-and Advanced cleanup handles the remaining sections. Saved transforms still process the whole
-transcript in one request.
-Local transforms accept up to 3,500 characters; Apple Intelligence transforms accept up to 8,000
-characters, subject to the model's limits. Apple Intelligence combines Smart cleanup with an
-automatic transform in that same whole-transcript request when both are enabled.
+and Advanced cleanup handles the remaining sections. A transform sends the whole transcript in one
+request when it fits: up to 3,500 characters for a local engine, and up to 8,000 for Apple
+Intelligence, subject to the model's limits. Longer transcripts go through Polish, Shorten, and Make a
+list in the same 1,800-byte sections. Prompt Engineer and custom transforms need the whole text, so a
+longer transcript fails at once with a too-long message. Apple Intelligence gives one request, or all
+of its sections, a single deadline of 15 seconds plus 8 ms per byte, and prewarms the next section's
+session while the current one runs. Apple Intelligence and Emberon-2 each combine Smart cleanup with
+an automatic transform in one request when both are enabled.
 For Smart cleanup, the S1 models use their published settings and disable thinking. S1-mini uses
 semi-formal, lists, and general. S1-ASR-Cleanup uses semi-formal, prose, general, and layers 1 and 2.
 Emberon-2 uses Promethic Labs' cleanup prompt and the transcript without an S1 control line.
-When Emberon-2 is selected, After dictation and manual transforms use S1-mini.
-When a recording will use Smart cleanup or an automatic transform, Tinycast starts loading the
-selected cleanup engine at recording start. The local helper stays available through the recording
+When Emberon-2 is selected, After dictation and manual transforms use S1-mini. With an automatic
+transform, S1-mini also takes the Smart cleanup instructions, so the recording loads one model and
+makes one pass. Emberon-2 can't follow transform instructions, and loading both would mean two
+servers or a cold start between key release and paste. When a recording will use Smart cleanup or an
+automatic transform, Tinycast starts loading the engine that recording will use at recording start. The local helper stays available through the recording
 and exits when the recording and its cleanup or transform finish. Cancelling a recording releases
 its helper too. Standalone previews and manual transforms keep a one-minute idle grace period.
 The helper also stops on request errors, disabling dictation, changing engines, or quitting.
@@ -369,9 +377,18 @@ Transforms use the same engine selection as Smart cleanup, even in the Off, Basi
 modes. Local models receive the transform instructions directly. Apple Intelligence honors its
 availability and route switch. Auto-apply is off by default. Automatic processing occurs before
 insertion, with the original recording token checked again after processing. Smart cleanup failures
-use Advanced cleanup and report the underlying error alongside the fallback notice. The app also
-logs the error for diagnosis. If only an automatic transform was requested and it fails, Tinycast keeps
-the transcript it received. Cleanup and transforms run locally.
+use Advanced cleanup and show one notice: the missing model or disabled route when that is the
+cause, otherwise the fallback notice. When an automatic transform fails, Tinycast keeps the Smart
+cleanup result, or the transcript it received, and the notice names the transform's own reason: too
+long, a model to download, a timeout, or a generic failure. When Smart cleanup shared that request,
+Advanced cleanup runs on the original instead. The app also logs each error for diagnosis. Cleanup
+and transforms run locally.
+
+App overrides on the Text cleanup page choose a cleanup level and an automatic transform per app by
+bundle ID. Each choice can stay on Default. The app is the dictation's target when recording starts.
+The overrides live in `dictationAppOverrides`, mirror to `settings.json` as `dictation.appOverrides`,
+and stay out of settings backups with the other writing preferences. Deleting a transform sets any
+override that named it to No transform.
 
 History preserves original recognition text when the inserted text was processed. Its actions
 include saved transforms, Copy original, and Restore original. The preview shows only the current
@@ -412,13 +429,15 @@ other supported stutters, clear weekday
 corrections, and spoken punctuation. It can format lists from explicit commands, ordered cues,
 headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps,
 or at transitions and questions after a substantial passage. See the
-[formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
-budget expires, Basic keeps its filler removal and tries currency formatting on its own. Advanced
-keeps the original text if its budget expires. Smart runs the
+[formatting reference](dictation-formatting.md) for examples and limits. If the formatter's fixed
+work allowance runs out, Basic keeps its filler removal and tries currency formatting on its own.
+Advanced keeps the original text. Smart runs the
 selected engine. The After dictation switch
 pauses automatic transforms without clearing the Default transform selection. Transform instructions,
 shortcuts and sample preview appear while editing that transform. Smart cleanup and transforms
-share the engine selected in Text cleanup. The Text cleanup page also manages its model downloads.
+share the engine selected in Text cleanup. The Text cleanup page also manages its model downloads,
+including S1-mini when Emberon-2 is selected and After dictation is on. The After dictation page offers
+the transform engine's download whenever it is missing.
 Speech recognition manages the speech model. Sounds are under Indicator & feedback.
 
 The cleanup model download shows transferred bytes and percentage in a linear progress bar. At 100%,

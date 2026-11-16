@@ -217,7 +217,9 @@ A consent flag, content or machine state gets no key.
 `appearance.typography` accepts `system` or `interVariable`. The choice also travels in settings backups.
 
 Dictation writing preferences mirror `dictation.removesFillerWords`, `dictation.advancedCleanup`,
-`dictation.smartCleanup`, `dictation.cleanupEngine`, `dictation.autoTransform`, and
-`dictation.transformID`. Smart takes precedence when both cleanup flags are set.
+`dictation.smartCleanup`, `dictation.cleanupEngine`, `dictation.autoTransform`,
+`dictation.transformID`, and `dictation.appOverrides`. Smart takes precedence when both cleanup
+flags are set. `dictation.appOverrides` maps a bundle ID to an object with an optional `cleanup`
+(`off`, `basic`, `advanced` or `smart`) and an optional `transform` (`off` or a transform ID).
 Saved transform instructions and their content-specific shortcut bindings stay local, outside the
 settings file. Importing these preferences does not enable microphone capture or download a model.

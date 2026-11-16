@@ -153,6 +153,26 @@ enum SettingsFileSchema {
         case .dictationAdvancedCleanup: return bind(settings, \.dictationAdvancedCleanup)
         case .dictationAutoTransform: return bind(settings, \.dictationAutoTransform)
         case .dictationTransformID: return bind(settings, \.dictationTransformID)
+        case .dictationAppOverrides:
+            return SettingsFileBinding(key, read: {
+                SettingsFileJSON(jsonObject: settings.dictationAppOverrides)
+            }, write: { json in
+                guard let members = json.members, members.count <= 200 else { return [.invalidValue(key)] }
+                var overrides: [String: [String: String]] = [:]
+                for member in members {
+                    guard !member.key.isEmpty, overrides[member.key] == nil, let fields = member.value.members
+                    else { return [.invalidValue(key)] }
+                    var stored: [String: String] = [:]
+                    for field in fields {
+                        guard let value = field.value.string else { return [.invalidValue(key)] }
+                        stored[field.key] = value
+                    }
+                    guard DictationAppOverride.isValid(stored) else { return [.invalidValue(key)] }
+                    overrides[member.key] = stored
+                }
+                if settings.dictationAppOverrides != overrides { settings.dictationAppOverrides = overrides }
+                return []
+            })
         case .dictationRemovesFillerWords: return bind(settings, \.dictationRemovesFillerWords)
         case .dictationMicrophone: return bind(settings, \.dictationMicrophone)
         case .dictationAdaptsCapitalization: return bind(settings, \.dictationAdaptsCapitalization)

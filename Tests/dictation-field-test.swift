@@ -712,6 +712,7 @@ final class AppSettings {
     var dictationAdaptsCapitalization = true
     var dictationRemovesFillerWords = false
     var dictationCleanupMode: DictationCleanupMode = .off
+    var dictationAppOverrides: [String: [String: String]] = [:]
     var dictationAutoLearnsWords = false
     var dictationPlaysSounds = true
     var dictationIndicatorStyle = DictationIndicatorStyle.compact

@@ -83,6 +83,14 @@ extension Preference where Value == [String: [Double]] {
     }
 }
 
+extension Preference where Value == [String: [String: String]] {
+    init(_ key: String, default defaultValue: [String: [String: String]]) {
+        self.init(
+            key, default: defaultValue, read: { $0.dictionary(forKey: $1) as? [String: [String: String]] },
+            write: { $0.set($2, forKey: $1) })
+    }
+}
+
 extension Preference where Value: RawRepresentable, Value.RawValue == String {
     /// An unknown raw value reads as the default, so a retired case never fails a launch.
     init(_ key: String, default defaultValue: Value) {

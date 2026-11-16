@@ -343,6 +343,10 @@ final class AppSettings {
         didSet { Stored.dictationTransformID.store(dictationTransformID, in: defaults) }
     }
 
+    var dictationAppOverrides: [String: [String: String]] {
+        didSet { Stored.dictationAppOverrides.store(dictationAppOverrides, in: defaults) }
+    }
+
     /// Nil lets macOS follow the system input device as it changes.
     var dictationMicrophone: String? {
         didSet { Stored.dictationMicrophone.store(dictationMicrophone, in: defaults) }
@@ -688,6 +692,7 @@ final class AppSettings {
         dictationAdvancedCleanup = Stored.dictationAdvancedCleanup.load(from: defaults)
         dictationAutoTransform = Stored.dictationAutoTransform.load(from: defaults)
         dictationTransformID = Stored.dictationTransformID.load(from: defaults)
+        dictationAppOverrides = Stored.dictationAppOverrides.load(from: defaults)
         dictationMicrophone = Stored.dictationMicrophone.load(from: defaults)
         dictationAdaptsCapitalization = Stored.dictationAdaptsCapitalization.load(from: defaults)
         dictationHistoryRetention = Stored.dictationHistoryRetention.load(from: defaults)
@@ -849,6 +854,8 @@ private enum Stored {
     static let dictationAdvancedCleanup = Preference<Bool>(
         Key.dictationAdvancedCleanup.rawValue, default: false)
     static let dictationAutoTransform = Preference<Bool>(Key.dictationAutoTransform.rawValue, default: false)
+    static let dictationAppOverrides = Preference<[String: [String: String]]>(
+        Key.dictationAppOverrides.rawValue, default: [:])
     static let dictationTransformID = Preference<String>(
         Key.dictationTransformID.rawValue, default: "D1C70000-0000-4000-8000-000000000001")
     static let dictationMicrophone = Preference<String?>(Key.dictationMicrophone.rawValue)

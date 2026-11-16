@@ -23,7 +23,7 @@ struct DictationTest {
             DictationTextFormatter.basicCleanup(
                 "The cost is 20 Ghana Sadis and 75 passe was. Call at nine thirty AM.", normalize: { $0 }, now: {
                     cleanupClockReads += 1
-                    return cleanupClockReads < 3 ? cleanupStart : cleanupStart + .milliseconds(30)
+                    return cleanupClockReads < 3 ? cleanupStart : cleanupStart + DictationTextFormatter.Budget.safetyTimeout
                 }),
             "The cost is GHS 20.75. Call at nine thirty AM.")
         check(DictationTextFormatter.format("  Hello. \n", context: nil), "Hello.")
@@ -56,6 +56,19 @@ struct DictationTest {
             DictationTextFormatter.format(
                 "World.", context: Context(before: "Hello ", after: ")"),
                 adaptCapitalization: false), "World.")
+        let midSentence = Context(before: "Well,", after: "")
+        check(DictationTextFormatter.format("I think so.", context: midSentence), " I think so.")
+        check(DictationTextFormatter.format("I’m ready.", context: midSentence), " I’m ready.")
+        check(DictationTextFormatter.format("I'll go.", context: midSentence), " I'll go.")
+        check(DictationTextFormatter.format("I've seen it.", context: midSentence), " I've seen it.")
+        check(DictationTextFormatter.format("I'd say yes.", context: midSentence), " I'd say yes.")
+        check(DictationTextFormatter.format("If so, fine.", context: midSentence), " if so, fine.")
+        check(DictationTextFormatter.format("NASA called.", context: midSentence), " NASA called.")
+        check(DictationTextFormatter.format("Ana called, so call Ana.", context: midSentence), " Ana called, so call Ana.")
+        check(DictationTextFormatter.format("Ana called. Ana left.", context: midSentence), " ana called. Ana left.")
+        check(DictationTextFormatter.format("Ana called.", context: midSentence), " ana called.")
+        check(
+            DictationTextFormatter.format("Ana called.", context: midSentence, properNouns: ["Ana"]), " Ana called.")
         let document = "prefix. Text to replace suffix"
         check(
             DictationTextFormatter.format(
@@ -90,6 +103,7 @@ struct DictationTest {
             DictationCorrection.self, from: Data(#"{"original":"Wisper","spelling":"Wispr"}"#.utf8))
         guard !oldEntry.isManual else { fatalError("Existing corrections should still be treated as learned") }
         testLearningCorrections()
+        testAppOverrides()
         testCorrectionAttribution()
         testCorrectionSession()
         stressCorrectionLearning()
@@ -136,6 +150,21 @@ struct DictationTest {
             }
         }
         print("Dictation formatting, model options, and correction learning passed")
+    }
+
+    private static func testAppOverrides() {
+        let id = UUID()
+        let override = DictationAppOverride(cleanup: .smart, transform: .transform(id))
+        precondition(DictationAppOverride(stored: override.stored) == override, "Overrides should round-trip")
+        precondition(DictationAppOverride(stored: ["transform": "off"]) == .init(transform: .off))
+        precondition(DictationAppOverride(stored: [:]) == .init(), "An empty override inherits both choices")
+        precondition(DictationAppOverride(stored: ["cleanup": "loud"]) == nil, "Unknown modes are rejected")
+        precondition(DictationAppOverride(stored: ["transform": "nope"]) == nil, "Unknown transforms are rejected")
+        precondition(DictationAppOverride(stored: ["colour": "red"]) == nil, "Unknown fields are rejected")
+        let overrides = ["com.apple.mail": ["cleanup": "off"]]
+        precondition(DictationAppOverride.resolve(bundleID: "com.apple.mail", in: overrides)?.cleanup == .off)
+        precondition(DictationAppOverride.resolve(bundleID: "com.apple.notes", in: overrides) == nil)
+        precondition(DictationAppOverride.resolve(bundleID: nil, in: overrides) == nil)
     }
 
     private static func testLearningCorrections() {
