@@ -1,6 +1,6 @@
 import Foundation
 
-enum DictationCleanupMode: Hashable, Sendable {
+enum DictationCleanupMode: String, CaseIterable, Sendable {
     case off, basic, advanced, smart
 }
 

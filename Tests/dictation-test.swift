@@ -101,6 +101,7 @@ struct DictationTest {
             DictationCorrection.self, from: Data(#"{"original":"Wisper","spelling":"Wispr"}"#.utf8))
         guard !oldEntry.isManual else { fatalError("Existing corrections should still be treated as learned") }
         testLearningCorrections()
+        testAppOverrides()
         testCorrectionAttribution()
         testCorrectionSession()
         stressCorrectionLearning()
@@ -147,6 +148,21 @@ struct DictationTest {
             }
         }
         print("Dictation formatting, model options, and correction learning passed")
+    }
+
+    private static func testAppOverrides() {
+        let id = UUID()
+        let override = DictationAppOverride(cleanup: .smart, transform: .transform(id))
+        precondition(DictationAppOverride(stored: override.stored) == override, "Overrides should round-trip")
+        precondition(DictationAppOverride(stored: ["transform": "off"]) == .init(transform: .off))
+        precondition(DictationAppOverride(stored: [:]) == .init(), "An empty override inherits both choices")
+        precondition(DictationAppOverride(stored: ["cleanup": "loud"]) == nil, "Unknown modes are rejected")
+        precondition(DictationAppOverride(stored: ["transform": "nope"]) == nil, "Unknown transforms are rejected")
+        precondition(DictationAppOverride(stored: ["colour": "red"]) == nil, "Unknown fields are rejected")
+        let overrides = ["com.apple.mail": ["cleanup": "off"]]
+        precondition(DictationAppOverride.resolve(bundleID: "com.apple.mail", in: overrides)?.cleanup == .off)
+        precondition(DictationAppOverride.resolve(bundleID: "com.apple.notes", in: overrides) == nil)
+        precondition(DictationAppOverride.resolve(bundleID: nil, in: overrides) == nil)
     }
 
     private static func testLearningCorrections() {
