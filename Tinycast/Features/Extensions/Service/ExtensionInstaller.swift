@@ -20,6 +20,9 @@ struct ExtensionInstaller: Sendable {
         }
     }
 
+    /// Shown what the bundle reaches for before anything is copied into place; false cancels.
+    typealias Review = @Sendable (ExtensionManifest, Set<ExtensionCapability>) async -> Bool
+
     /// Long enough for a cold install on a slow line, short enough that a wedged child can't hang.
     private static let commandTimeout: TimeInterval = 300
 
@@ -39,9 +42,10 @@ struct ExtensionInstaller: Sendable {
 
     @discardableResult
     func install(
-        _ listing: ExtensionListing, onProgress: @Sendable @escaping (Progress) -> Void
+        _ listing: ExtensionListing, review: Review,
+        onProgress: @Sendable @escaping (Progress) -> Void
     ) async throws -> InstalledExtension {
-        try await inWorkspace(onProgress: onProgress) { workspace in
+        try await inWorkspace(review: review, onProgress: onProgress) { workspace in
             onProgress(.downloading)
             return try await preparePrebuilt(from: listing.downloadURL, in: workspace)
         }
@@ -50,9 +54,10 @@ struct ExtensionInstaller: Sendable {
     /// Only the build is copied out; the source and its dependencies go with the workspace.
     @discardableResult
     func install(
-        _ source: ExtensionGitHubSource, onProgress: @Sendable @escaping (Progress) -> Void
+        _ source: ExtensionGitHubSource, review: Review,
+        onProgress: @Sendable @escaping (Progress) -> Void
     ) async throws -> InstalledExtension {
-        try await inWorkspace(onProgress: onProgress) { workspace in
+        try await inWorkspace(review: review, onProgress: onProgress) { workspace in
             onProgress(.downloading)
             let checkout = workspace.appendingPathComponent("source", isDirectory: true)
             try await client.downloadFolder(source, to: checkout)
@@ -65,13 +70,17 @@ struct ExtensionInstaller: Sendable {
 
     /// Copies into place before the workspace goes, so it hands back the install.
     private func inWorkspace(
-        onProgress: (Progress) -> Void, prepare: (URL) async throws -> URL
+        review: Review, onProgress: (Progress) -> Void, prepare: (URL) async throws -> URL
     ) async throws -> InstalledExtension {
         let workspace = ExtensionCleanup.workspace(in: FileManager.default.temporaryDirectory)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: workspace) }
 
         let prepared = try await prepare(workspace)
+        let manifest = try ExtensionManifest.load(directory: prepared)
+        guard await review(manifest, ExtensionCapabilityScanner.scan(directory: prepared)) else {
+            throw CancellationError()
+        }
         onProgress(.installing)
         return try ExtensionCatalog.install(from: prepared)
     }
