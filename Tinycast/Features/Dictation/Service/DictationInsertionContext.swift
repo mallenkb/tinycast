@@ -11,6 +11,7 @@ enum DictationInsertionContext {
         let text: String
         let range: NSRange
         let field: Field?
+        let element: AXUIElement?
 
         var context: DictationTextFormatter.Context? {
             guard let selected = Range(range, in: text) else { return nil }
@@ -126,7 +127,7 @@ enum DictationInsertionContext {
                         editor.map { CorrectionObservation.editor($0, onChange: onChange) }
                     })
             } else { nil }
-            return Snapshot(text: editor.string, range: editor.selectedRange(), field: field)
+            return Snapshot(text: editor.string, range: editor.selectedRange(), field: field, element: nil)
         }
         guard let app = target?.externalApp, canObserve(app),
             let element = AccessibilityText.focusedElement(in: app, timeout: messagingTimeout)
@@ -152,7 +153,7 @@ enum DictationInsertionContext {
                 },
                 observe: { onChange in CorrectionObservation.element(element, in: app, onChange: onChange) })
         } else { nil }
-        return Snapshot(text: text, range: range, field: field)
+        return Snapshot(text: text, range: range, field: field, element: element)
     }
 
     private static func canObserve(_ app: NSRunningApplication) -> Bool {

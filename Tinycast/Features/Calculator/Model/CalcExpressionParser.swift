@@ -2,13 +2,13 @@ import Foundation
 
 struct CalcExpressionParser {
     static func scalar(_ tokens: [CalcToken]) -> Double? {
-        var parser = CalcExpressionParser(tokens: tokens, rates: nil)
+        var parser = CalcExpressionParser(tokens: tokens, rates: { nil })
         guard let value = parser.parse(), case .scalar = value.kind, !value.isBoolean else { return nil }
         return value.effective
     }
 
     let tokens: [CalcToken]
-    let rates: CurrencyRates?
+    let rates: () -> CurrencyRates?
     var position = 0
     var operationCount = 0
     var dimensionCount = 0
@@ -682,7 +682,7 @@ struct CalcExpressionParser {
     ) -> Double? {
         recordCurrency(from.code)
         recordCurrency(to.code)
-        guard let rates else {
+        guard let rates = rates() else {
             issue = String(localized: "Exchange rates unavailable — check your connection.")
             return nil
         }

@@ -40,7 +40,7 @@ enum CalcCurrency {
     static let categoryName = String(localized: "Currency")
 
     /// `expr currency (to|in|->) currency`, shaped like `CalcUnits.parseConversion`, run after it.
-    static func parseConversion(_ tokens: [CalcToken], rates: CurrencyRates?) -> ConversionParse? {
+    static func parseConversion(_ tokens: [CalcToken], rates: @autoclosure () -> CurrencyRates?) -> ConversionParse? {
         let tokens = amountFirst(tokens)
         guard tokens.count >= 3, CalcUnits.isConnector(tokens[tokens.count - 2]),
             case .ident(let toName) = tokens[tokens.count - 1],
@@ -68,7 +68,7 @@ enum CalcCurrency {
                 return nil
             }
 
-            guard let rates else { return .unavailable }
+            guard let rates = rates() else { return .unavailable }
             guard rates.rate(for: from.code) != nil else { return .noRate(code: from.code) }
             guard rates.rate(for: to.code) != nil else { return .noRate(code: to.code) }
             guard let output = rates.convert(input, from: from.code, to: to.code) else {

@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import AVFoundation
 import OSLog
 
@@ -30,6 +31,7 @@ final class DictationCoordinator {
     private struct LastInsertion {
         weak var editor: (any InjectableTextView)?
         let app: NSRunningApplication?
+        let element: AXUIElement?
         let expected: String
         let replaced: String
         let insertedRange: NSRange
@@ -469,7 +471,7 @@ final class DictationCoordinator {
             onDelivered: { [weak self] in
                 guard let self, token == current else { return }
                 finishTranscript(text, original: original, destination: destination)
-                if let insertion, let destination { recordInsertion(text, snapshot: insertion, target: destination) }
+                recordInsertion(text, snapshot: insertion, target: destination)
                 if let probe {
                     learnCorrection(using: probe, recognized: formatted, editor: destination?.ownEditor)
                 }
@@ -568,7 +570,10 @@ final class DictationCoordinator {
             InjectedText(text), target: destination, expectedKeyword: nil,
             keywordLength: 0, automaticGeneration: nil,
             onDelivered: { [weak self] in
-                if let insertion { self?.recordInsertion(text, snapshot: insertion, target: destination) }
+                guard let self else { return }
+                _ = pollCorrectionLearning(flush: true)
+                stopCorrectionLearning()
+                recordInsertion(text, snapshot: insertion, target: destination)
             },
             onFailed: { [weak self] _ in
                 Paster.copyPlainText(transcript)
@@ -577,12 +582,13 @@ final class DictationCoordinator {
     }
 
     private func recordInsertion(
-        _ inserted: String, snapshot: DictationInsertionContext.Snapshot, target: InjectionTarget
+        _ inserted: String, snapshot: DictationInsertionContext.Snapshot?, target: InjectionTarget?
     ) {
+        lastInsertion = nil
+        guard let snapshot, let target, Range(snapshot.range, in: snapshot.text) != nil else { return }
         let before = snapshot.text as NSString
-        guard NSMaxRange(snapshot.range) <= before.length else { return }
         lastInsertion = LastInsertion(
-            editor: target.ownEditor, app: target.externalApp,
+            editor: target.ownEditor, app: target.externalApp, element: snapshot.element,
             expected: before.replacingCharacters(in: snapshot.range, with: inserted),
             replaced: before.substring(with: snapshot.range),
             insertedRange: NSRange(location: snapshot.range.location, length: (inserted as NSString).length))
@@ -594,21 +600,21 @@ final class DictationCoordinator {
         guard let last = lastInsertion, !injector.isDelivering else { return showMessage(unavailable, .neutral) }
         if let editor = last.editor {
             guard editor.window?.isVisible == true, editor.isEditable, !editor.hasMarkedText(),
-                editor.string == last.expected
+                editor.string.utf16.elementsEqual(last.expected.utf16),
+                Range(last.insertedRange, in: editor.string) != nil
             else { return showMessage(unavailable, .neutral) }
-            lastInsertion = nil
-            stopCorrectionLearning()
             editor.insertText(last.replaced, replacementRange: last.insertedRange)
-            return
+            let restored = (last.expected as NSString).replacingCharacters(in: last.insertedRange, with: last.replaced)
+            guard editor.string == restored else { return showMessage(unavailable, .neutral) }
+        } else {
+            guard let app = last.app, let element = last.element,
+                AccessibilityTextReplacer.restoreInsertion(
+                    in: app, element: element, expected: last.expected,
+                    insertedRange: last.insertedRange, replaced: last.replaced)
+            else { return showMessage(unavailable, .neutral) }
         }
-        guard let app = last.app, !app.isTerminated,
-            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
-            let field = DictationInsertionContext.read(in: .external(app), learnsCorrections: false),
-            field.text == last.expected, field.range == NSRange(location: NSMaxRange(last.insertedRange), length: 0)
-        else { return showMessage(unavailable, .neutral) }
         lastInsertion = nil
-        stopCorrectionLearning()
-        Paster.postCommandZ(toPid: app.processIdentifier)
+        rollbackCorrectionLearning()
     }
 
     private static func processID(of target: InjectionTarget?) -> pid_t? {
@@ -674,8 +680,7 @@ final class DictationCoordinator {
         let elapsed = started.duration(to: .now)
         let edited = probe.readInsertion()
         if let edited, probe.restoresSelection(edited) {
-            corrections.discardCandidates(for: session.id)
-            stopCorrectionLearning()
+            rollbackCorrectionLearning()
             return false
         }
         guard let edited, !edited.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -719,6 +724,14 @@ final class DictationCoordinator {
             showMessage(message, .success)
         }
         return true
+    }
+
+    private func rollbackCorrectionLearning() {
+        if var session = correctionSession {
+            corrections.discardCandidates(for: session.id)
+            _ = learn((corrections: [], candidates: []), in: &session)
+        }
+        stopCorrectionLearning()
     }
 
     func stopCorrectionLearning() {

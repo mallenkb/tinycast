@@ -144,6 +144,21 @@ struct DictationFieldTest {
         try await dictate("Haptel called.")
         expect(fixture.transcripts.last == "Haptel called.", "Tearing down an editor drops pending learning after a paste")
 
+        editor.string = ""
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        try await dictate("Ask Haptel again.")
+        editor.string = "Ask Hubtel again."
+        NotificationCenter.default.post(name: NSText.didChangeNotification, object: editor)
+        try await wait(timeout: .seconds(5)) {
+            fixture.coordinator.corrections.entries.contains { $0.spelling == "Hubtel" }
+        }
+        editor.string = ""
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        NotificationCenter.default.post(name: NSText.didChangeNotification, object: editor)
+        try await wait { !fixture.coordinator.corrections.entries.contains { $0.spelling == "Hubtel" } }
+        expect(fixture.coordinator.corrections.entries.contains { $0.spelling == "Katherine" },
+            "Undoing the whole insertion rolls back its saved correction and keeps earlier entries")
+
         expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Haptel", spelling: "Hubtel", isManual: true)),
             "The first manual entry is saved")
         expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Hubtel", spelling: "Other", isManual: true)),
@@ -584,8 +599,8 @@ struct DictationFieldTest {
         fixture.coordinator.cancel(in: editor)
     }
 
-    private static func wait(until condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(2)
+    private static func wait(timeout: Duration = .seconds(2), until condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + timeout
         while !condition() {
             guard ContinuousClock.now < deadline else { throw CocoaError(.coderInvalidValue) }
             try await Task.sleep(for: .milliseconds(1))
@@ -851,7 +866,6 @@ enum Paster {
         copies.append(text)
         return true
     }
-    static func postCommandZ(toPid pid: pid_t? = nil) {}
     static func postCommandV(toPid pid: pid_t? = nil) {}
     static func postCommandC(toPid pid: pid_t? = nil) {}
 }

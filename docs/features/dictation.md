@@ -66,7 +66,8 @@ models use CPU/Neural Engine.
   same neighboring words keep the entry scoped to them, different ones learn it everywhere. Up to 100
   candidates are kept in memory; they do not load a speech or cleanup model and are discarded on quit.
   Revisions and undo update the original recognition mapping, rather than teaching a replacement chain,
-  and changing a replaced word back to what was heard removes the entry.
+  and changing a replaced word back to what was heard removes the entry. Restoring the field's original
+  selection while the watcher is active rolls back the corrections it saved for that insertion.
   Each newly learned entry shows a “Learned” HUD, and Dictation Settings > Dictionary marks learned
   entries so they can be removed.
   A user's manual dictionary entries take priority. Add a word or phrase under Dictation Settings >
@@ -108,10 +109,10 @@ models use CPU/Neural Engine.
   fails, Tinycast copies the transcript and says so in a HUD instead of pasting.
   A tap under 250 ms is ignored silently; an empty result shows a neutral "No speech detected".
   Paste Last Transcript pastes the newest History entry. Undo Last Dictation removes the last
-  insertion only when the field still holds exactly what dictation left: an own editor is restored
-  in place, and another app gets ⌘Z only when it is frontmost and Accessibility shows the same text
-  and caret. Otherwise a HUD explains it can't undo. Both commands have optional shortcuts in
-  Dictation settings and are unbound by default.
+  insertion only when the original field still holds exactly what dictation left. In another app,
+  the original field must be focused, the caret must still follow the insertion, and Accessibility
+  must support replacing the inserted range. Otherwise a HUD explains it can't undo. Both commands
+  have optional shortcuts in Dictation settings and are unbound by default.
   After a failed transcription or a cancel, the recording stays in memory for 60 seconds.
   Retry Last Dictation transcribes it again into the focused input; quitting discards it.
   When a speech model fails, Apple Dictation transcribes the recording instead and a HUD says so.

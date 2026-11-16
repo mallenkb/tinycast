@@ -37,6 +37,8 @@ Version 0.1.25 adds dictation processing during pauses, defaults Smart cleanup t
 improves currency formatting, including Ghanaian cedis and pesewas.
 Version 0.1.26 keeps the live dictation preview visible near screen edges and adds clipboard color
 previews for hex values copied from supported design apps.
+Version 0.1.27 adds dictation retry and undo, improves correction learning, and asks before extensions
+run or stop processes.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

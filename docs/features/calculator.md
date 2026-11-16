@@ -607,9 +607,8 @@ The table is cached at `~/Library/Caches/<bundle-id>/currency-rates.json` and re
 The feed republishes about once a day, so a tighter interval would cost requests without returning
 newer numbers. Age is measured from the persisted `fetchedAt`, not from launch, so relaunching
 Tinycast never re-fetches a snapshot that is still fresh — a cold start with a same-day cache makes
-zero requests. Nothing is scheduled at launch either: the first read of `rates`, which the
-launcher's first calculator evaluation makes, starts the loop. Offline, the last snapshot keeps
-answering; with no snapshot at all the card says so rather than guessing, and a currency the feed
+zero requests. The refresh loop starts when a calculation first needs exchange rates. Offline, the
+last snapshot keeps answering; with no snapshot at all the card says so rather than guessing, and a currency the feed
 doesn't quote reports `No exchange rate for <CODE>.`
 A money answer sets `CalcResult.isCurrency`, so its card shows when the snapshot was fetched and a
 small refresh button. `CurrencyRateStore.refresh()` fetches at once without touching the pump, which

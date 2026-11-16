@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 enum AccessibilityReplacement: Equatable {
     case delivered
@@ -148,6 +149,37 @@ enum AccessibilityTextReplacer {
             guard attempt < attempts - 1, await waitForConvergence() else { return .unavailable }
         }
         return .unavailable
+    }
+
+    static func restoreInsertion(
+        in app: NSRunningApplication, element: AXUIElement, expected: String,
+        insertedRange: NSRange, replaced: String
+    ) -> Bool {
+        guard !app.isTerminated, Permissions.isAccessibilityTrusted(), !IsSecureEventInputEnabled(),
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
+            case .ready(let target) = inspect(in: app, expectedKeyword: nil, keywordLength: 0),
+            CFEqual(target.element, element), target.value.utf16.elementsEqual(expected.utf16),
+            target.originalRange == NSRange(location: NSMaxRange(insertedRange), length: 0),
+            Range(insertedRange, in: expected) != nil,
+            setSelectedRange(insertedRange, in: target.element)
+        else { return false }
+
+        guard selectedRange(in: target.element) == insertedRange,
+            stringValue(in: target.element)?.utf16.elementsEqual(expected.utf16) == true,
+            AXUIElementSetAttributeValue(target.element, kAXSelectedTextAttribute as CFString, replaced as CFString)
+                == .success,
+            TextReplacementPolicy.confirmsReplacement(
+                originalValue: expected, replacementRange: insertedRange, insertedText: replaced,
+                observedValue: stringValue(in: target.element))
+        else {
+            if stringValue(in: target.element)?.utf16.elementsEqual(expected.utf16) == true {
+                _ = setSelectedRange(target.originalRange, in: target.element)
+            }
+            return false
+        }
+        _ = setSelectedRange(
+            NSRange(location: insertedRange.location, length: replaced.utf16.count), in: target.element)
+        return true
     }
 
     private static func inspect(
