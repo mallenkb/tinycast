@@ -40,25 +40,42 @@ models use CPU/Neural Engine.
   and, like every Dictation preference, is excluded from backups so importing settings cannot arm
   a global recording shortcut.
 - Auto-learn words is active when Dictation is enabled. After a confirmed paste into a readable text
-  field, Tinycast watches that insertion while the field remains focused. After two seconds without
-  an edit, it aligns the original and edited words and learns multiple clear spelling corrections.
+  field, Tinycast watches that insertion while the field remains focused. It finds the insertion again
+  by up to 48 characters on each side, so edits elsewhere in the document or a moved caret don't lose
+  it; editing those neighboring characters ends the watch. An `AXObserver` (or `NSText` change
+  notifications in Tinycast's own editors) wakes the watcher on edits and focus moves, with a
+  5-second safety poll; a field without notifications is polled every second. The watcher stops 60
+  seconds after the last edit and 5 minutes after the paste at most. Fields over 8,192 UTF-16 units,
+  checked through `AXNumberOfCharacters` before the value is copied, are not observed.
+  After two seconds without an edit, it aligns the original and edited words and passes each changed
+  span of up to three words to `DictationCorrectionPolicy`. If the field closes or clears, the last
+  read edit counts only if it had already paused for a second, so a half-typed word is never learned.
   Starting another recording flushes readable pending edits before taking the next vocabulary snapshot.
-  The watcher stops when focus leaves, the surrounding text changes, the insertion is deleted,
-  Dictation is disabled, or its composer is closed or rebound. Stopping releases the field probe and
-  transcript snapshots. Fields over 8,192 UTF-16 units are not observed.
-  Numeric edits, recognized English number/date/negation words, and unrelated rewrites are excluded.
-  Word swaps and conflicting replacements of the same source are rejected. Ambiguous spelling candidates
-  require matching evidence from two distinct dictations in the same app session and only apply with
-  the same neighboring words. Up to 100 candidates
-  are kept in memory; they do not load a speech or cleanup model and are discarded on quit.
-  Revisions and undo update the original recognition mapping, rather than teaching a replacement chain.
+  The watcher also stops when the insertion is deleted, Dictation is disabled, or its composer is
+  closed or rebound. Stopping releases the field probe, observer and transcript snapshots.
+  The policy treats the system spell checker as the vocabulary: changing one real word to another
+  (affect/effect, Monday/Tuesday, a rewrite) is a choice, not a misrecognition, and is never learned.
+  Numeric edits, recognized English number/date/negation words, punctuation-only edits, swaps and
+  conflicting replacements of the same source are rejected. A name-like target (capitalized mid-sentence
+  or with inner capitals) close in spelling or in a coarse sound key is learned on first sight
+  (cubernetes → Kubernetes, Jhon → John, mc donald → McDonald). Weaker pairs are candidates: a
+  merged multi-word mishearing (there sure → Thiessen), a capitalization of an unknown term
+  (tinycast → Tinycast, never at a sentence start), a fix to a real word, or a swap between two names.
+  A candidate is learned when a second dictation in the same app session makes the same change; the
+  same neighboring words keep the entry scoped to them, different ones learn it everywhere. Up to 100
+  candidates are kept in memory; they do not load a speech or cleanup model and are discarded on quit.
+  Revisions and undo update the original recognition mapping, rather than teaching a replacement chain,
+  and changing a replaced word back to what was heard removes the entry.
+  Each newly learned entry shows a “Learned” HUD, and Dictation Settings > Dictionary marks learned
+  entries so they can be removed.
   A user's manual dictionary entries take priority. Add a word or phrase under Dictation Settings >
   Dictionary to keep its preferred spelling, or enter a misspelling to replace it explicitly.
   The dictionary stores up to 100 entries on this Mac and keeps manual entries when learned ones are
   dropped. Learned entries persist across restarts and apply once to finished text after cleanup and
-  transforms. Apple Dictation also uses unscoped saved words as recognition hints. Remove an entry in Dictation
-  Settings to stop using it. Casing-only edits and edits to part of an already replaced multiword alias
-  are skipped. These rules infer spelling preferences, not changes to the speaker's intent.
+  transforms, as whole words (a possessive ’s still matches). Apple Dictation also uses unscoped saved
+  words as recognition hints. Remove an entry in Dictation Settings to stop using it. Edits to part of an
+  already replaced multiword alias are skipped. These rules infer spelling preferences, not changes to
+  the speaker's intent.
 - Microphone status appears in Permissions and the Dictation pane. Neither pane prompts on display;
   only a user action requests access, while revoked access is refreshed from macOS.
 - Push to talk and Hands-free have separate global shortcuts and can both be assigned.
@@ -236,7 +253,10 @@ models use CPU/Neural Engine.
 and cue timing with synthetic capture and real AppKit editors, without recording audio or touching
 the shared clipboard.
 `dictation-test` checks formatting, model options, multi-edit alignment, confidence checks, source
-attribution, undo, debounce, input bounds and repeated inference. Hidden-editor checks in
+attribution, undo, debounce, input bounds and repeated inference. `dictation-correction-test` runs a
+table of realistic correction scenarios (misheard words and names, rewrites, deletions, casing,
+punctuation, changes of mind, autocorrect, shifted insertions, abandoned edits, reverts) through the
+detection, session timing, insertion anchor and store, with a fixture vocabulary. Hidden-editor checks in
 `dictation-field-test` also cover learning across dictations, persistence, candidate corroboration,
 manual-entry priority and correction watcher teardown. These fixtures do not activate windows,
 record audio or write to the shared clipboard. `dictation-inference-test` checks score selection,

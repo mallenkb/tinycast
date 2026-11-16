@@ -6,15 +6,6 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
     private static let maximumAnchorLength = 40
     private static let anchorLookahead = 8
     private static let maximumChanges = 16
-    private static let sensitiveWords = Set("""
-        no not never neither nor none nothing nobody without cannot cant wont dont only
-        zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen
-        sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety
-        hundred thousand million billion trillion half quarter first second third fourth fifth sixth
-        seventh eighth ninth tenth monday tuesday wednesday thursday friday saturday sunday
-        january february march april may june july august september october november december
-        today tomorrow yesterday noon midnight am pm dollars dollar euros euro pounds pound cents cent
-        """.split(whereSeparator: \.isWhitespace))
 
     private struct Token {
         let raw: Substring
@@ -29,10 +20,7 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
         let after: Range<Int>
     }
 
-    private enum Confidence {
-        case clear
-        case candidate
-    }
+    private typealias Confidence = DictationCorrectionPolicy.Confidence
 
     struct Detection {
         var corrections: [DictationCorrection] = []
@@ -67,7 +55,9 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
         return Self(original: misspelling.isEmpty ? spelling : misspelling, spelling: spelling, isManual: true)
     }
 
-    static func detect(from inserted: String, to edited: String, recognized: String) -> Detection {
+    static func detect(
+        from inserted: String, to edited: String, recognized: String, isKnownWord: (String) -> Bool
+    ) -> Detection {
         guard inserted.utf16.count <= maximumTextLength,
             edited.utf16.count <= maximumTextLength,
             recognized.utf16.count <= maximumTextLength
@@ -85,17 +75,18 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
         var detection = Detection()
         var matches: [(correction: Self, confidence: Confidence)] = []
         for edit in edits {
-            let parts = wordPairs(in: edit).filter { part in
-                part.before.count != part.after.count
-                    || !zip(before[part.before], after[part.after]).allSatisfy { key($0.word) == key($1.word) }
-            }
-            let found = parts.compactMap {
-                match($0, before: before, after: after, source: source, attribution: attribution)
-            }
-            if found.count == parts.count {
-                matches.append(contentsOf: found)
-            } else {
-                detection.isReliable = false
+            for part in wordPairs(in: edit) {
+                let pairs = zip(before[part.before], after[part.after])
+                let resized = part.before.count != part.after.count
+                guard resized || !pairs.allSatisfy({ $0.word == $1.word }) else { continue }
+                if let found = match(
+                    part, before: before, after: after, source: source, attribution: attribution,
+                    isKnownWord: isKnownWord)
+                {
+                    matches.append(found)
+                } else if resized || !pairs.allSatisfy({ key($0.word) == key($1.word) }) {
+                    detection.isReliable = false
+                }
             }
             guard matches.count <= maximumChanges else { return Detection(isReliable: false) }
         }
@@ -139,7 +130,7 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
             pattern(for: key, context: replacements[key]?.context, marks: marks)
         }.joined(separator: "|")
         guard !phrases.isEmpty else { return text }
-        let pattern = "(?<!\\S)\(marks)*?(\(phrases))(?=\(marks)*(?:\\s|$))"
+        let pattern = "(?<!\\S)\(marks)*?(\(phrases))(?=(?:['’]s)?\(marks)*(?:\\s|$))"
         guard let expression = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return text }
         var corrected = ""
         var remaining = text.startIndex
@@ -278,7 +269,8 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
     }
 
     private static func match(
-        _ change: Change, before: [Token], after: [Token], source: [Token], attribution: [Change]
+        _ change: Change, before: [Token], after: [Token], source: [Token], attribution: [Change],
+        isKnownWord: (String) -> Bool
     ) -> (correction: Self, confidence: Confidence)? {
         let old = before[change.before]
         let new = after[change.after]
@@ -286,18 +278,18 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
             old.count == new.count || (old.first?.leading == new.first?.leading && old.last?.trailing == new.last?.trailing),
             let sourceRange = sourceRange(for: change.before, attribution: attribution),
             sourceRange.lowerBound >= source.startIndex, sourceRange.upperBound <= source.endIndex,
-            let original = editablePhrase(source[sourceRange])
+            let original = editablePhrase(source[sourceRange]), wrong != right
         else { return nil }
-        let wrongKey = key(for: String(wrong))
-        let rightKey = key(for: String(right))
-        guard wrongKey != rightKey else { return nil }
         let originalPhrase = phrase(String(original))
         let spelling = phrase(String(right))
-        if key(for: originalPhrase) == rightKey {
-            return (Self(original: originalPhrase, spelling: spelling), .clear)
+        let rightKey = key(for: spelling)
+        if key(for: originalPhrase) == rightKey, key(for: String(wrong)) != rightKey || originalPhrase == spelling {
+            return (Self(original: originalPhrase, spelling: originalPhrase), .clear)
         }
-        guard let confidence = confidence(
-            from: wrongKey, to: rightKey, named: hasNameCasing(old, new))
+        let opensSentence = opensSentence(at: change.after.lowerBound, in: after)
+        guard let confidence = DictationCorrectionPolicy.confidence(
+            from: span(old, opensSentence: opensSentence), to: span(new, opensSentence: opensSentence),
+            isKnownWord: isKnownWord)
         else { return nil }
         if confidence == .clear { return (Self(original: originalPhrase, spelling: spelling), .clear) }
         guard let context = context(
@@ -346,41 +338,18 @@ struct DictationCorrection: Codable, Identifiable, Sendable {
         return text
     }
 
-    private static func hasNameCasing(_ before: ArraySlice<Token>, _ after: ArraySlice<Token>) -> Bool {
-        if before.first?.word.first?.isUppercase == true, after.first?.word.first?.isUppercase == true {
-            return true
+    private static func span(_ tokens: ArraySlice<Token>, opensSentence: Bool) -> DictationCorrectionPolicy.Span {
+        let words = tokens.map(\.word)
+        let named = words.enumerated().contains { offset, word in
+            word.dropFirst().contains(where: \.isUppercase)
+                || (word.first?.isUppercase == true && (offset > 0 || !opensSentence))
         }
-        return [before, after].contains { tokens in
-            tokens.indices.contains { index in
-                let word = tokens[index].word
-                return word.dropFirst().contains(where: \.isUppercase)
-                    || (index > 0 && word.first?.isUppercase == true)
-            }
-        }
+        return .init(words: words, looksLikeName: named)
     }
 
-    private static func confidence(from wrong: String, to right: String, named: Bool) -> Confidence? {
-        let old = wrong.split(separator: " ")
-        let new = right.split(separator: " ")
-        guard !old.contains(where: sensitiveWords.contains), !new.contains(where: sensitiveWords.contains) else {
-            return nil
-        }
-        let oldLetters = old.joined()
-        let newLetters = new.joined()
-        if oldLetters == newLetters { return named ? .clear : .candidate }
-        let shorterLength = min(oldLetters.count, newLetters.count)
-        let edits = newLetters.difference(from: oldLetters)
-        let changed = max(edits.insertions.count, edits.removals.count)
-        let samePrefix = zip(oldLetters, newLetters).prefix { $0 == $1 }.count
-        let sameSuffix = zip(oldLetters.reversed(), newLetters.reversed()).prefix { $0 == $1 }.count
-        let onlyInsertionsOrDeletions = edits.insertions.isEmpty || edits.removals.isEmpty
-        if named, changed == 1
-            || (changed == 2 && shorterLength >= 5 && (onlyInsertionsOrDeletions || samePrefix + sameSuffix >= 3)) {
-            return .clear
-        }
-        if named, shorterLength >= 5, changed <= 3, max(samePrefix, sameSuffix) >= 3 { return .candidate }
-        if shorterLength >= 5, changed == 1, samePrefix + sameSuffix >= shorterLength - 1 { return .candidate }
-        return nil
+    private static func opensSentence(at index: Int, in tokens: [Token]) -> Bool {
+        guard index > 0, tokens.indices.contains(index - 1) else { return true }
+        return tokens[index - 1].trailing.contains { ".!?…".contains($0) }
     }
 
     private static func occurrences(of key: String, in tokens: [String]) -> Int {
