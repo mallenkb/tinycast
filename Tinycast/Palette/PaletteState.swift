@@ -133,6 +133,14 @@ final class PaletteState {
         return true
     }
 
+    /// A filter narrows one screen's list, so a different screen always opens unfiltered.
+    func resetScreenFilters() {
+        clipboardFilter = .all
+        fileSearchFilter = .all
+        emojiCategoryFilter = .all
+        emojiGridColumnsOverride = nil
+    }
+
     /// Tab closing the ring on the launcher, which is its root: nothing is left behind it.
     func resetNavigation() {
         backStack.removeAll()

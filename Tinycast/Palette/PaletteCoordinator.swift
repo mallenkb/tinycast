@@ -10,6 +10,10 @@ final class PaletteCoordinator {
     private let menuSearch: MenuSearchSession
     private let windowSwitch: WindowSwitchSession
     private let windowController: PaletteWindowController
+    /// Read per call: the sessions a mode change ends are built after this coordinator.
+    private unowned let core: AppCore
+    /// Outlives the view, which `releaseHiddenSearchContent` may tear down while hidden.
+    let menus: PaletteMenuState<PopoverMenuContent>
     /// Features whose launcher rows are read from outside Tinycast re-read them on each open.
     var onLauncherShown: (() -> Void)?
     /// Screens that snapshot other apps re-read them on every open, a restored one included.
@@ -22,7 +26,8 @@ final class PaletteCoordinator {
         fileSearch: FileSearchSession,
         menuSearch: MenuSearchSession,
         windowSwitch: WindowSwitchSession,
-        windowController: PaletteWindowController
+        windowController: PaletteWindowController,
+        core: AppCore
     ) {
         self.palette = palette
         self.settings = settings
@@ -31,6 +36,51 @@ final class PaletteCoordinator {
         self.menuSearch = menuSearch
         self.windowSwitch = windowSwitch
         self.windowController = windowController
+        self.core = core
+        menus = PaletteMenuState(palette: palette)
+    }
+
+    // MARK: - Routing
+
+    /// Feeds the edited query to the one session the current mode searches with.
+    func queryDidChange(_ query: String, extensionSearchTextHandler: String?) {
+        switch PaletteQueryRoute.resolve(
+            mode: palette.mode, extensionHandlesSearchText: extensionSearchTextHandler != nil)
+        {
+        case .fileSearch: fileSearch.search(query, filter: palette.fileSearchFilter)
+        case .launcherFiles: core.fileSearchCoordinator.searchFromLauncher(query)
+        case .dictionary: core.dictionary.lookUp(query)
+        case .menuSearch: menuSearch.filter(query)
+        case .windowSwitch: windowSwitch.filter(query)
+        case .extensionSearchText:
+            if let extensionSearchTextHandler {
+                core.extensions.dispatch(handler: extensionSearchTextHandler, arguments: [query])
+            }
+        case nil: break
+        }
+    }
+
+    /// Starts the entered mode's session and ends every other; runs after the view lands the list.
+    func modeDidChange(to mode: PaletteMode) {
+        let transition = PaletteModeTransition(entering: mode)
+        if transition.cancelsUninstall { core.uninstall.cancel() }
+        switch transition.fileSearch {
+        case .search: fileSearch.search(palette.query, filter: palette.fileSearchFilter)
+        case .searchFromLauncher: core.fileSearchCoordinator.searchFromLauncher(palette.query)
+        case .cancel: fileSearch.cancel()
+        }
+        switch transition.dictionary {
+        case .lookUp: core.dictionary.lookUp(palette.query)
+        case .reset: core.dictionary.reset()
+        }
+        if transition.resetsMenuSearch { menuSearch.reset() }
+        if transition.resetsWindowSwitch { windowSwitch.reset() }
+        if transition.clearsMeetingDetails { core.calendarStore.clearDetails() }
+        if transition.closesRooms { core.roomCoordinator.screensDidClose() }
+        if transition.stopsExtension, core.extensions.running != nil {
+            let extensions = core.extensions
+            Task { await extensions.stop() }
+        }
     }
 
     // MARK: - Palette control

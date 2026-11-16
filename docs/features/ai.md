@@ -637,7 +637,7 @@ is the new id. The search field is the composer: Return submits, or stops a stre
 reads Send `↵` / Stop `↵` to match. The model switcher is a `HeaderMenuButton` — the
 active label, glyph and disclosure chevron layered over `BarButton` — which is also what Clipboard's
 type filter is now, so the two header menus hover and open identically. Its menu is the palette's
-fourth `OpenMenu` case, `.topTrailing` like the type filter, and it opens on the selected model. Each
+fourth `PaletteMenu` case, `.topTrailing` like the type filter, and it opens on the selected model. Each
 row leads with the vendor's mark — `AIBrand` resolves it from a native connection's provider, or for
 OpenRouter and OpenAI-compatible endpoints from the model id (`anthropic/claude-…`, `deepseek-chat`,
 `o4-mini`). The marks are ~300 B–2 KB monochrome template SVGs in `Assets.xcassets` (`AIBrand*`),
