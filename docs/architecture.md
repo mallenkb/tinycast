@@ -73,8 +73,8 @@ in whichever of the two owns it.
   lives here. This is the layer that **does** things.
 - **`UI/` and `Settings/` — views**, plus the feature's coordinator. Declarative, thin, holding no policy.
 
-The rule is checkable, which is the point: **a file under `Model/` may not import AppKit or SwiftUI**,
-because the harnesses compile the shipped sources rather than a copy. A harness that stops compiling is
+The rule is checkable, which is the point: **a file under `Model/` may not import AppKit or SwiftUI,
+or reach `AppCore` or a coordinator** (`Scripts/check-model-purity.sh`), because the harnesses compile the shipped sources rather than a copy. A harness that stops compiling is
 the signal that a decision leaked into the effect layer, or an effect into the decision layer.
 
 The boundary keeps effects out of decisions: `CalcEngine.evaluate` is handed a finished

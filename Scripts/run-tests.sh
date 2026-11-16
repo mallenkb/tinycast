@@ -762,6 +762,22 @@ run slow -O raycast-test   Tinycast/Features/Backup/Model/RaycastImportError.swi
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift
 run settings-backup-test   Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift
+run settings-backup-roundtrip-test Tinycast/Features/Backup/Model/SettingsBackup.swift \
+                           Tinycast/Features/Backup/Service/SettingsDataMapping.swift \
+                           Tinycast/Features/Settings/AppAppearance.swift \
+                           Tinycast/Features/Settings/AppLanguage.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
+                           Tinycast/Features/Settings/EscapeKeyBehavior.swift \
+                           Tinycast/Features/Settings/PopToRootTimeout.swift \
+                           Tinycast/Features/Calendar/Model/JoinWindow.swift \
+                           Tinycast/Features/Calendar/Model/MenuBarEvents.swift \
+                           Tinycast/Features/Calendar/Model/CalendarMenuBarDisplay.swift \
+                           Tinycast/Features/Calendar/Model/CalendarLauncherLimit.swift \
+                           Tinycast/Features/Calendar/Model/HideCurrentEvent.swift \
+                           Tinycast/Features/Calendar/Model/MeetingSpan.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
+                           Tinycast/Features/Launcher/Model/SearchScopes.swift \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift
 run hyper-key-engine-test  Tinycast/Features/HotKeys/Model/HyperKeyEngine.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
                            Tinycast/Features/HotKeys/Model/HIDKeyMapping.swift \
@@ -797,6 +813,7 @@ run hotkey-dispatch-test   Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tests/hotkey-dispatch-fixtures.swift
 run extension-output-tail-test Tinycast/Features/Extensions/Service/ExtensionOutputTail.swift
 
+run settings-preference-test Tinycast/Features/Settings/Model/Preference.swift
 run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
                            Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
                            Tinycast/Features/Settings/Service/SettingsFileRepository.swift \

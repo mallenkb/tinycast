@@ -21,7 +21,7 @@ enum BackupApplier {
         if categories.contains(.configuration), let data = try? Data(contentsOf: bundle.settingsURL),
             let backup = try? SettingsBackup(json: data)
         {
-            summary.settings = backup.apply(to: core)
+            summary.settings = apply(backup, to: core)
         }
         if categories.contains(.clipboard) {
             summary.clipboard = await importClipboard(bundle, into: core.clipboardStore)
@@ -44,6 +44,105 @@ enum BackupApplier {
             summary.learning = applyLearning(bundle, to: core)
         }
         return summary
+    }
+
+    /// Content first, so a restored binding has its quicklink, layout, room or size to attach to.
+    @discardableResult
+    static func apply(_ backup: SettingsBackup, to core: AppCore) -> SettingsBackup.ApplySummary {
+        var summary = SettingsBackup.ApplySummary()
+        if let settings = backup.settings { summary.settingsFields = settings.apply(to: core.settings) }
+        if let customCommands = backup.customCommands {
+            summary.customCommands = core.customCommandCoordinator.replaceCustomCommands(customCommands)
+        }
+        if let quicklinks = backup.quicklinks {
+            summary.quicklinks = core.quicklinkCoordinator.replaceQuicklinks(quicklinks)
+        }
+        if let windowLayouts = backup.windowLayouts {
+            summary.windowLayouts = core.windowLayoutCoordinator.replaceWindowLayouts(windowLayouts)
+        }
+        if let windowRooms = backup.windowRooms {
+            summary.windowRooms = core.roomCoordinator.replaceRooms(windowRooms)
+        }
+        if let customWindowSizes = backup.customWindowSizes {
+            summary.customWindowSizes =
+                core.customWindowSizeCoordinator.replaceCustomWindowSizes(customWindowSizes)
+        }
+        if let hotkeys = backup.hotkeys { summary.hotkeys = applyHotkeys(hotkeys, to: core) }
+        if let favoriteApps = backup.favoriteApps {
+            core.favorites.replace(keys: favoriteApps)
+            summary.favorites = favoriteApps.count
+        }
+        if backup.hiddenLauncherItems != nil || backup.hiddenLauncherKinds != nil {
+            let items = backup.hiddenLauncherItems ?? Array(core.visibility.hiddenItemKeys)
+            let kinds = backup.hiddenLauncherKinds ?? Array(core.visibility.disabledKinds)
+            core.visibility.replace(hiddenItems: items, disabledKinds: kinds)
+            summary.hiddenItems = items.count
+        }
+        if let launcherAliases = backup.launcherAliases {
+            core.aliases.replace(launcherAliases)
+            // Counted after the store, which drops blanks the file may carry.
+            summary.aliases = core.aliases.aliases.count
+        }
+        if let pinnedEmoji = backup.pinnedEmoji {
+            core.pinnedEmoji.replace(pinnedEmoji)
+            summary.pinnedEmoji = core.pinnedEmoji.glyphs.count
+        }
+        return summary
+    }
+
+    private static func applyHotkeys(
+        _ hotkeys: SettingsBackup.HotkeyBackup, to core: AppCore
+    ) -> Int {
+        let hk = core.hotKeys
+        var count = 0
+        // Skip an already-claimed binding: the second registration would silently fail.
+        func apply(_ binding: HotKeyBinding, _ action: HotKeyAction) {
+            guard hk.conflictOwner(of: binding, excluding: action) == nil else { return }
+            hk.setBinding(binding, for: action)
+            count += 1
+        }
+        if let b = hotkeys.togglePalette { apply(b, .togglePalette) }
+        for (rawID, b) in hotkeys.commands ?? [:] {
+            guard let action = CommandID(rawValue: rawID)?.hotKeyAction else { continue }
+            apply(b, action)
+        }
+        for (id, b) in hotkeys.apps ?? [:] { apply(b, .app(bundleID: id)) }
+        for (id, b) in hotkeys.panes ?? [:] { apply(b, .settingsPane(bundleID: id)) }
+        for (rawID, b) in hotkeys.customCommands ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.customCommands.command(id: id) != nil else {
+                continue
+            }
+            apply(b, .customCommand(id: id))
+        }
+        for (rawID, b) in hotkeys.systemActions ?? [:] {
+            guard let id = SystemAction.ID(rawValue: rawID) else { continue }
+            apply(b, .systemAction(id: id))
+        }
+        for (rawID, b) in hotkeys.windowCommands ?? [:] {
+            guard let id = WindowCommand.ID(rawValue: rawID) else { continue }
+            apply(b, .windowCommand(id: id))
+        }
+        for (rawID, b) in hotkeys.windowLayouts ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.windowLayouts.layout(id: id) != nil
+            else { continue }
+            apply(b, .windowLayout(id: id))
+        }
+        for (rawID, b) in hotkeys.windowRooms ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.rooms.room(id: id) != nil else { continue }
+            apply(b, .windowRoom(id: id))
+        }
+        for (rawID, b) in hotkeys.customWindowSizes ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.customWindowSizes.size(id: id) != nil
+            else { continue }
+            apply(b, .customWindowSize(id: id))
+        }
+        for (rawID, b) in hotkeys.quicklinks ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.quicklinks.quicklink(id: id) != nil else {
+                continue
+            }
+            apply(b, .quicklink(id: id))
+        }
+        return count
     }
 
     // MARK: - Parts

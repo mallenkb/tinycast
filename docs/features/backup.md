@@ -45,13 +45,14 @@ A backup carries five independently selectable categories, ticked on export and 
 | `Model/BackupBundle.swift` | The payload directory's layout and part-by-part encode/decode |
 | `Model/BackupArchive.swift` | Directory ⇄ `.tinycast`; the only file importing `AppleArchive` |
 | `Model/BackupClipboardItem.swift` | The portable clip, with no path in it |
-| `Model/SettingsBackup.swift` | The settings, fixed/per-item hotkey payloads, and their `Codable` shape |
+| `Model/SettingsBackup.swift` | The settings, fixed/per-item hotkey payloads, and their `Codable` shape, nothing else |
 | `Model/SettingsBackupCoverage.swift` | The coverage declaration the harness checks |
 | `Model/RaycastImport.swift` | The importable categories, the `Result` and its per-category trim |
 | `Model/RaycastImportError.swift` | The three failures an import reports |
 | `Service/BackupStaging.swift` | One scratch tree, created on init and removed on discard |
-| `Service/BackupComposer.swift` | Stores → staging; `plan` on main, `write` off it |
-| `Service/BackupApplier.swift` | Staging → stores, returning a per-category summary |
+| `Service/SettingsDataMapping.swift` | `AppSettings` ⇄ `SettingsData`, the one place a carried field is read and written |
+| `Service/BackupComposer.swift` | Stores → staging; `plan` on main, `write` off it; `settingsBackup(from:)` gathers |
+| `Service/BackupApplier.swift` | Staging → stores, returning a per-category summary; `apply(_:to:)` for settings |
 | `Service/BackupActions.swift` | The effectful half: file pickers, the archive calls, dialogs, the settings-file switch |
 | `Service/RaycastDecoder.swift` | Container recognition, decrypt and decode |
 | `Service/RaycastImportReader.swift` | Raycast → Tinycast field mapping |
@@ -112,6 +113,10 @@ capability-granting key — `snippetsEnabled`, `extensionsEnabled`, `calendarEna
 `autoJoinMeetings`, `cameraPreview`, `quickActionsEnabled` — is named individually as excluded. The
 duplication between `AppSettings` and this file is the point: it forces a decision about every new
 setting rather than defaulting it into a backup.
+
+`settings-backup-roundtrip-test` checks the other half: every `SettingsData` field gathers from a
+stand-in `AppSettings`, survives encoding and applies back to a fresh one, while a file that names a
+capability flag still grants nothing.
 
 ## Importing
 
