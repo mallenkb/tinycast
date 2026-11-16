@@ -513,6 +513,7 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/Features/Extensions/Service/ExtensionFetcher.swift \
                            Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/Extensions/Service/ExtensionNodeShims.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionProcessAccess.swift \
                            Tinycast/Features/Extensions/Service/ExtensionRuntime.swift \
                            Tinycast/Features/Extensions/Service/ExtensionIconCache.swift \
                            Tinycast/Features/Extensions/UI/ExtensionAnimatedImage.swift \
@@ -825,6 +826,30 @@ run ext-accessory-test     $E/Model/RenderNode.swift \
                            $E/Model/ExtensionPickerItem.swift \
                            $E/Model/ExtensionSearchAccessory.swift \
                            $E/Service/ExtensionStorage.swift
+run ext-host-bridge-test   -parse-as-library \
+                           $E/Service/ExtensionHostBridge.swift \
+                           $E/Service/ExtensionCapabilityScanner.swift \
+                           $E/Service/ExtensionProcessGrantStore.swift \
+                           $E/Model/ExtensionCapability.swift \
+                           $E/Model/ExtensionProcessAccess.swift \
+                           $E/Service/ExtensionStorage.swift \
+                           $E/Service/ExtensionSignInSession.swift \
+                           $E/Service/ExtensionFetcher.swift \
+                           Tinycast/Platform/ProcessExit.swift \
+                           $E/Service/ExtensionNodeShims.swift \
+                           $E/Service/ExtensionRuntime.swift \
+                           $E/Service/ExtensionNameResolver.swift \
+                           $E/Service/ExtensionWebSocketBridge.swift \
+                           $E/Model/ExtensionBootConfig.swift \
+                           $E/Model/ExtensionDeepLink.swift \
+                           $E/Model/ExtensionLaunchType.swift \
+                           $E/Model/ExtensionManifest.swift \
+                           $E/Model/RenderNode.swift \
+                           $E/Model/ExtensionRefreshPolicy.swift \
+                           $E/Model/ExtensionRefreshState.swift \
+                           $E/Service/ExtensionCatalog.swift \
+                           Tinycast/Platform/Compression/Zlib.swift \
+                           Tinycast/Platform/AppDisplayName.swift
 run slow ext-test          -parse-as-library \
                            Tests/ext-menu-bar-test.swift \
                            Tests/ext-fetch-test.swift \
@@ -859,6 +884,7 @@ run slow ext-test          -parse-as-library \
                            Tinycast/Platform/ProcessExit.swift \
                            $E/Service/ExtensionIconCache.swift \
                            $E/Service/ExtensionNodeShims.swift \
+                           $E/Model/ExtensionProcessAccess.swift \
                            $E/Service/ExtensionRuntime.swift \
                            $E/Service/ExtensionNameResolver.swift \
                            $E/Service/ExtensionWebSocketBridge.swift \

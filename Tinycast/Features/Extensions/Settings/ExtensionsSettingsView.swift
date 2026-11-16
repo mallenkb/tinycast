@@ -82,7 +82,7 @@ struct ExtensionsSettingsView: View {
             await core.extensions.refresh()
             await measureReclaimable()
             await findPending()
-            await core.extensions.checkForUpdates()
+            await core.extensions.library.checkForUpdates()
         }
     }
 
@@ -121,7 +121,7 @@ struct ExtensionsSettingsView: View {
 
     private var library: some View {
         Section {
-            if !core.extensions.updates.isEmpty {
+            if !core.extensions.library.updates.isEmpty {
                 updatesRow
             }
             if core.extensions.installed.isEmpty {
@@ -141,9 +141,9 @@ struct ExtensionsSettingsView: View {
                         ExtensionDisclosure(
                             installed: installed,
                             isExpanded: expanded == name,
-                            isUpdating: core.extensions.updating.contains(name),
+                            isUpdating: core.extensions.library.updating.contains(name),
                             onToggle: { expanded = expanded == name ? nil : name },
-                            onUpdate: core.extensions.updates[name] == nil ? nil : { update([name]) },
+                            onUpdate: core.extensions.library.updates[name] == nil ? nil : { update([name]) },
                             onUninstall: {
                                 core.extensionCoordinator.confirmUninstall(installed)
                             })
@@ -170,12 +170,12 @@ struct ExtensionsSettingsView: View {
     private var updatesRow: some View {
         SettingsRow(
             title: String(localized: "Updates available"),
-            subtitle: listed(core.extensions.updates.values.map(\.title)) + "."
+            subtitle: listed(core.extensions.library.updates.values.map(\.title)) + "."
         ) {
             ExtensionSettingsIcon(systemName: "arrow.down.circle")
         } trailing: {
-            if core.extensions.updating.isEmpty {
-                Button("Update All") { update(core.extensions.updates.keys.sorted()) }
+            if core.extensions.library.updating.isEmpty {
+                Button("Update All") { update(core.extensions.library.updates.keys.sorted()) }
             } else {
                 ProgressView().controlSize(.small)
             }
@@ -185,7 +185,7 @@ struct ExtensionsSettingsView: View {
     private func update(_ names: [String]) {
         updateError = nil
         Task {
-            let failed = await core.extensions.update(names)
+            let failed = await core.extensions.library.update(names)
             if !failed.isEmpty {
                 updateError = String(localized: "Couldn't update \(failed.joined(separator: ", ")).")
             }
@@ -330,7 +330,7 @@ struct ExtensionsSettingsView: View {
     private func openImport() {
         Task {
             importCandidates = ImportCandidates(
-                entries: await core.extensions.raycastImportCandidates())
+                entries: await core.extensions.library.raycastImportCandidates())
         }
     }
 
@@ -345,7 +345,8 @@ struct ExtensionsSettingsView: View {
             error = nil
             for url in panel.urls {
                 do {
-                    try await core.extensions.install(from: url)
+                    try await core.extensions.library.install(from: url)
+                } catch is CancellationError {
                 } catch {
                     self.error = error.localizedDescription
                 }
@@ -357,7 +358,7 @@ struct ExtensionsSettingsView: View {
         error = nil
         importSummary = nil
         importProgress = (0, chosen.count)
-        let failed = await core.extensions.importAllFromRaycast(chosen) { done in
+        let failed = await core.extensions.library.importAllFromRaycast(chosen) { done in
             importProgress = (done, chosen.count)
         }
         importProgress = nil
@@ -376,7 +377,7 @@ struct ExtensionsSettingsView: View {
             pending = []
             return
         }
-        pending = await core.extensions.raycastImportCandidates().filter { !$0.isInstalled }
+        pending = await core.extensions.library.raycastImportCandidates().filter { !$0.isInstalled }
     }
 }
 
@@ -401,6 +402,7 @@ private struct ExtensionDisclosure: View {
     /// Nil unless the store has a newer version.
     let onUpdate: (() -> Void)?
     let onUninstall: () -> Void
+    @State private var capabilities: Set<ExtensionCapability> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -454,6 +456,9 @@ private struct ExtensionDisclosure: View {
             // No heading: these two are one idea, and first so 19 commands can't bury them.
             ExtensionLauncherRow(installed: installed)
             ExtensionIconRow(installed: installed)
+            if !capabilities.isEmpty {
+                ExtensionCapabilitiesRow(installed: installed, capabilities: capabilities)
+            }
 
             if !installed.manifest.preferences.isEmpty {
                 rule
@@ -480,6 +485,12 @@ private struct ExtensionDisclosure: View {
         // Indented under the row's icon, so the settings read as belonging to the row above them.
         .padding(.leading, Theme.Size.rowIcon + Theme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .task(id: installed) {
+            let directory = installed.directory
+            capabilities = await Task.detached(priority: .utility) {
+                ExtensionCapabilityScanner.scan(directory: directory)
+            }.value
+        }
     }
 
     private func heading(_ title: String) -> some View {
@@ -692,6 +703,37 @@ private struct ExtensionLauncherRow: View {
         case 0: String(localized: "Hidden. Shortcuts still work.")
         case total: nil
         default: String(localized: "\(visible) of \(total) commands.")
+        }
+    }
+}
+
+/// What the bundle reaches for, and the one standing grant a user can take back.
+private struct ExtensionCapabilitiesRow: View {
+    let installed: InstalledExtension
+    let capabilities: Set<ExtensionCapability>
+    @Environment(AppCore.self) private var core
+
+    private var runsProcesses: Bool {
+        capabilities.contains(.processes) || capabilities.contains(.signals)
+    }
+
+    var body: some View {
+        let name = installed.manifest.name
+        let grants = core.extensions.processGrants
+        SettingsCardRow(
+            title: String(localized: "Capabilities"),
+            detail: ExtensionCapability.allCases.filter(capabilities.contains).map(\.summary)
+                .joined(separator: " ")
+        ) {
+            if runsProcesses {
+                Toggle(
+                    "Allow running programs",
+                    isOn: Binding(
+                        get: { grants.contains(name) },
+                        set: { allowed in allowed ? grants.grant(name) : grants.revoke(name) })
+                )
+                .help("Off asks the next time it starts a program")
+            }
         }
     }
 }
