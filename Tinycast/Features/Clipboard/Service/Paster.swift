@@ -159,6 +159,11 @@ enum Paster {
     }
 
     @MainActor
+    static func postCommandZ(toPid pid: pid_t? = nil) {
+        postCommand(key: CGKeyCode(kVK_ANSI_Z), toPid: pid)
+    }
+
+    @MainActor
     private static func postCommand(key: CGKeyCode, toPid pid: pid_t?) {
         guard Permissions.ensureAccessibility() else { return }
         let source = CGEventSource(stateID: .combinedSessionState)

@@ -72,7 +72,10 @@ models use CPU/Neural Engine.
 - Carbon or the shared modifier monitor reports release to stop a held recording. A hold release
   or cancellation does not stop a recording started by the toggle shortcut or a composer mic.
   Return finishes dictation. Escape cancels even when another app has focus. It dismisses the
-  preview and indicator without restoring the idle bar. Opening a shortcut recorder cancels a held recording before
+  preview and indicator without restoring the idle bar. Once a recording passes 30 seconds, the
+  first Escape only shows a reminder HUD and a second Escape within two seconds discards it. A
+  dialog would take focus from the app being dictated into, so the confirmation stays a key press.
+  Starting a dictation while the last one is still transcribing shows a "Still finishing" HUD. Opening a shortcut recorder cancels a held recording before
   pausing its shortcuts. A session token prevents stale transcription from inserting text later.
 - AI Chat's composer mic is always click-to-toggle into that field: `toggle(into:)` targets its
   `ComposerTextView` in process whatever has focus. `field` tells only that button it is running.
@@ -83,6 +86,17 @@ models use CPU/Neural Engine.
   Spaces, full-screen windows and Stage Manager. Text insertion reuses `TextInjector`, including
   its temporary clipboard ownership, focus, secure-input and protected-target checks. Dictation History
   keeps completed transcripts on this Mac, including transcripts that could not be pasted.
+  When the app focused at stop differs from the one focused when the text is ready, or the paste
+  fails, Tinycast copies the transcript and says so in a HUD instead of pasting.
+  A tap under 250 ms is ignored silently; an empty result shows a neutral "No speech detected".
+  Paste Last Transcript pastes the newest History entry. Undo Last Dictation removes the last
+  insertion only when the field still holds exactly what dictation left: an own editor is restored
+  in place, and another app gets ⌘Z only when it is frontmost and Accessibility shows the same text
+  and caret. Otherwise a HUD explains it can't undo. Both commands have optional shortcuts in
+  Dictation settings and are unbound by default.
+  After a failed transcription or a cancel, the recording stays in memory for 60 seconds.
+  Retry Last Dictation transcribes it again into the focused input; quitting discards it.
+  When a speech model fails, Apple Dictation transcribes the recording instead and a HUD says so.
   History keeps transcripts for three months by default. Choose how long to keep them in Dictation
   Settings. Shortening the retention period removes transcripts older than the new cutoff.
   Dictation History uses the clipboard list's date groups and copy and paste shortcuts. Its rows
@@ -104,13 +118,16 @@ models use CPU/Neural Engine.
   starts dictation. Its position is remembered per display, and Indicator & feedback can restore the
   default position. The transcript card follows the pill and stays within the display when it appears.
   Revealing a bottom Dock moves the indicator above it. It repositions when Spaces,
-  display configuration or system presentation changes and checks visible Dock bounds twice per second.
+  display configuration or system presentation changes. While recording, transcribing or dragging,
+  it also checks Dock bounds and the frontmost window twice per second; the idle bar does not poll.
   When the window list lacks the Dock's bounds, the indicator can use the Dock's accessibility
-  bounds to distinguish a hidden Dock from space macOS still reserves for it.
+  bounds to distinguish a hidden Dock from space macOS still reserves for it. Those bounds are
+  read once and reused until the Dock changes.
   The indicator and transcript follow the frontmost app's frontmost visible standard window,
   using the display containing the largest portion of that window. Without an app window, they
   use the pointer's display. App activation updates placement immediately; window moves and
-  switches within the same app are picked up by the existing twice-per-second placement check.
+  switches within the same app are picked up by the active pill's placement check.
+  Idle hover uses a tracking area on the bar itself rather than a global mouse monitor.
   The optional idle indicator shows a small bar while dictation is enabled without recording audio
   or loading a model. It restores on launch when enabled. Hovering reveals a microphone button
   at the same height as the recording pill. The button starts hands-free dictation. The indicator
@@ -169,7 +186,12 @@ models use CPU/Neural Engine.
   longest word so cycling does not clip the capsule or shift its position. Active labeled edge snaps
   reserve the same room; idle edge placement stays unchanged. Settings uses the same
   cycling preview. Reduce Motion and disabled animations make width changes immediate.
-  The ring and the text shimmer pause when Reduce Motion is on.
+  The ring and the text shimmer are repeating SwiftUI animations rather than per-frame timelines,
+  and pause when Reduce Motion is on. Only the waveform view reads live levels. After five seconds
+  of processing, labeled styles add an elapsed clock. In the final minute of a recording, labeled
+  styles show a countdown after Listening; the compact pill keeps its size and VoiceOver announces
+  one minute and ten seconds left in every style. The Settings preview stops cycling words while
+  its window is inactive or the preview is scrolled away.
   Closing the panel releases its hosting view.
 - Recording leaves the system output volume alone.
 - Play sounds is on by default. When on, macOS's `dt-begin.caf` plays on the microphone's first samples
@@ -199,7 +221,7 @@ models use CPU/Neural Engine.
   stops its helper before deleting the directory and blocks new requests for that model meanwhile.
   Cancelling an in-flight load or transcription, failed inference and normal quit stop the helper.
   Late results cannot paste.
-- Audio stays in memory, bounded to five minutes of mono 16 kHz Float32 samples. Pipes carry
+- Audio stays in memory, bounded to ten minutes of mono 16 kHz Float32 samples. Pipes carry
   bounded JSON control messages and binary audio; recordings are never written to disk or sent
   over the network. Long recordings split near a quiet passage without overlapping samples.
 - Tinycast transcribes the complete recording after the user stops, then inserts the finished
@@ -335,7 +357,8 @@ requirements as placeholders. It generates a prompt instead of executing the dic
 ## Settings organization
 
 The main Dictation page groups the Dictation History and Dictation Settings commands with Enable
-Dictation. Recording groups Push to talk, both Hands-free shortcuts, the microphone,
+Dictation. Recording groups Push to talk, both Hands-free shortcuts, Paste last transcript,
+Undo last dictation, the microphone,
 Indicator & feedback, and Speech recognition. Writing groups Text cleanup, After dictation,
 Dictionary, and history retention. The Indicator & feedback row previews
 the current style alongside the preview on its detail page. Settings search opens the detail

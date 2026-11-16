@@ -312,6 +312,7 @@ enum Theme {
         static let dictationOutlineWidth: CGFloat = 1
         static let dictationLabelWaveBarCount = 5
         static let dictationSpinnerDiameter: CGFloat = 14
+        static let dictationClockWidth: CGFloat = 32
         /// Read-only volume bar geometry used by the HUD.
         static let volumeTrackHeight: CGFloat = 6
         /// Fixed slot for the level readout, sized to the widest string it ever holds.
@@ -336,6 +337,10 @@ enum Theme {
         static let dictationRevealLimit: TimeInterval = 0.34
         static let dictationRevealLineDelay: TimeInterval = 0.12
         static let dictationIndicatorMorph: TimeInterval = 0.24
+        static let dictationCountdownFade: TimeInterval = 0.65
+        static let dictationCountdownDigit: TimeInterval = 0.46
+        static let dictationProcessingResize: TimeInterval = 0.3
+        static let dictationElapsedDelay: TimeInterval = 5
         static let dictationProcessingWord: TimeInterval = 2
         static let dictationTranscribingShimmer: TimeInterval = 1.8
         static let dictationSpinnerRotation: TimeInterval = 1
@@ -415,6 +420,7 @@ enum Theme {
         static let panelTitle = Font.headline
         static let dictationTranscriptSize: CGFloat = 14
         static let dictationTranscript = Font.system(size: dictationTranscriptSize)
+        static let dictationClock = Font.system(size: 13, weight: .medium).monospacedDigit()
         static let calcResult = Font.title
         static let keyCap = Font.caption
         /// Pair with the matching `Size` for `KeyCapChip.Scale`.

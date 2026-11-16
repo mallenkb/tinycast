@@ -19,6 +19,9 @@ final class DictationDisplayState {
     var idleHovered = false
     var indicatorWidth: CGFloat = 0
     var indicatorOffset: CGFloat = 0
+    var remainingSeconds: Int?
+    var processingStarted: Date?
+    var showsElapsed = false
     var levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
 }
 
@@ -43,6 +46,30 @@ private struct DictationWaveform: View {
             }
         }
         .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: levels)
+    }
+}
+
+/// Reads the live levels itself, so only the bars re-evaluate at the capture rate.
+private struct DictationLiveWaveform: View {
+    let state: DictationDisplayState
+    let compact: Bool
+
+    var body: some View {
+        DictationWaveform(
+            levels: DictationIndicatorView.listeningLevels(state.levels, compact: compact), compact: compact)
+    }
+}
+
+private struct DictationElapsedLabel: View {
+    let start: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: start, by: 1)) { context in
+            let seconds = max(0, Int(context.date.timeIntervalSince(start)))
+            Text(verbatim: DictationIndicatorView.clock(seconds))
+        }
+        .font(Theme.Typography.dictationClock)
+        .frame(minWidth: Theme.Size.dictationClockWidth)
     }
 }
 
@@ -86,14 +113,29 @@ struct DictationIndicatorView: View {
         ]
     }
 
+    private struct ProcessingCycle: Equatable {
+        let titles: [String]
+        let runs: Bool
+    }
+
     let style: DictationIndicatorStyle
     let phase: Phase
     var levels: [Float] = []
+    var liveLevels: DictationDisplayState?
     var idleHovered = false
+    var remainingSeconds: Int?
+    var processingStarted: Date?
+    var cyclesWords = true
     var onStart: () -> Void = {}
 
+    private var animates: Bool { !reduceMotion && Motion.isEnabled }
+
     private var morphAnimation: Animation? {
-        reduceMotion || !Motion.isEnabled ? nil : .easeInOut(duration: Theme.Duration.dictationIndicatorMorph)
+        animates ? .easeInOut(duration: Theme.Duration.dictationIndicatorMorph) : nil
+    }
+
+    static func clock(_ seconds: Int) -> String {
+        Duration.seconds(seconds).formatted(.time(pattern: .minuteSecond))
     }
 
     private var processingTitles: [String] {
@@ -121,11 +163,24 @@ struct DictationIndicatorView: View {
                 DictationProcessingRing(ink: ink)
                 Text("Starting…")
             case .listening:
-                DictationWaveform(levels: listeningLevels, compact: style.isCompact)
-                if !style.isCompact { Text("Listening") }
+                if let liveLevels {
+                    DictationLiveWaveform(state: liveLevels, compact: style.isCompact)
+                } else {
+                    DictationWaveform(
+                        levels: Self.listeningLevels(levels, compact: style.isCompact), compact: style.isCompact)
+                }
+                if !style.isCompact {
+                    Text("Listening")
+                    if let remainingSeconds { countdown(remainingSeconds) }
+                }
             case .transcribing:
                 DictationProcessingRing(ink: ink)
-                if !titles.isEmpty { processingLabel(titles) }
+                if !titles.isEmpty {
+                    processingLabel(titles)
+                    if let processingStarted {
+                        DictationElapsedLabel(start: processingStarted).transition(.opacity)
+                    }
+                }
             }
         }
         .opacity(phase.isIdle || contentReady ? 1 : 0)
@@ -145,10 +200,16 @@ struct DictationIndicatorView: View {
         .animation(morphAnimation, value: phase.isIdle)
         .animation(morphAnimation, value: phase.isTranscribing)
         .animation(morphAnimation, value: idleHovered)
-        .animation(morphAnimation, value: processingIndex)
+        .animation(processingResize, value: processingIndex)
+        .animation(processingResize, value: processingStarted != nil)
+        .animation(
+            animates ? .easeInOut(duration: Theme.Duration.dictationCountdownFade) : nil,
+            value: remainingSeconds != nil)
         .contentShape(shape)
         .onTapGesture { if phase.isIdle { onStart() } }
-        .task(id: titles) { await cycleProcessingTitles(count: titles.count) }
+        .task(id: ProcessingCycle(titles: titles, runs: cyclesWords)) {
+            await cycleProcessingTitles(count: cyclesWords ? titles.count : 0)
+        }
         .task(id: phase.isIdle) {
             contentReady = false
             guard !phase.isIdle else { return }
@@ -162,7 +223,23 @@ struct DictationIndicatorView: View {
         .foregroundStyle(ink)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityStatus)
+        .accessibilityValue(Text(verbatim: remainingSeconds.map {
+            Duration.seconds($0).formatted(.units(allowed: [.minutes, .seconds], width: .wide))
+        } ?? ""))
         .accessibilityAddTraits(phase.isIdle ? .isButton : [])
+    }
+
+    private var processingResize: Animation? {
+        animates ? .easeInOut(duration: Theme.Duration.dictationProcessingResize) : nil
+    }
+
+    private func countdown(_ seconds: Int) -> some View {
+        Text(verbatim: Self.clock(seconds))
+            .font(Theme.Typography.dictationClock)
+            .contentTransition(.numericText(countsDown: true))
+            .animation(animates ? .easeInOut(duration: Theme.Duration.dictationCountdownDigit) : nil, value: seconds)
+            .frame(minWidth: Theme.Size.dictationClockWidth)
+            .transition(.opacity)
     }
 
     private func processingLabel(_ titles: [String]) -> some View {
@@ -242,7 +319,7 @@ struct DictationIndicatorView: View {
         return style.isDark ? style.backgroundColor : Theme.Colors.dictationBackground
     }
 
-    private var listeningLevels: [Float] {
+    static func listeningLevels(_ levels: [Float], compact: Bool) -> [Float] {
         let barCount = Theme.Size.dictationWaveBarCount
         let peaks = (0..<barCount).map { index in
             let start = index * levels.count / barCount
@@ -254,7 +331,7 @@ struct DictationIndicatorView: View {
             let right = peaks[min(peaks.count - 1, index + 1)]
             return (left + 2 * peaks[index] + right) / 4
         }
-        guard !style.isCompact else { return smoothed }
+        guard !compact else { return smoothed }
         let visibleCount = Theme.Size.dictationLabelWaveBarCount
         let inset = (barCount - visibleCount) / 2
         return (0..<visibleCount).map { index in
@@ -267,6 +344,7 @@ struct DictationIndicatorView: View {
 
 private struct DictationProcessingRing: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var spinning = false
     let ink: Color
 
     private var animates: Bool { !reduceMotion && Motion.isEnabled }
@@ -274,49 +352,67 @@ private struct DictationProcessingRing: View {
     var body: some View {
         let diameter = Theme.Size.dictationSpinnerDiameter
         let stroke = Theme.Size.dictationWaveBar
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !animates)) { _ in
-            let turns = ProcessInfo.processInfo.systemUptime / Theme.Duration.dictationSpinnerRotation
-            let angle = animates ? turns.truncatingRemainder(dividingBy: 1) * 360 : 0
-            Circle()
-                .strokeBorder(ink.opacity(0.14), lineWidth: stroke)
-                .overlay {
-                    Circle()
-                        .trim(from: 0, to: 0.36)
-                        .stroke(ink, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
-                        .padding(stroke / 2)
-                        .rotationEffect(.degrees(angle - 90))
-                }
-                .frame(width: diameter, height: diameter)
-        }
+        Circle()
+            .strokeBorder(ink.opacity(0.14), lineWidth: stroke)
+            .overlay {
+                Circle()
+                    .trim(from: 0, to: 0.36)
+                    .stroke(ink, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+                    .padding(stroke / 2)
+                    .rotationEffect(.degrees(spinning ? 270 : -90))
+            }
+            .frame(width: diameter, height: diameter)
+            .onAppear { spin(animates) }
+            .onChange(of: animates) { spin(animates) }
+    }
+
+    private func spin(_ on: Bool) {
+        let rotation = Animation.linear(duration: Theme.Duration.dictationSpinnerRotation)
+            .repeatForever(autoreverses: false)
+        withTransaction(Transaction(animation: on ? rotation : nil)) { spinning = on }
     }
 }
 
 private struct DictationTranscribingLabel: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweeping = false
     let title: String
     let ink: Color
 
+    private var animates: Bool { !reduceMotion && Motion.isEnabled }
+
     var body: some View {
-        let label = Text(verbatim: title)
-        if reduceMotion || !Motion.isEnabled {
-            label
-        } else {
-            TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
-                let period = Theme.Duration.dictationTranscribingShimmer
-                let elapsed = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period)
-                let center = 1.6 * elapsed / period - 0.3
-                label
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [ink.opacity(0.72), ink, ink.opacity(0.72)],
-                            startPoint: UnitPoint(x: center - 0.3, y: 0.5),
-                            endPoint: UnitPoint(x: center + 0.3, y: 0.5)))
+        Text(verbatim: title)
+            .foregroundStyle(animates ? ink.opacity(0.72) : ink)
+            .overlay {
+                if animates {
+                    Text(verbatim: title)
+                        .foregroundStyle(ink)
+                        .mask { highlight }
+                }
             }
+            .onAppear { sweep(animates) }
+            .onChange(of: animates) { sweep(animates) }
+    }
+
+    private var highlight: some View {
+        GeometryReader { proxy in
+            LinearGradient(colors: [.clear, .white, .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(width: proxy.size.width * 0.6)
+                .offset(x: proxy.size.width * (sweeping ? 1 : -0.6))
         }
+    }
+
+    private func sweep(_ on: Bool) {
+        let pass = Animation.linear(duration: Theme.Duration.dictationTranscribingShimmer)
+            .repeatForever(autoreverses: false)
+        withTransaction(Transaction(animation: on ? pass : nil)) { sweeping = on }
     }
 }
 
 struct DictationProcessingWidth: View {
+    var showsElapsed = false
+
     var body: some View {
         let titles = DictationIndicatorView.Phase.processingLabels
         HStack(spacing: Theme.Spacing.xl) {
@@ -326,6 +422,7 @@ struct DictationProcessingWidth: View {
                     Text(verbatim: titles[index])
                 }
             }
+            if showsElapsed { Color.clear.frame(width: Theme.Size.dictationClockWidth, height: 0) }
         }
         .font(Theme.Typography.panelTitle)
         .padding(.horizontal, Theme.Spacing.dictationWaveInset)
@@ -586,7 +683,7 @@ private struct DictationPanelView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             if !phase.isIdle && !style.isCompact {
-                DictationProcessingWidth()
+                DictationProcessingWidth(showsElapsed: state.showsElapsed)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onProcessingWidthChanged($0) }
                     .frame(width: phase.isTranscribing ? nil : 0, height: 0)
             }
@@ -613,7 +710,9 @@ private struct DictationPanelView: View {
                     .accessibilityHidden(state.previewPaused)
             }
             DictationIndicatorView(
-                style: style, phase: phase, levels: state.levels, idleHovered: state.idleHovered, onStart: onStart)
+                style: style, phase: phase, liveLevels: state, idleHovered: state.idleHovered,
+                remainingSeconds: state.remainingSeconds,
+                processingStarted: state.showsElapsed ? state.processingStarted : nil, onStart: onStart)
                 .overlay {
                     WindowDragHandle(
                         onBegan: onDragBegan, onEnded: onDragEnded,
@@ -645,7 +744,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     private var placementTimer: Timer?
     private var dockLookup: Task<Void, Never>?
     private var dockAccessibilityBounds: CGRect?
-    private var idleHoverMonitors: [Any] = []
+    private var hoverTracking: NSTrackingArea?
     var onAccept: (() -> Void)?
     var onStart: (() -> Void)?
 
@@ -676,6 +775,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         }
         followMotion()
         observePlacementChanges()
+        updatePlacementTimer()
     }
 
     override var canBecomeKey: Bool { !host.rootView.phase.isIdle }
@@ -699,8 +799,11 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
             x: previous.midX - width / 2, y: previous.minY,
             width: width, height: size.height)
         setFrame(destination, display: true)
+        updatePlacementTimer()
         reposition()
     }
+
+    func refit() { show(host.rootView.phase) }
 
     func position(on screen: NSScreen, refreshDock: Bool = true) {
         let bounds = screen.frame
@@ -734,7 +837,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         if let dockTop = geometry.top {
             bottom = dockTop
         } else {
-            if refreshDock { refreshDockAccessibilityBounds() }
+            if refreshDock, dockAccessibilityBounds == nil { refreshDockAccessibilityBounds() }
             if let dockAccessibilityBounds {
                 bottom = bottomDockTop(for: dockAccessibilityBounds, on: screen) ?? bounds.minY
             } else {
@@ -771,6 +874,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
 
     private func beginDrag() {
         dragging = true
+        updatePlacementTimer()
         guidesVisible = false
         snappedX = false
         snappedY = false
@@ -834,6 +938,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
             dragScreen = nil
             guidesVisible = false
             guides.hide()
+            updatePlacementTimer()
         }
         guard dragging, isVisible, let screen = dragScreen else { return }
         let bounds = screen.frame
@@ -1000,17 +1105,28 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
                     }
                 }, center: application)
         ]
+        presentationObservation = NSApp.observe(
+            \.currentSystemPresentationOptions, options: [.new]
+        ) { [weak self] _, _ in
+            Task { @MainActor [weak self] in self?.reposition() }
+        }
+    }
+
+    /// Window moves and Dock reveals have no notification, so only an active pill polls for them.
+    private func updatePlacementTimer() {
+        let needed = dragging || !host.rootView.phase.isIdle
+        guard needed != (placementTimer != nil) else { return }
+        guard needed else {
+            placementTimer?.invalidate()
+            placementTimer = nil
+            return
+        }
         let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.reposition() }
         }
         timer.tolerance = 0.1
         RunLoop.main.add(timer, forMode: .common)
         placementTimer = timer
-        presentationObservation = NSApp.observe(
-            \.currentSystemPresentationOptions, options: [.new]
-        ) { [weak self] _, _ in
-            Task { @MainActor [weak self] in self?.reposition() }
-        }
     }
 
     func stopObservingPlacementChanges() {
@@ -1028,34 +1144,31 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     }
 
     func watchIdleHover() {
-        guard idleHoverMonitors.isEmpty else { updateIdleHover(); return }
-        let global = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
-            self?.updateIdleHover()
+        if hoverTracking == nil {
+            let area = NSTrackingArea(
+                rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                owner: self, userInfo: nil)
+            host.addTrackingArea(area)
+            hoverTracking = area
         }
-        let local = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
-            self?.updateIdleHover()
-            return event
-        }
-        idleHoverMonitors = [global, local].compactMap { $0 }
+        ignoresMouseEvents = false
         updateIdleHover()
     }
 
     private func stopWatchingIdleHover() {
-        idleHoverMonitors.forEach(NSEvent.removeMonitor)
-        idleHoverMonitors = []
+        if let hoverTracking { host.removeTrackingArea(hoverTracking) }
+        hoverTracking = nil
         host.rootView.state.idleHovered = false
     }
 
+    override func mouseEntered(with event: NSEvent) { updateIdleHover() }
+
+    override func mouseExited(with event: NSEvent) { updateIdleHover() }
+
     private func updateIdleHover() {
-        guard isVisible, host.rootView.phase.isIdle else { return }
-        let hovered = host.rootView.state.idleHovered
-        let width = hovered ? Theme.Size.dictationIdleHoverWidth : Theme.Size.dictationIdleWidth
-        let height = hovered ? Theme.Size.dictationIndicatorHeight : Theme.Size.dictationIdleHeight
-        let target = NSRect(x: frame.midX - width / 2, y: frame.minY, width: width, height: height)
-            .insetBy(dx: -Theme.Spacing.xs, dy: -Theme.Spacing.xs)
-        let inside = target.contains(NSEvent.mouseLocation)
-        ignoresMouseEvents = !inside
-        guard inside != hovered else { return }
+        guard isVisible, hoverTracking != nil, host.rootView.phase.isIdle else { return }
+        let inside = frame.contains(NSEvent.mouseLocation)
+        guard inside != host.rootView.state.idleHovered else { return }
         host.rootView.state.idleHovered = inside
     }
 
@@ -1077,6 +1190,7 @@ final class DictationPanelController {
     private var panel: DictationPanel?
     private var escapeMonitors: [Any] = []
     private var previewPauseTask: Task<Void, Never>?
+    private var elapsedTask: Task<Void, Never>?
     var onAccept: (() -> Void)?
     var onCancel: (() -> Void)?
     var onStart: (() -> Void)?
@@ -1087,6 +1201,7 @@ final class DictationPanelController {
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         state.levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
+        resetClocks()
         previewPauseTask?.cancel()
         previewPauseTask = nil
         state.previewPaused = false
@@ -1113,6 +1228,7 @@ final class DictationPanelController {
 
     func showIdle(style: DictationIndicatorStyle) {
         stopWatchingForEscape()
+        resetClocks()
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         if let panel, panel.isVisible {
@@ -1122,7 +1238,6 @@ final class DictationPanelController {
             state.transcript = ""
             panel.setStyle(style)
             panel.show(.idle)
-            panel.ignoresMouseEvents = true
             panel.resignKey()
             panel.setStartAction(onStart)
             panel.watchIdleHover()
@@ -1130,7 +1245,6 @@ final class DictationPanelController {
         }
         close()
         let panel = DictationPanel(rootView: DictationPanelView(state: state, style: style, phase: .idle), settings: settings)
-        panel.ignoresMouseEvents = true
         panel.setStartAction(onStart)
         self.panel = panel
         panel.position(on: screen)
@@ -1139,6 +1253,17 @@ final class DictationPanelController {
     }
 
     func showListening() { panel?.show(.listening) }
+
+    func showCountdown(_ seconds: Int) {
+        let appeared = state.remainingSeconds == nil
+        state.remainingSeconds = seconds
+        switch seconds {
+        case 60: AccessibilityNotification.Announcement(String(localized: "One minute of recording left")).post()
+        case 10: AccessibilityNotification.Announcement(String(localized: "Ten seconds of recording left")).post()
+        default: break
+        }
+        if appeared { panel?.show(.listening) }
+    }
 
     func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) {
         let incoming = text.split(whereSeparator: \.isWhitespace).suffix(100).joined(separator: " ")
@@ -1178,7 +1303,23 @@ final class DictationPanelController {
     func showTranscribing() {
         previewPauseTask?.cancel()
         previewPauseTask = nil
+        resetClocks()
+        state.processingStarted = .now
+        elapsedTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(Theme.Duration.dictationElapsedDelay)) } catch { return }
+            guard let self, !Task.isCancelled, state.processingStarted != nil else { return }
+            state.showsElapsed = true
+            panel?.refit()
+        }
         panel?.show(.randomTranscribing())
+    }
+
+    private func resetClocks() {
+        elapsedTask?.cancel()
+        elapsedTask = nil
+        state.remainingSeconds = nil
+        state.processingStarted = nil
+        state.showsElapsed = false
     }
 
     private func watchForEscape() {
@@ -1205,6 +1346,7 @@ final class DictationPanelController {
 
     func close() {
         stopWatchingForEscape()
+        resetClocks()
         previewPauseTask?.cancel()
         previewPauseTask = nil
         state.previewPaused = false
