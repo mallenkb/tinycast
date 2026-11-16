@@ -6,6 +6,24 @@ struct DictationTransform: Codable, Identifiable, Equatable, Sendable {
     var instructions: String
 
     static let paragraphsID = UUID(uuidString: "D1C70000-0000-4000-8000-000000000005")!
+
+    // Polish, Shorten and Make a list read sentence by sentence; other transforms need the whole text.
+    var allowsSections: Bool {
+        ["D1C70000-0000-4000-8000-000000000001", "D1C70000-0000-4000-8000-000000000002",
+         "D1C70000-0000-4000-8000-000000000003"].contains(id.uuidString)
+    }
+}
+
+enum DictationTransformFailure: LocalizedError, Equatable {
+    case tooLong, needsModel(String), failed
+
+    var errorDescription: String? {
+        switch self {
+        case .tooLong: String(localized: "This transcript is too long for this transform.")
+        case .needsModel(let name): String(localized: "Download \(name) in Dictation settings to run transforms.")
+        case .failed: String(localized: "The transform couldn't finish, so the transcript was kept without it.")
+        }
+    }
 }
 
 @MainActor

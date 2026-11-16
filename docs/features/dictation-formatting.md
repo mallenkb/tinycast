@@ -100,7 +100,8 @@ clauses that name a currency, and amounts more than 600 characters from that nam
 **Off** skips cleanup. **Basic** removes common fillers and formats spoken values.
 **Advanced** adds the corrections and formatting commands above.
 **Smart** uses the selected cleanup engine for context-dependent edits. **After dictation** can
-apply a separate transform such as Shorten or Prompt Engineer.
+apply a separate transform such as Shorten or Prompt Engineer. App overrides can pick a different
+level or transform for a single app.
 
 Public references include [Microsoft’s speech formatting examples](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/display-text-format),
 [NVIDIA NeMo’s spoken and written test pairs](https://github.com/NVIDIA/NeMo-text-processing/tree/main/tests/nemo_text_processing/en/data_inverse_text_normalization),
