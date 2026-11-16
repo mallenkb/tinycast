@@ -316,7 +316,7 @@ Clearing the query cancels the search and releases its rows.
 The launcher borrows this screen's `FileSearchSession` rather than keeping its own. Only one palette
 mode shows at a time, so nothing is held twice. An index swap or a trashed row updates both. And the
 Search Files fallback opens on the request the launcher just answered, with its rows already listed.
-`FileSearchCoordinator.searchFromLauncher` is the one entry point: `RootPaletteView` calls it per
+`FileSearchCoordinator.searchFromLauncher` is the one entry point: `PaletteCoordinator` calls it per
 keystroke and when the launcher becomes the mode, and `applyLauncherFiles` re-runs it when the switch
 changes. `cancel()` returns early on an idle session, so with the section off a keystroke publishes
 nothing.
