@@ -216,6 +216,7 @@ targets:
       - Tinycast/Features/Dictation/Model/DictationAudioChunks.swift
       - Tinycast/Features/Dictation/Model/DictationLanguage.swift
       - Tinycast/Features/Dictation/Service/DictationWire.swift
+      - Tinycast/Platform/Signposts.swift
     settings:
       base:
         EXECUTABLE_NAME: "$(DICTATION_EXECUTABLE_NAME)"

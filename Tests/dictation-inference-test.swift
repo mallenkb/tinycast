@@ -102,10 +102,11 @@ struct DictationInferenceTest {
         else {
             fatalError("Audio chunks lost, repeated or cut samples outside a pause")
         }
+        testPausePolicy()
         testCohere()
         print(
-            "Dictation scores, tokenizer, Fourier transform, mel features, listening bands, audio chunks"
-                + " and Cohere features passed"
+            "Dictation scores, tokenizer, Fourier transform, mel features, listening bands, audio chunks,"
+                + " pause cuts and Cohere features passed"
         )
     }
 
@@ -121,6 +122,69 @@ struct DictationInferenceTest {
             let time = Float(index + offset) / 16_000
             return level * sin(2 * .pi * 220 * time) * (0.6 + 0.4 * sin(2 * .pi * 3 * time))
         }
+    }
+
+    private static func testPausePolicy() {
+        let second = 16_000
+        var seed: UInt64 = 7
+        let floor = noise(40 * second, level: 0.008, seed: &seed)
+        var noisy = zip(floor, speech(40 * second, level: 0.2)).map { $0 + $1 }
+        for index in (14 * second)..<(15 * second) { noisy[index] = floor[index] }
+        guard DictationPausePolicy.noiseFloor(noisy[...]) > 0.003,
+            let cut = DictationPausePolicy.nextCut(in: noisy, start: 0, earliest: 10 * second),
+            (14 * second..<15 * second).contains(cut.end), cut.resume == 15 * second
+        else { fatalError("A pause above the absolute threshold was not found against its noise floor") }
+
+        let continuous = speech(31 * second, level: 0.2)
+        guard DictationPausePolicy.nextCut(in: Array(continuous.prefix(29 * second)), start: 0, earliest: 10 * second) == nil,
+            let forced = DictationPausePolicy.nextCut(in: continuous, start: 0, earliest: 10 * second),
+            (27 * second...30 * second).contains(forced.end), forced.resume == 30 * second
+        else { fatalError("Speech without a pause did not force a cut at the segment limit") }
+        var dipped = continuous
+        for index in (28 * second)..<(28 * second + 4_000) { dipped[index] *= 0.05 }
+        guard let quietest = DictationPausePolicy.nextCut(in: dipped, start: 0, earliest: 10 * second),
+            (28 * second..<(28 * second + 4_000)).contains(quietest.end)
+        else { fatalError("A forced cut ignored the quietest window") }
+        guard let extended = DictationPausePolicy.nextCut(in: continuous + continuous, start: 0, earliest: forced.resume),
+            extended.end > forced.resume, extended.resume == forced.resume + 5 * second
+        else { fatalError("A rejected forced cut did not move the next one later") }
+
+        var paused = speech(12 * second, level: 0.3) + [Float](repeating: 0, count: second)
+        guard DictationPausePolicy.nextCut(in: paused, start: 0, earliest: 10 * second) == nil else {
+            fatalError("A trailing pause was cut before audio resumed")
+        }
+        paused += speech(2 * second, level: 0.3)
+        guard let resumed = DictationPausePolicy.nextCut(in: paused, start: 0, earliest: 10 * second),
+            abs(resumed.end - 12 * second - second / 2) <= 320, resumed.resume == 13 * second
+        else { fatalError("A pause after loud speech was not cut at its middle") }
+        let early = speech(5 * second, level: 0.3) + [Float](repeating: 0, count: second) + speech(6 * second, level: 0.3)
+        guard DictationPausePolicy.nextCut(in: early, start: 0, earliest: 10 * second) == nil else {
+            fatalError("A pause inside the minimum segment length was cut")
+        }
+
+        var pacing = DictationPreviewPacing()
+        let start = ContinuousClock.now
+        let room = noise(5 * second, level: 0.006, seed: &seed)
+        let talking = zip(room, speech(5 * second, level: 0.2)).map { $0 + $1 }
+        let finished = Array(talking.prefix(4 * second)) + room.suffix(second)
+        guard pacing.shouldRequest(talking, at: start),
+            pacing.shouldRequest(finished, at: start + .milliseconds(500)),
+            !pacing.shouldRequest(room, at: start + .milliseconds(900)),
+            !pacing.shouldRequest(room, at: start + .milliseconds(1300)),
+            pacing.shouldRequest(Array(room.prefix(4 * second)) + talking.suffix(second), at: start + .seconds(2))
+        else { fatalError("Preview pacing sent requests for silence or skipped the end of speech") }
+        for _ in 0..<4 { pacing.received("same words") }
+        guard pacing.stretch == 2 else { fatalError("Unchanged preview text did not slow the cadence") }
+        pacing.received("new words")
+        guard pacing.stretch == 1 else { fatalError("Changed preview text did not restore the cadence") }
+
+        let quiet = noise(second, level: 0.008, seed: &seed)
+        let ambient = DictationPausePolicy.noiseFloor(quiet[...])
+        guard !DictationPausePolicy.containsVoice(quiet[...], noiseFloor: ambient),
+            DictationPausePolicy.containsVoice(
+                (quiet.prefix(8_000) + speech(800, level: 0.05))[...], noiseFloor: ambient),
+            !DictationPausePolicy.containsVoice([Float](repeating: 0.001, count: 800)[...], noiseFloor: 0)
+        else { fatalError("Voice activity ignored speech or reported background noise") }
     }
 
     private static func testCohere() {
