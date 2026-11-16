@@ -554,6 +554,9 @@ final class DictationCoordinator {
         }
     }
 
+    private static let previewSeconds = 5
+    private static let maximumSegmentFailures = 3
+
     private func startRecognition(model: DictationModel, language: String?) {
         guard !model.isCohere else { return }
         let current = token
@@ -563,8 +566,10 @@ final class DictationCoordinator {
             guard let self else { return nil }
             var prefix: RecognizedPrefix?
             var canRecognizeSegments = true
+            var segmentFailures = 0
             var hadPreview = settings.dictationLivePreview
             var failures = 0
+            var preview = DictationPreviewPacing()
             var nextRequest = ContinuousClock.now + .milliseconds(350)
             while token == current, phase == .listening, !Task.isCancelled {
                 let deadline = nextRequest
@@ -580,43 +585,54 @@ final class DictationCoordinator {
                 }
                 hadPreview = hasPreview
                 let wantsPreview = hasPreview && failures < 3
-                nextRequest = .now + (wantsPreview ? cadence : .milliseconds(500))
+                nextRequest = .now + (wantsPreview ? cadence * preview.stretch : .milliseconds(500))
                 if canRecognizeSegments, let segment = await capture.nextSegment(after: prefix?.end ?? 0) {
                     guard token == current, phase == .listening, !Task.isCancelled else { break }
+                    let text: String
                     do {
-                        let text = try await models.transcribe(segment.samples, model: model, language: language)
-                        guard token == current, !Task.isCancelled else { return nil }
+                        text = try await models.transcribe(
+                            segment.samples, model: model, language: language, purpose: .segment)
                         guard !text.isEmpty else { throw DictationWire.Failure.unavailable }
-                        if let prefix, Self.continuesAmount(text, after: prefix.text) {
-                            throw DictationWire.Failure.unavailable
-                        }
-                        guard !Self.endsAtUnfinishedPhrase(text) else { continue }
-                        let cumulative = prefix.map { $0.text + " " + text } ?? text
-                        prefix = RecognizedPrefix(end: segment.end, text: cumulative, model: model, language: language)
-                        if phase == .listening { onStableTranscript?(cumulative, isEnglish) }
                     } catch {
                         guard token == current, !Task.isCancelled else { return nil }
+                        // The next segment from the same start covers the dropped audio again.
+                        segmentFailures += 1
+                        canRecognizeSegments = segmentFailures < Self.maximumSegmentFailures
+                        continue
+                    }
+                    guard token == current, !Task.isCancelled else { return nil }
+                    segmentFailures = 0
+                    if let previous = prefix, Self.continuesAmount(text, after: previous.text) {
                         prefix = nil
                         canRecognizeSegments = false
+                        continue
                     }
+                    guard !Self.endsAtUnfinishedPhrase(text) else { continue }
+                    let cumulative = prefix.map { $0.text + " " + text } ?? text
+                    prefix = RecognizedPrefix(end: segment.end, text: cumulative, model: model, language: language)
+                    if phase == .listening { onStableTranscript?(cumulative, isEnglish) }
                     continue
                 }
                 guard token == current, phase == .listening, !Task.isCancelled else { break }
                 guard wantsPreview, settings.dictationLivePreview else { continue }
                 do {
-                    let samples = await capture.recentSamples(seconds: 5)
+                    let samples = await capture.recentSamples(seconds: Self.previewSeconds)
                     guard token == current, phase == .listening else { break }
                     guard samples.count >= DictationWire.sampleRate / 4 else { continue }
-                    let text = try await models.transcribe(samples, model: model, language: language)
+                    guard preview.shouldRequest(samples, at: .now) else { continue }
+                    let text = try await models.transcribe(
+                        samples, model: model, language: language, purpose: .preview)
                     guard token == current, phase == .listening, !Task.isCancelled else { break }
                     guard settings.dictationLivePreview else { continue }
                     failures = 0
+                    preview.received(text)
                     receivePreview(text, cumulative: false, isEnglish: isEnglish)
                 } catch {
                     guard token == current, phase == .listening, !Task.isCancelled else { break }
                     panel.hidePreview()
                     resetPreviewCleanup()
                     failures += 1
+                    preview.failed()
                     nextRequest = .now + .milliseconds(1500)
                     Logger(subsystem: "com.tinycast.app", category: "DictationPreview")
                         .error("Live preview failed: \(error.localizedDescription, privacy: .public)")
