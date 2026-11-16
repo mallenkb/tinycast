@@ -9,38 +9,35 @@ struct LauncherScreen: PaletteScreen {
     let vm: PaletteState
     /// Sampled by `openActions`, so Restart and Quit can't move while the menu is up.
     let running: Bool
-    /// The join card's meeting, resolved by the coordinator; nil unless one is due.
-    let meeting: MeetingEvent?
     let now: Date
     let openActions: () -> Void
     let openArgumentOptions: (String) -> Void
     /// Called when an action reorders the list, so the highlight scrolls back into view.
     let scrollToFollow: () -> Void
+    /// Resolved once per input change by `LauncherResultsCache`; the palette reads it per event.
+    private let resolved: LauncherResults
 
-    private let results: [AppEntry]
-    private let calc: CalcResult?
-    private let color: ColorValue?
-    /// Only the empty query pins favorites — a category shows its sections without one of its own.
-    private let pinsFavorites: Bool
-    private let pinnedFavorites: [FavoritesStore.Item]
-    /// How many follow the favorites as Meetings; zero unless the field is empty.
-    private let meetingCount: Int
-    /// How many follow the meetings as Suggestions; zero unless the field is empty.
-    private let suggestionCount: Int
-    private let matchCount: Int
-    private let files: [FileSearchResult]
-    /// The `Use "…" with` section, below every result; empty unless something is typed.
-    private let fallbacks: [(fallback: Fallback, entry: AppEntry)]
-    /// Resolved in `init`: the palette indexes this several times per event, so it can't recompute.
-    let rows: [Row]
+    /// The join card's meeting; nil unless one is due and the field is empty.
+    var meeting: MeetingEvent? { resolved.meeting }
+    var rows: [Row] { resolved.rows }
+    private var results: [AppEntry] { resolved.results }
+    private var calc: CalcResult? { resolved.calc }
+    private var color: ColorValue? { resolved.color }
+    private var pinsFavorites: Bool { resolved.pinsFavorites }
+    private var pinnedFavorites: [FavoritesStore.Item] { resolved.pinnedFavorites }
+    private var meetingCount: Int { resolved.meetingCount }
+    private var suggestionCount: Int { resolved.suggestionCount }
+    private var matchCount: Int { resolved.matchCount }
+    private var files: [FileSearchResult] { resolved.files }
+    private var fallbacks: [(fallback: Fallback, entry: AppEntry)] { resolved.fallbacks }
 
     init(
-        appIndex: AppIndex, favorites: FavoritesStore, visibility: VisibilityStore,
-        currencyRates: CurrencyRateStore, core: AppCore, vm: PaletteState, running: Bool,
-        meeting: MeetingEvent?, now: Date,
+        results: LauncherResults, appIndex: AppIndex, favorites: FavoritesStore,
+        visibility: VisibilityStore, core: AppCore, vm: PaletteState, running: Bool, now: Date,
         openActions: @escaping () -> Void, openArgumentOptions: @escaping (String) -> Void,
         scrollToFollow: @escaping () -> Void
     ) {
+        resolved = results
         self.appIndex = appIndex
         self.favorites = favorites
         self.visibility = visibility
@@ -51,61 +48,6 @@ struct LauncherScreen: PaletteScreen {
         self.openActions = openActions
         self.openArgumentOptions = openArgumentOptions
         self.scrollToFollow = scrollToFollow
-
-        // Listed even when hidden from search: the shortcut that opened it must still be answered.
-        let pinned = vm.argumentEntryID.flatMap(core.customCommands.command(entryID:))
-            .map(AppEntry.init).flatMap { $0.name == vm.query ? $0 : nil }
-        let ordered =
-            pinned.map { AppIndex.Results(entries: [$0], matchCount: 1) }
-            ?? appIndex.orderedResults(
-                query: vm.query, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys)
-        var results = ordered.entries
-        var matchCount = ordered.matchCount
-        // A typed web address leads: nothing the index holds answers it better.
-        if pinned == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
-            visibility.isVisible(browser)
-        {
-            results.insert(browser, at: 0)
-            matchCount += 1
-        }
-        // No card over a pinned row: its fields hang off the selection, which must start on it.
-        let calc =
-            pinned == nil
-            ? CalcMemo.evaluate(vm.query, rates: currencyRates.rates, format: core.calcNumberFormat) : nil
-        // After the calculator: `#FF5733` is never arithmetic, so the two can't both answer.
-        let color = calc == nil && pinned == nil ? ColorValue.parse(vm.query) : nil
-        let files = pinned == nil ? core.fileSearchCoordinator.launcherFiles(for: vm.query) : []
-        let fallbacks = core.fallbackCoordinator.entries(for: vm.query)
-        let pinsFavorites = vm.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let pinnedFavorites = favorites.orderedItems(
-            entries: Array(results.prefix(ordered.favoriteCount)),
-            files: pinsFavorites ? core.fileSearchCoordinator.favoriteFiles : [])
-        results.removeFirst(ordered.favoriteCount)
-        let entries =
-            pinnedFavorites.map(Row.init) + results.map(Row.entry) + files.map(Row.file)
-            + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
-        // At most one of them leads, so the flat index keeps a single-row offset.
-        let meeting = pinsFavorites ? meeting : nil
-        self.meeting = meeting
-        self.results = results
-        self.calc = calc
-        self.files = files
-        self.fallbacks = fallbacks
-        self.color = color
-        self.pinsFavorites = pinsFavorites
-        self.pinnedFavorites = pinnedFavorites
-        self.meetingCount = pinsFavorites ? ordered.meetingCount : 0
-        self.suggestionCount = pinsFavorites ? ordered.suggestionCount : 0
-        self.matchCount = matchCount
-        if let calc {
-            self.rows = [.calc(calc)] + entries
-        } else if let color {
-            self.rows = [.color(color)] + entries
-        } else if let meeting {
-            self.rows = [.meeting(meeting)] + entries
-        } else {
-            self.rows = entries
-        }
     }
 
     /// The card is a row like any other, so the flat selection indexes `rows` with no offset.

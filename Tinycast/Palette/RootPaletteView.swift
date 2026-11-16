@@ -57,9 +57,9 @@ struct RootPaletteView: View {
         case .launcher:
             return Signposts.interval("LauncherScreen") {
                 LauncherScreen(
-                    appIndex: appIndex, favorites: favorites, visibility: visibility,
-                    currencyRates: currencyRates, core: core, vm: vm, running: menus.selectionIsRunning,
-                    meeting: core.calendarCoordinator.cardedMeeting, now: meetingClock.now,
+                    results: launcherResults, appIndex: appIndex, favorites: favorites,
+                    visibility: visibility, core: core, vm: vm, running: menus.selectionIsRunning,
+                    now: meetingClock.now,
                     openActions: openActions, openArgumentOptions: openArgumentOptions,
                     scrollToFollow: { scroll = ScrollIntent(kind: .follow) })
             }
@@ -144,6 +144,15 @@ struct RootPaletteView: View {
         case .extensionCommand:
             return ExtensionCommandScreen(
                 screen: extensionScreen, extensions: extensions, vm: vm, openActions: openActions)
+        }
+    }
+
+    private var launcherResults: LauncherResults {
+        let meeting = core.calendarCoordinator.cardedMeeting
+        return core.launcherCoordinator.resultsCache.results(meeting: meeting) {
+            LauncherResults(
+                appIndex: appIndex, favorites: favorites, visibility: visibility,
+                currencyRates: currencyRates, core: core, vm: vm, meeting: meeting)
         }
     }
 
