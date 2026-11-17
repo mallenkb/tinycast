@@ -24,6 +24,12 @@ struct DictationFieldTest {
         try await testCancelSilently()
         try await testCancelDuringStartCue()
         try await testBluetoothStartCue()
+        testCountdown()
+        try await testShortTapIsSilent()
+        try await testNoSpeech()
+        try await testBusyDuringTranscription()
+        try await testAppSwitchCopies()
+        try await testRetryAfterCancel()
         print("ALL PASSED")
     }
 
@@ -138,6 +144,21 @@ struct DictationFieldTest {
         try await dictate("Haptel called.")
         expect(fixture.transcripts.last == "Haptel called.", "Tearing down an editor drops pending learning after a paste")
 
+        editor.string = ""
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        try await dictate("Ask Haptel again.")
+        editor.string = "Ask Hubtel again."
+        NotificationCenter.default.post(name: NSText.didChangeNotification, object: editor)
+        try await wait(timeout: .seconds(5)) {
+            fixture.coordinator.corrections.entries.contains { $0.spelling == "Hubtel" }
+        }
+        editor.string = ""
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        NotificationCenter.default.post(name: NSText.didChangeNotification, object: editor)
+        try await wait { !fixture.coordinator.corrections.entries.contains { $0.spelling == "Hubtel" } }
+        expect(fixture.coordinator.corrections.entries.contains { $0.spelling == "Katherine" },
+            "Undoing the whole insertion rolls back its saved correction and keeps earlier entries")
+
         expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Haptel", spelling: "Hubtel", isManual: true)),
             "The first manual entry is saved")
         expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Hubtel", spelling: "Other", isManual: true)),
@@ -152,6 +173,12 @@ struct DictationFieldTest {
         expect(fixture.transcripts.last == "Hubtel called.", "Dictionary entries apply once without chaining")
     }
 
+    nonisolated private static let knownWords: Set = [
+        "about", "again", "and", "ask", "called", "katherine", "returned", "samoa", "samuel",
+    ]
+
+    nonisolated private static func isKnownWord(_ word: String) -> Bool { knownWords.contains(word.lowercased()) }
+
     private static func testCorrectionStore() throws {
         let fileURL = FileManager.default.temporaryDirectory.appending(path: "dictation-corrections-\(UUID()).json")
         defer { try? FileManager.default.removeItem(at: fileURL) }
@@ -159,7 +186,8 @@ struct DictationFieldTest {
         let original = DictationCorrection(original: "Haptel", spelling: "Huptel")
         let revised = DictationCorrection(original: "Haptel", spelling: "Hubtel")
         let detection = DictationCorrection.detect(
-            from: "Ask about Samoa.", to: "Ask about Samuel.", recognized: "Ask about Samoa.")
+            from: "Ask about Samoa.", to: "Ask about Samuel.", recognized: "Ask about Samoa.",
+            isKnownWord: isKnownWord)
         guard let candidate = detection.candidates.first, let context = candidate.context else {
             fatalError("A speculative correction should retain its spoken context")
         }
@@ -386,6 +414,7 @@ struct DictationFieldTest {
     }
 
     private static func testDeliveryFailure() async throws {
+        Paster.copies = []
         let fixture = Fixture()
         let editor = ComposerTextView()
         try await fixture.start(into: editor)
@@ -395,11 +424,97 @@ struct DictationFieldTest {
         fixture.models.finish("Spoken words")
         try await wait { !fixture.messages.isEmpty }
         expect(
-            fixture.messages == ["Couldn't paste dictation into this app"],
+            fixture.messages == ["Couldn't paste here, so the dictation was copied"],
             "A failed paste is reported once")
         expect(fixture.transcripts == ["Spoken words"], "A failed paste still saves its completed transcript")
         expect(fixture.pasteAppIDs == [nil], "History leaves the app blank when a paste fails")
-        expect(Paster.copies.isEmpty, "A failed paste leaves the clipboard alone")
+        expect(Paster.copies == ["Spoken words"], "A failed paste copies the transcript")
+    }
+
+    private static func testCountdown() {
+        let limit = DictationWire.maximumSamples
+        let rate = DictationWire.sampleRate
+        expect(DictationWire.remainingSeconds(afterCapturing: 0) == nil, "No countdown at the start")
+        expect(DictationWire.remainingSeconds(afterCapturing: 9 * 60 * rate - 1) == nil, "No countdown before the final minute")
+        expect(DictationWire.remainingSeconds(afterCapturing: limit - 60 * rate) == 60, "The final minute starts at 60")
+        expect(DictationWire.remainingSeconds(afterCapturing: limit - 1) == 1, "A partial second rounds up")
+        expect(DictationWire.remainingSeconds(afterCapturing: limit) == nil, "The limit itself shows no countdown")
+        expect(DictationWire.remainingSeconds(afterCapturing: limit + rate) == nil, "Overshoot shows no countdown")
+    }
+
+    private static func testShortTapIsSilent() async throws {
+        let fixture = Fixture()
+        let editor = ComposerTextView()
+        try await fixture.start(into: editor)
+        fixture.capture.sampleCount = DictationWire.sampleRate / 4 - 1
+        fixture.coordinator.accept()
+        try await wait { fixture.coordinator.field == nil }
+        try await Task.sleep(for: .milliseconds(20))
+        expect(fixture.messages.isEmpty && fixture.models.pending == nil, "A tap under 250 ms is silent")
+    }
+
+    private static func testNoSpeech() async throws {
+        let fixture = Fixture()
+        let editor = ComposerTextView()
+        try await fixture.start(into: editor)
+        fixture.coordinator.accept()
+        try await wait { fixture.models.pending != nil }
+        fixture.models.finish("  ")
+        try await wait { !fixture.messages.isEmpty }
+        expect(fixture.messages == ["No speech detected"], "An empty result reports no speech")
+        expect(fixture.transcripts.isEmpty, "An empty result saves nothing")
+    }
+
+    private static func testBusyDuringTranscription() async throws {
+        let fixture = Fixture()
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.capture.isRecording }
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.models.pending != nil }
+        fixture.coordinator.pressed(.toggle)
+        expect(fixture.messages == ["Still finishing the last dictation"], "A start during transcription says why")
+        fixture.coordinator.cancel()
+        fixture.models.finish("")
+        try await wait { fixture.models.finished }
+    }
+
+    private static func testAppSwitchCopies() async throws {
+        Paster.copies = []
+        let own = ProcessInfo.processInfo.processIdentifier
+        guard let other = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier != own })
+        else { return }
+        let fixture = Fixture()
+        let editor = ComposerTextView()
+        fixture.focusedTarget = .external(other)
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.capture.isRecording }
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.models.pending != nil }
+        fixture.focusedTarget = .ownEditor(editor)
+        fixture.models.finish("Moved on")
+        try await wait { !fixture.messages.isEmpty }
+        expect(editor.string.isEmpty, "Text never lands in an app the user switched to")
+        expect(Paster.copies == ["Moved on"], "A switched app gets the transcript on the clipboard")
+        expect(fixture.messages == ["Copied dictation because you switched apps"], "The copy is explained")
+        expect(fixture.transcripts == ["Moved on"], "History keeps the copied transcript")
+    }
+
+    private static func testRetryAfterCancel() async throws {
+        let fixture = Fixture()
+        let editor = ComposerTextView()
+        fixture.focusedTarget = .ownEditor(editor)
+        fixture.coordinator.pressed(.toggle)
+        try await wait { fixture.capture.isRecording }
+        fixture.coordinator.cancel()
+        try await wait { fixture.capture.stopCount > 0 }
+        try await Task.sleep(for: .milliseconds(20))
+        fixture.coordinator.retryLastRecording(into: .ownEditor(editor))
+        try await wait { fixture.models.pending != nil }
+        fixture.models.finish("Second try")
+        try await wait { !fixture.transcripts.isEmpty }
+        expect(editor.string == "Second try", "Retry transcribes the cancelled recording")
+        fixture.coordinator.retryLastRecording(into: .ownEditor(editor))
+        expect(fixture.messages == ["No recent recording to try again"], "A recording is retried once")
     }
 
     private static func testSoundsOff() async throws {
@@ -484,8 +599,8 @@ struct DictationFieldTest {
         fixture.coordinator.cancel(in: editor)
     }
 
-    private static func wait(until condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(2)
+    private static func wait(timeout: Duration = .seconds(2), until condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + timeout
         while !condition() {
             guard ContinuousClock.now < deadline else { throw CocoaError(.coderInvalidValue) }
             try await Task.sleep(for: .milliseconds(1))
@@ -511,7 +626,7 @@ struct DictationFieldTest {
             .appending(path: "dictation-corrections-\(UUID()).json")
         lazy var coordinator = DictationCoordinator(
             settings: settings, hotKeys: HotKeyManager(), models: models,
-            corrections: DictationCorrectionStore(fileURL: correctionFileURL),
+            corrections: DictationCorrectionStore(fileURL: correctionFileURL, isKnownWord: isKnownWord),
             injector: TextInjector(
                 clipboardManager: ClipboardManager(), settings: settings, deliveryQueue: queue),
             focusedTarget: { [weak self] in self?.focusedTarget },
@@ -612,6 +727,7 @@ final class AppSettings {
     var dictationAdaptsCapitalization = true
     var dictationRemovesFillerWords = false
     var dictationCleanupMode: DictationCleanupMode = .off
+    var dictationAppOverrides: [String: [String: String]] = [:]
     var dictationAutoLearnsWords = false
     var dictationPlaysSounds = true
     var dictationIndicatorStyle = DictationIndicatorStyle.compact
@@ -638,6 +754,8 @@ final class DictationCapture {
     static weak var latest: DictationCapture?
     var onLevels: (([Float]) -> Void)?
     var onLimit: (() -> Void)?
+    var onCountdown: ((Int) -> Void)?
+    var sampleCount = DictationWire.sampleRate / 2
     var isRecording = false
     var isBluetooth = false
     var stopCount = 0
@@ -650,8 +768,12 @@ final class DictationCapture {
     func stop() async -> [Float] {
         isRecording = false
         stopCount += 1
-        return [Float](repeating: 0, count: 1_600)
+        return [Float](repeating: 0, count: sampleCount)
     }
+}
+
+enum DictationWorker {
+    enum Purpose { case preview, segment, final }
 }
 
 @MainActor
@@ -667,7 +789,10 @@ final class DictationModelStore {
     func stop() async {}
     func prepareForTermination() {}
 
-    func transcribe(_ samples: [Float], model: DictationModel, language: String?) async throws -> String {
+    func transcribe(
+        _ samples: [Float], model: DictationModel, language: String?,
+        purpose: DictationWorker.Purpose = .final
+    ) async throws -> String {
         defer { finished = true }
         return try await withCheckedThrowingContinuation { pending = $0 }
     }
@@ -701,6 +826,7 @@ final class DictationPanelController {
     func hidePreview() {}
     func showIdle(style: DictationIndicatorStyle) { isVisible = true }
     func showTranscribing() {}
+    func showCountdown(_ seconds: Int) {}
     func close() { isVisible = false }
 }
 
@@ -735,9 +861,13 @@ enum Permissions {
 enum Paster {
     static let tinycastEventTag: Int64 = 0x54494E59
     static var copies: [String] = []
-    static func copyPlainText(_ text: String) { copies.append(text) }
+    @discardableResult
+    static func copyPlainText(_ text: String) -> Bool {
+        copies.append(text)
+        return true
+    }
     static func postCommandV(toPid pid: pid_t? = nil) {}
     static func postCommandC(toPid pid: pid_t? = nil) {}
 }
 
-enum DialogTone { case danger }
+enum DialogTone { case neutral, success, danger }

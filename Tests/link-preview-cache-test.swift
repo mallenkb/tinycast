@@ -52,6 +52,15 @@ struct LinkPreviewCacheTests {
         expect(late.image == nil, "late completion does not hand back a hidden banner")
         expect(delayed.cached(url)?.image == nil, "late completion cannot refill cache")
         expect(delayed.cached(url)?.title == "Late", "late metadata remains available")
+
+        let reclaimGate = Gate()
+        let reclaimed = LinkPreviewStore(fetch: { _ in await reclaimGate.fetch() })
+        let reclaimRequest = Task { await reclaimed.preview(for: url) }
+        while reclaimGate.pending == nil { await Task.yield() }
+        reclaimed.purgePreviews()
+        reclaimGate.finish()
+        _ = await reclaimRequest.value
+        expect(reclaimed.cached(url) == nil, "late completion cannot refill a reclaimed cache")
         expect(delayed.loadingCount == 0, "loading count balances after completion")
         print(failures == 0 ? "PASS link preview cache lifecycle" : "FAIL \(failures)")
         exit(failures == 0 ? 0 : 1)

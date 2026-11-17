@@ -73,6 +73,10 @@ enum ExtensionCatalog {
         supportDirectory().appendingPathComponent("extension-versions.json", isDirectory: false)
     }
 
+    static func processGrantsFile() -> URL {
+        supportDirectory().appendingPathComponent("extension-grants.json", isDirectory: false)
+    }
+
     /// Per-extension `environment.supportPath` — an extension's own scratch directory.
     static func supportPath(for name: String) -> URL {
         supportRoot().appendingPathComponent(safeName(name), isDirectory: true)

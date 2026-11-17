@@ -27,7 +27,7 @@ enum BackupComposer {
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
                 as? String ?? "unknown")
         if categories.contains(.configuration) {
-            plan.settings = try? SettingsBackup.gather(from: core).encoded()
+            plan.settings = try? settingsBackup(from: core).encoded()
         }
         if categories.contains(.clipboard) { plan.clipboardDatabase = core.clipboardStore.dbURL }
         if categories.contains(.snippets) {
@@ -45,6 +45,67 @@ enum BackupComposer {
                 + core.calcHistory.entries.count
         }
         return plan
+    }
+
+    static func settingsBackup(from core: AppCore) -> SettingsBackup {
+        var backup = SettingsBackup()
+        backup.settings = SettingsBackup.SettingsData(core.settings)
+        let hk = core.hotKeys
+        var hotkeys = SettingsBackup.HotkeyBackup()
+        hotkeys.togglePalette = hk.binding(for: .togglePalette)
+        hotkeys.commands = Dictionary(
+            uniqueKeysWithValues: CommandID.allCases.compactMap { id in
+                id.hotKeyAction.flatMap(hk.binding(for:)).map { (id.rawValue, $0) }
+            })
+        hotkeys.apps = Dictionary(
+            uniqueKeysWithValues: hk.boundBundleIDs.compactMap { id in
+                hk.binding(for: .app(bundleID: id)).map { (id, $0) }
+            })
+        hotkeys.panes = Dictionary(
+            uniqueKeysWithValues: hk.boundPaneBundleIDs.compactMap { id in
+                hk.binding(for: .settingsPane(bundleID: id)).map { (id, $0) }
+            })
+        hotkeys.customCommands = Dictionary(
+            uniqueKeysWithValues: hk.boundCustomCommandIDs.compactMap { id in
+                hk.binding(for: .customCommand(id: id)).map { (id.uuidString.lowercased(), $0) }
+            })
+        hotkeys.systemActions = Dictionary(
+            uniqueKeysWithValues: SystemAction.ID.allCases.compactMap { id in
+                hk.binding(for: .systemAction(id: id)).map { (id.rawValue, $0) }
+            })
+        hotkeys.windowCommands = Dictionary(
+            uniqueKeysWithValues: WindowCommand.ID.allCases.compactMap { id in
+                hk.binding(for: .windowCommand(id: id)).map { (id.rawValue, $0) }
+            })
+        hotkeys.quicklinks = Dictionary(
+            uniqueKeysWithValues: hk.boundQuicklinkIDs.compactMap { id in
+                hk.binding(for: .quicklink(id: id)).map { (id.uuidString.lowercased(), $0) }
+            })
+        hotkeys.windowLayouts = Dictionary(
+            uniqueKeysWithValues: hk.boundWindowLayoutIDs.compactMap { id in
+                hk.binding(for: .windowLayout(id: id)).map { (id.uuidString.lowercased(), $0) }
+            })
+        hotkeys.windowRooms = Dictionary(
+            uniqueKeysWithValues: hk.boundWindowRoomIDs.compactMap { id in
+                hk.binding(for: .windowRoom(id: id)).map { (id.uuidString.lowercased(), $0) }
+            })
+        hotkeys.customWindowSizes = Dictionary(
+            uniqueKeysWithValues: hk.boundCustomWindowSizeIDs.compactMap { id in
+                hk.binding(for: .customWindowSize(id: id)).map { (id.uuidString.lowercased(), $0) }
+            })
+        backup.hotkeys = hotkeys
+
+        backup.customCommands = core.customCommands.commands
+        backup.quicklinks = core.quicklinks.quicklinks
+        backup.windowLayouts = core.windowLayouts.layouts
+        backup.windowRooms = core.rooms.rooms
+        backup.customWindowSizes = core.customWindowSizes.sizes
+        backup.favoriteApps = core.favorites.keys
+        backup.hiddenLauncherItems = Array(core.visibility.hiddenItemKeys)
+        backup.hiddenLauncherKinds = Array(core.visibility.disabledKinds)
+        backup.launcherAliases = core.aliases.aliases
+        backup.pinnedEmoji = core.pinnedEmoji.glyphs
+        return backup
     }
 
     nonisolated static func write(_ plan: Plan, into bundle: BackupBundle) throws -> Result {
@@ -91,7 +152,7 @@ enum BackupComposer {
         var written = 0
         var missing = 0
         var failure: Error?
-        ClipboardStore.forEachStoredItem(inDatabaseAt: database) { item in
+        ClipboardDatabase.forEachStoredItem(inDatabaseAt: database) { item in
             guard failure == nil else { return }
             do {
                 guard let portable = try portableItem(item, into: bundle) else {

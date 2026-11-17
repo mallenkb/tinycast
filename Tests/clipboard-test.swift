@@ -678,7 +678,7 @@ struct ClipboardTests {
 
             var streamed = 0
             var seen = Set<String>()
-            ClipboardStore.forEachStoredItem(inDatabaseAt: store.dbURL) { item in
+            ClipboardDatabase.forEachStoredItem(inDatabaseAt: store.dbURL) { item in
                 streamed += 1
                 if let text = item.text { seen.insert(text) }
             }
@@ -695,7 +695,7 @@ struct ClipboardTests {
                 let staged = ClipboardItem(
                     imagePath: blob.path, createdAt: Date().addingTimeInterval(-2 * 86_400),
                     sourceBundleID: nil)
-                ClipboardStore.importStoredItems(
+                ClipboardDatabase.importStoredItems(
                     inDatabaseAt: store.dbURL, adoptingImagesInto: store.imagesDir, [staged])
                 store.load()
                 guard let item = store.items.first, let url = store.imageURL(for: item) else {
@@ -732,7 +732,7 @@ struct ClipboardTests {
         withStore { store, dir in
             let blob = dir.appendingPathComponent("kept.png")
             try? Data("png".utf8).write(to: blob)
-            ClipboardStore.importStoredItems(
+            ClipboardDatabase.importStoredItems(
                 inDatabaseAt: store.dbURL, adoptingImagesInto: store.imagesDir,
                 [ClipboardItem(imagePath: blob.path, sourceBundleID: nil)])
             let kept = ImageDerivative.all(of: store.imagesDir.appendingPathComponent("kept.png")).map(\.url)
@@ -763,7 +763,7 @@ struct ClipboardTests {
 
             for pass in 1...2 {
                 try? Data("png".utf8).write(to: blob)
-                let inserted = ClipboardStore.importStoredItems(
+                let inserted = ClipboardDatabase.importStoredItems(
                     inDatabaseAt: store.dbURL, adoptingImagesInto: store.imagesDir, [staged])
                 expect(inserted == (pass == 1 ? 1 : 0), "pass \(pass) inserts \(2 - pass) row(s)")
             }

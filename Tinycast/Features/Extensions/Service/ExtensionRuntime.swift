@@ -1,10 +1,13 @@
 import Foundation
 import JavaScriptCore
+import Synchronization
 
 /// The JS→Swift seam. Answers are JSON, so nothing non-`Sendable` crosses back to the JS queue.
 @MainActor
 protocol ExtensionHostAPI: AnyObject, Sendable {
     func perform(api: String, method: String, arguments: [RenderValue]) async throws -> String
+    /// Asked from the JS queue, which blocks until the main actor answers.
+    func authorizeProcesses() async -> ExtensionProcessAccess
     /// The context is gone; release anything opened on its behalf.
     func sessionEnded()
 }
@@ -27,7 +30,7 @@ final class ExtensionRuntime: @unchecked Sendable {
     private var hostTasks: [String: Task<Void, Never>] = [:]
     private var generation = UUID()
     private var idleWaiters: [CheckedContinuation<Void, Never>] = []
-    private let nodeShims = ExtensionNodeShims()
+    private let nodeShims: ExtensionNodeShims
 
     /// Set once at startup; read on the JS queue, so it is written before the runtime ever boots.
     private nonisolated(unsafe) weak var delegate: ExtensionRuntimeDelegate?
@@ -40,6 +43,33 @@ final class ExtensionRuntime: @unchecked Sendable {
             label: "com.tinycast.extensions.js", qos: priority, autoreleaseFrequency: .workItem)
         self.hostAPI = hostAPI
         self.runtimeOverride = runtimeURL
+        nodeShims = ExtensionNodeShims(authorizeProcesses: {
+            ExtensionRuntime.waitForProcessAccess(from: hostAPI)
+        })
+    }
+
+    /// Blocks the JS queue alone; the main actor never waits on that queue, so this cannot deadlock.
+    private static func waitForProcessAccess(
+        from hostAPI: ExtensionHostAPI
+    ) -> ExtensionProcessAccess {
+        let answer = ProcessAccessAnswer()
+        Task { @MainActor in answer.deliver(await hostAPI.authorizeProcesses()) }
+        return answer.wait()
+    }
+
+    private final class ProcessAccessAnswer: Sendable {
+        private let value = Mutex(ExtensionProcessAccess.denied)
+        private let ready = DispatchSemaphore(value: 0)
+
+        func deliver(_ access: ExtensionProcessAccess) {
+            value.withLock { $0 = access }
+            ready.signal()
+        }
+
+        func wait() -> ExtensionProcessAccess {
+            ready.wait()
+            return value.withLock { $0 }
+        }
     }
 
     @MainActor
@@ -114,6 +144,7 @@ final class ExtensionRuntime: @unchecked Sendable {
     ) async {
         let payload = launchContext.jsonString()
         await onQueue { context in
+            self.nodeShims.beginSession()
             let compiled = context.objectForKeyedSubscript("__tinycast")
             _ = compiled?.invokeMethod(
                 "start",

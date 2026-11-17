@@ -99,7 +99,7 @@ final class CalendarCoordinator {
         // Asking again is the only way back: Settings cannot add an app TCC has no record of.
         store.refreshAccess()
         guard !settings.calendarEnabled || store.access != .granted else { return }
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         Task {
             guard
                 await core.confirm(
@@ -371,7 +371,7 @@ final class CalendarCoordinator {
         if settings.cameraPreview {
             guard await cameraPreview.present(meeting: meeting, now: Date()) else { return }
         } else if uninvited, settings.autoJoinConfirms {
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
             guard
                 await core.confirm(
                     title: String(localized: "Join \(meeting.title)?"),

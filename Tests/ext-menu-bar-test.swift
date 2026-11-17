@@ -407,6 +407,7 @@ extension ExtensionTests {
         }
 
         func sessionEnded() {}
+        func authorizeProcesses() async -> ExtensionProcessAccess { .allowed }
     }
 
     @MainActor
@@ -469,6 +470,7 @@ extension ExtensionTests {
         }
 
         func sessionEnded() {}
+        func authorizeProcesses() async -> ExtensionProcessAccess { .allowed }
     }
 
     @MainActor

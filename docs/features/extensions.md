@@ -38,6 +38,12 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
   the installed set and clears the launcher rows;
   `refresh()` returns early while it is off, so nothing is scanned and nothing is held. Enabling is also
   consent to run third-party code, so it confirms first and never rides a settings backup.
+- **A process starts only with consent.** `child_process` and `process.kill` ask the bridge first.
+  A grant in `extension-grants.json` answers at once. A background run without one is refused, and
+  an interactive run asks through `DialogController`. Grants never ride a backup or `settings.json`,
+  and every reinstall or update withdraws the extension's grant.
+- **A background run cannot read what the user has open.** The clipboard reads, `getSelectedText`
+  and `getSelectedFinderItems` throw during a background refresh.
 - **`SymbolCatalog` reads a system bundle, not API.** The list comes from `CoreGlyphs.bundle` at
   runtime; every read stays optional and falls back to `SymbolCatalog.suggested`, and Apple's restricted
   marks are never offered.
@@ -111,8 +117,10 @@ Two host-call flavours:
   `fetch`, `exec`. Swift answers later through `__tinycast.settle`, so the JS thread never blocks on the
   UI.
 - **Blocking** (`invokeSync`) for the synchronous Node shims only — `fs.readFileSync`,
-  `execSync`, `createHash`, `gunzipSync`. Safe because Swift services these entirely on the JS queue;
-  nothing there touches the main actor, so a blocking answer cannot deadlock.
+  `execSync`, `createHash`, `gunzipSync`. Swift services these on the JS queue. The one main-actor
+  hop is the process-consent question (see [Process consent](#process-consent)): the JS queue
+  waits on a semaphore while the main actor answers. The main actor never waits synchronously on
+  the JS queue, so this cannot deadlock.
 
 JavaScriptCore exposes native `Atomics` but no `SharedArrayBuffer` constructor. The runtime aliases
 `SharedArrayBuffer` to `ArrayBuffer` so dependencies can allocate their locks at module scope. Native
@@ -137,8 +145,12 @@ than shared-memory coordination. If native shared buffers are available, both gl
 | `Service/ExtensionStorage.swift`              | per-extension `LocalStorage`, `Cache` and preference values (one JSON file each)                           |
 | `Service/ExtensionCommandMetadataStore.swift` | every command's subtitle override, refresh bookkeeping and menu-bar state, in one small file               |
 | `Service/ExtensionCatalog.swift`              | discovery on disk, install, uninstall, import-from-Raycast                                                 |
+| `Service/ExtensionLibrary.swift`              | install, store updates, import and uninstall; the install review                                           |
+| `Service/ExtensionBackgroundScheduler.swift`  | the background-refresh loop, due commands, timeouts and preemption                                         |
+| `Service/ExtensionProcessGrantStore.swift`    | which extensions may start processes without asking                                                        |
+| `Service/ExtensionCapabilityScanner.swift`    | reads a bundle's scripts for `child_process`, `fs` and `process.kill`                                      |
 | `Service/ExtensionCleanup.swift`              | the build workspace's name, the launch sweep, and reclaiming orphans                                       |
-| `Service/ExtensionManager.swift`              | the single owner: installed set, foreground session, no-view refreshes, menu-bar manager, launcher entries |
+| `Service/ExtensionManager.swift`              | the single owner: installed set, foreground session, menu-bar manager, launcher entries                    |
 | `Service/ExtensionMenuBarManager.swift`       | serialized refreshes, short-lived menu sessions and their deadlines                                        |
 | `Service/ExtensionMenuBarHost.swift`          | immutable per-session namespace and menu-specific host behavior                                            |
 | `UI/ExtensionMenuBarController.swift`         | native `NSStatusItem` and `NSMenu` rendering and dispatch                                                  |
@@ -258,7 +270,7 @@ screens hold (see [palette.md](palette.md)).
   palette selection; an empty result reports `null`, matching the API contract.
 - **Search-bar dropdown** — `List.Dropdown` and `Grid.Dropdown` draw as
   `ExtensionSearchAccessoryButton` at the header's trailing edge and drop `ExtensionPickerList` as one
-  of the palette's `OpenMenu` cases, so the arrows, ↵, Escape and the click-away come from the one menu
+  of the palette's `PaletteMenu` cases, so the arrows, ↵, Escape and the click-away come from the one menu
   path and no second key handler exists to disagree with it. `PaletteFilterAction` routes ⌘P, so a
   command's own dropdown answers before Tinycast's clipboard filter can. The list is
   `listWidth` (240) rather than a form picker's field width: it hangs off a chip, not a field.
@@ -503,6 +515,29 @@ third-party packages external and ship them, pre-built CommonJS, under `node_mod
 runtime resolves those from the command's directory, never above the extension's own folder, so
 they must survive the install. A build that inlined everything simply has no such folder.
 
+### The install review
+
+Before a store, GitHub or folder install copies anything into place, `ExtensionCapabilityScanner`
+reads every script in the bundle, `node_modules` included, for a quoted `child_process`, `fs` or
+`fs-extra` specifier and for `process.kill(`. When it finds any, Tinycast names them in a
+confirmation and installs only on **Install**. A bundle that reaches for none installs without a
+question. Import from Raycast and store updates skip the review, since an update withdraws the
+process grant anyway. The same list appears under **Capabilities** in the extension's settings.
+
+### Process consent
+
+The first `child_process` call or `process.kill` in a session asks the bridge
+(`ExtensionHostBridge.authorizeProcesses`). The answer holds for the rest of that session:
+
+- **Always Allow** stores a grant in `extension-grants.json` beside `extension-commands.json`. It is
+  outside both backup and `settings.json`, since a grant is a capability an import must never carry.
+- **Allow Once** allows this session only.
+- **Don't Allow** is the default and fails every call that session with `EPERM`.
+
+A background run never asks. Without a grant its calls fail with `EPERM`; a menu session that
+later turns interactive asks then. Installing, updating or uninstalling an extension withdraws its
+grant, and the **Allow running programs** switch under Capabilities grants or revokes it by hand.
+
 ## Installing from GitHub
 
 The panel takes `owner/repo`, a clone URL, or the `/tree/<ref>/<path>` link a browser copies from an
@@ -675,9 +710,11 @@ with nothing due costs a comparison. Three guards keep it cheap:
 - Intervals clamp to a minute; failures back off exponentially to a day.
 - A tick never preempts a running command — foreground first, the tick waits for the next due.
 - A hung run dies before its successor is due, and a background run shows no toast, HUD, alert or
-  window call, since those would fire on a timer.
+  window call, since those would fire on a timer. Clipboard reads, `getSelectedText` and
+  `getSelectedFinderItems` throw instead of answering, and a process call without a grant fails.
 
-`ExtensionRefreshPolicy` is where the parsing, due dates and backoff live, driven by
+`ExtensionBackgroundScheduler` runs the loop on the palette's runtime. `ExtensionRefreshPolicy` is
+where the parsing, due dates and backoff live, driven by
 `Tests/ext-refresh-test.swift`; `Tests/ext-metadata-test.swift` covers the store behind it. Menu-bar
 commands run on their own lane in `ExtensionMenuBarManager` but read the same policy — `nextDue`,
 its failure backoff and its per-command phase — measured from the same `lastRun`, with a ten-second

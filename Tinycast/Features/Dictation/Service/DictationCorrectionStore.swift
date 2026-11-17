@@ -24,9 +24,14 @@ final class DictationCorrectionStore {
     private let fileURL: URL
     @ObservationIgnored private var pending: [Candidate] = []
     private(set) var entries: [DictationCorrection]
+    let isKnownWord: (String) -> Bool
 
-    init(fileURL: URL = AppPaths.applicationSupport().appending(path: "dictation-corrections.json")) {
+    init(
+        fileURL: URL = AppPaths.applicationSupport().appending(path: "dictation-corrections.json"),
+        isKnownWord: @escaping (String) -> Bool = DictationSpellingLexicon.contains
+    ) {
         self.fileURL = fileURL
+        self.isKnownWord = isKnownWord
         if let data = try? Data(contentsOf: fileURL),
             let stored = try? JSONDecoder().decode([DictationCorrection].self, from: data)
         {
@@ -45,7 +50,7 @@ final class DictationCorrectionStore {
             guard correction.original.count <= 60, correction.spelling.count <= 60 else { throw Failure.entryTooLong }
             guard updated.lazy.filter(\.isManual).count < Self.limit else { throw Failure.full }
         }
-        if correction.isManual || correction.id != DictationCorrection.key(for: correction.spelling) {
+        if correction.isManual || correction.original != correction.spelling {
             updated.insert(correction, at: 0)
         }
         try save(Self.limited(updated))
@@ -90,12 +95,14 @@ final class DictationCorrectionStore {
             guard !directIDs.contains(id), current[id]?.isManual != true, starting[id]?.isManual != true,
                 Self.storedValue(for: correction) != nil
             else { continue }
-            if Self.same(prior[id], correction) {
-                observations.append(correction)
+            if let earlier = prior[id], earlier.spelling == correction.spelling {
+                observations.append(earlier)
             } else if let earlier = evidence[id], earlier.sessionID != sessionID,
-                earlier.correction.spelling == correction.spelling, earlier.correction.context == correction.context
+                earlier.correction.spelling == correction.spelling
             {
-                observations.append(correction)
+                let context = earlier.correction.context == correction.context ? correction.context : nil
+                observations.append(
+                    DictationCorrection(original: correction.original, spelling: correction.spelling, context: context))
                 evidence.removeValue(forKey: id)
             } else {
                 evidence[id] = Candidate(correction: correction, sessionID: sessionID)
@@ -176,7 +183,7 @@ final class DictationCorrectionStore {
     }
 
     private static func storedValue(for correction: DictationCorrection) -> DictationCorrection? {
-        correction.id == DictationCorrection.key(for: correction.spelling) ? nil : correction
+        correction.original == correction.spelling ? nil : correction
     }
 
     private func save(_ updated: [DictationCorrection]) throws {

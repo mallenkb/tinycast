@@ -19,16 +19,17 @@ enum CalcMemo {
     private static var cache: Cache?
 
     /// The answer stays canonical, so history keeps one spelling whatever the format becomes.
-    static func evaluate(_ query: String, rates: CurrencyRates?, format: CalcNumberFormat) -> CalcResult? {
+    static func evaluate(_ query: String, rates: CurrencyRateStore, format: CalcNumberFormat) -> CalcResult? {
         let region = RegionCurrency.code
-        if let cache, cache.query == query, cache.stamp == rates?.fetchedAt, cache.region == region,
+        let stamp = rates.rates?.fetchedAt
+        if let cache, cache.query == query, cache.stamp == stamp, cache.region == region,
             cache.format == format
         {
             return cache.result
         }
         let result = CalcEngine.evaluate(
-            query, now: Date(), calendar: .current, rates: rates, region: region, format: format)
-        cache = Cache(query: query, stamp: rates?.fetchedAt, region: region, format: format, result: result)
+            query, now: Date(), calendar: .current, rates: rates.ratesForCalculation(), region: region, format: format)
+        cache = Cache(query: query, stamp: stamp, region: region, format: format, result: result)
         return result
     }
 }

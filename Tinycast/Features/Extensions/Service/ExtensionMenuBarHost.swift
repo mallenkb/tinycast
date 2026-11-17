@@ -51,6 +51,13 @@ final class ExtensionMenuBarHost: ExtensionHostContext {
 
     func openWithPicker(path: String) async { await manager?.openWithPicker(path: path) }
 
+    var processesGranted: Bool { manager?.processGrants.contains(owner.manifest.name) ?? false }
+
+    func askProcessConsent() async -> Bool {
+        guard isInteractive else { return false }
+        return await manager?.askProcessConsent(for: owner.manifest.name) ?? false
+    }
+
     func launch(
         command: String, extensionName: String?, arguments: [String: String],
         fallbackText: String?, launchType: ExtensionLaunchType, launchContext: [String: RenderValue]

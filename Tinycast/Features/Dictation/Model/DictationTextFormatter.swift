@@ -1,6 +1,6 @@
 import Foundation
 
-enum DictationCleanupMode: Hashable, Sendable {
+enum DictationCleanupMode: String, CaseIterable, Sendable {
     case off, basic, advanced, smart
 }
 
@@ -28,60 +28,120 @@ enum DictationTextFormatter {
         }
     }
 
+    // Regex isn't Sendable but publishes its compiled program atomically and is otherwise immutable.
+    nonisolated(unsafe) private static let fillerOnlyPattern = /(?:[Uu][mh][,.!?…]*(?:[ \t]+|$))+/
+    nonisolated(unsafe) private static let leadingFillerPattern = /(^|\n|[.!?…][ \t]+)(?:[Uu][mh][,.!?…]*[ \t]+)+(\p{L})/
+    nonisolated(unsafe) private static let trailingFillerPattern = /([.!?…])[ \t]+(?:[Uu][mh][,.!?…]*(?:[ \t]+|$))+$/
+    nonisolated(unsafe) private static let inlineFillerPattern = /(?:,[ \t]+[Uu][mh],|[ \t]+[Uu][mh],?)(?=\s|$)/
+    nonisolated(unsafe) private static let fillerBeforePunctuationPattern = /,?[ \t]+[Uu][mh](?=[.!?…]+(?:\s|$))/
+
     static func removingFillerWords(_ transcript: String) -> String {
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.wholeMatch(of: /(?:[Uu][mh][,.!?…]*(?:[ \t]+|$))+/) != nil { return "" }
+        if text.wholeMatch(of: fillerOnlyPattern) != nil { return "" }
         return text
-            .replacing(/(^|\n|[.!?…][ \t]+)(?:[Uu][mh][,.!?…]*[ \t]+)+(\p{L})/) { match in
+            .replacing(leadingFillerPattern) { match in
                 String(match.1) + match.2.uppercased()
             }
-            .replacing(/([.!?…])[ \t]+(?:[Uu][mh][,.!?…]*(?:[ \t]+|$))+$/) { String($0.1) }
-            .replacing(/(?:,[ \t]+[Uu][mh],|[ \t]+[Uu][mh],?)(?=\s|$)/, with: "")
-            .replacing(/,?[ \t]+[Uu][mh](?=[.!?…]+(?:\s|$))/, with: "")
+            .replacing(trailingFillerPattern) { String($0.1) }
+            .replacing(inlineFillerPattern, with: "")
+            .replacing(fillerBeforePunctuationPattern, with: "")
+    }
+
+    /// A deterministic work cap with a generous wall-clock backstop, checked between passes.
+    struct Budget {
+        static let byteLimit = 16_384
+        static let safetyTimeout = Duration.seconds(3)
+
+        private var remainingWork = byteLimit * 64
+        private let deadline: ContinuousClock.Instant
+        private let now: () -> ContinuousClock.Instant
+
+        init(now: @escaping () -> ContinuousClock.Instant = { .now }) {
+            self.now = now
+            deadline = now() + Self.safetyTimeout
+        }
+
+        mutating func spend(on text: String) -> Bool {
+            remainingWork -= text.utf8.count
+            return remainingWork >= 0 && now() < deadline
+        }
     }
 
     static func basicCleanup(
         _ transcript: String, normalize: (String) -> String, preparedLine: (Substring) -> String? = { _ in nil },
-        now: () -> ContinuousClock.Instant
+        now: @escaping () -> ContinuousClock.Instant
     ) -> String {
         let cleaned = removingFillerWords(transcript)
-        return cleanLines(cleaned, now: now) { line in
-            preparedLine(line) ?? cleanBasicLine(line, normalize: normalize)
+        var budget = Budget(now: now)
+        return cleanLines(cleaned, budget: &budget) { line, budget in
+            preparedLine(line) ?? cleanBasicLine(line, normalize: normalize, budget: &budget)
         } ?? currencyCleanup(cleaned, now: now)
     }
 
     static func advancedCleanup(
         _ transcript: String, normalize: (String) -> String = { $0 }, preparedLine: (Substring) -> String? = { _ in nil },
-        now: () -> ContinuousClock.Instant
+        now: @escaping () -> ContinuousClock.Instant
     ) -> String {
-        cleanLines(transcript, now: now) { preparedLine($0) ?? cleanAdvancedLine($0, normalize: normalize) } ?? transcript
+        var budget = Budget(now: now)
+        return cleanLines(transcript, budget: &budget) { line, budget in
+            preparedLine(line) ?? cleanAdvancedLine(line, normalize: normalize, budget: &budget)
+        } ?? transcript
     }
+
+    nonisolated(unsafe) private static let quotationPattern = /[\x22“”‘\x60]|(?:^|[^\p{L}])['’]\p{L}/
 
     private static func cleanLines(
-        _ transcript: String, now: () -> ContinuousClock.Instant, clean: (Substring) -> String
+        _ transcript: String, budget: inout Budget, clean: (Substring, inout Budget) -> String?
     ) -> String? {
-        let deadline = now() + .milliseconds(30)
-        guard transcript.utf8.prefix(16_385).count <= 16_384 else { return transcript }
-        guard transcript.firstMatch(of: /[\x22“”‘\x60]|(?:^|[^\p{L}])['’]\p{L}/) == nil else { return transcript }
+        guard transcript.utf8.count <= Budget.byteLimit else { return transcript }
+        guard transcript.firstMatch(of: quotationPattern) == nil else { return transcript }
         var lines: [String] = []
         for line in transcript.split(separator: "\n", omittingEmptySubsequences: false) {
-            guard now() < deadline else { return nil }
-            lines.append(clean(line))
+            guard let cleaned = clean(line, &budget) else { return nil }
+            lines.append(cleaned)
         }
-        let result = lines.joined(separator: "\n")
-        return now() < deadline ? result : nil
+        return lines.joined(separator: "\n")
     }
+
+    /// Warms every lazily compiled pattern, so the first real cleanup pays no compilation cost.
+    static func warmUp() {
+        _ = currencyPattern
+        _ = advancedCleanup(
+            "Um, first call Ana at nine thirty AM on June first. Then pay twenty dollars, insert period.", now: { .now })
+    }
+
+    nonisolated(unsafe) private static let meridiemAbbreviationPattern = /(?i:\b[ap]\.m\b)/
+    nonisolated(unsafe) private static let literalPattern = /[@\/\\<>]|(?i:\b(?:https?:|www\.))|(?:\w\.\p{L}|\p{L}\.\w)/
 
     private static func preservesLiteral(_ line: Substring) -> Bool {
-        let literalCheck = line.replacing(/(?i:\b[ap]\.m\b)/, with: "")
-        return literalCheck.firstMatch(of: /[@\/\\<>]|(?i:\b(?:https?:|www\.))|(?:\w\.\p{L}|\p{L}\.\w)/) != nil
+        let literalCheck = line.replacing(meridiemAbbreviationPattern, with: "")
+        return literalCheck.firstMatch(of: literalPattern) != nil
     }
 
-    static func cleanBasicLine(_ line: Substring, normalize: (String) -> String) -> String {
-        preservesLiteral(line) ? String(line) : formatSpokenValues(String(line), normalize: normalize)
+    static func cleanBasicLine(_ line: Substring, normalize: (String) -> String, budget: inout Budget) -> String? {
+        guard !preservesLiteral(line) else { return String(line) }
+        var text = String(line)
+        guard formatSpokenValues(&text, normalize: normalize, budget: &budget) else { return nil }
+        return text
     }
 
-    static func cleanAdvancedLine(_ line: Substring, normalize: (String) -> String) -> String {
+    nonisolated(unsafe) private static let newParagraphOnlyPattern = /(?i:new paragraph)[.!]?/
+    nonisolated(unsafe) private static let longFillerPattern = /(?i:\b(?:erm+|umm+|uhh+)\b)/
+    nonisolated(unsafe) private static let repeatedShortWordPattern = /(?i:\b(the|a|an|to|in|of|for|from|with)(?:[ \t]+\1\b)+)/
+    nonisolated(unsafe) private static let negationPattern = /(?i:\b(?:not|never|except|unless|without|only)\b|n['’]t\b)/
+    nonisolated(unsafe) private static let sentenceParagraphCommandPattern = /(?i:[.!?][ \t]+new paragraph[.!?,][ \t]+)/
+    nonisolated(unsafe) private static let sentenceLineCommandPattern = /(?i:[.!?][ \t]+new line[.!?,][ \t]+)/
+    nonisolated(unsafe) private static let commaParagraphCommandPattern = /(?i:,[ \t]+new paragraph,[ \t]+)/
+    nonisolated(unsafe) private static let commaLineCommandPattern = /(?i:,[ \t]+new line,[ \t]+)/
+    nonisolated(unsafe) private static let weekdayCorrectionPattern = #/
+            (?ix: \b (?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
+              (?: ,[\x20\t]*no,[\x20\t]+ |
+                [,\t\x20]+(?:no[,\t\x20]+sorry|sorry[,\t\x20]+I[\x20\t]meant|make[\x20\t]that)[,\t\x20]+ )
+              (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \b )
+            (?=[,.;!?]|$)
+        /#
+
+    static func cleanAdvancedLine(_ line: Substring, normalize: (String) -> String, budget: inout Budget) -> String? {
         guard !preservesLiteral(line) else { return String(line) }
         guard let first = line.firstIndex(where: { !$0.isWhitespace }),
               let last = line.lastIndex(where: { !$0.isWhitespace })
@@ -90,38 +150,40 @@ enum DictationTextFormatter {
         let leading = line[..<first]
         let trailing = line[line.index(after: last)...]
         var text = String(line[first...last])
-        if text.wholeMatch(of: /(?i:new paragraph)[.!]?/) != nil { return "" }
-        text = text.replacing(/(?i:\b(?:erm+|umm+|uhh+)\b)/, with: "um")
-        text = removingFillerWords(text)
-        text = text.replacing(/(?i:\b(the|a|an|to|in|of|for|from|with)(?:[ \t]+\1\b)+)/) { String($0.1) }
-        text = removingRepeatedPronouns(text)
-        if text.firstMatch(of: /(?i:\b(?:not|never|except|unless|without|only)\b|n['’]t\b)/) == nil {
-            text = text.replacing(
-                #/
-                (?ix: \b (?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
-                  (?: ,[\x20\t]*no,[\x20\t]+ |
-                    [,\t\x20]+(?:no[,\t\x20]+sorry|sorry[,\t\x20]+I[\x20\t]meant|make[\x20\t]that)[,\t\x20]+ )
-                  (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \b )
-                (?=[,.;!?]|$)
-                /#
-            ) { String($0.1) }
+        if text.wholeMatch(of: newParagraphOnlyPattern) != nil { return "" }
+        func apply(_ pass: (String) -> String) -> Bool {
+            guard budget.spend(on: text) else { return false }
+            text = pass(text)
+            return true
         }
-        text = text.replacing(/(?i:[.!?][ \t]+new paragraph[.!?,][ \t]+)/) {
-            String($0.output.prefix(1)) + "\n\n"
-        }
-        text = text.replacing(/(?i:[.!?][ \t]+new line[.!?,][ \t]+)/) {
-            String($0.output.prefix(1)) + "\n"
-        }
-        text = text.replacing(/(?i:,[ \t]+new paragraph,[ \t]+)/, with: "\n\n")
-        text = text.replacing(/(?i:,[ \t]+new line,[ \t]+)/, with: "\n")
-        text = insertSpokenPunctuation(text)
-        text = formatSpokenValues(text, normalize: normalize)
-        return leading + formatSpokenStructure(text) + trailing
+        guard apply({ $0.replacing(longFillerPattern, with: "um") }),
+              apply(removingFillerWords),
+              apply({ $0.replacing(repeatedShortWordPattern) { String($0.1) } }),
+              apply(removingRepeatedPronouns),
+              apply({ text in
+                  guard text.firstMatch(of: negationPattern) == nil else { return text }
+                  return text.replacing(weekdayCorrectionPattern) { String($0.1) }
+              }),
+              apply({ $0.replacing(sentenceParagraphCommandPattern) { String($0.output.prefix(1)) + "\n\n" } }),
+              apply({ $0.replacing(sentenceLineCommandPattern) { String($0.output.prefix(1)) + "\n" } }),
+              apply({ $0.replacing(commaParagraphCommandPattern, with: "\n\n") }),
+              apply({ $0.replacing(commaLineCommandPattern, with: "\n") }),
+              apply(insertSpokenPunctuation),
+              formatSpokenValues(&text, normalize: normalize, budget: &budget),
+              apply(formatCorrespondence),
+              apply({ $0.replacing(greetingHandoffPattern) { String($0.1) + "\n\n" } }),
+              apply({ $0.replacing(questionGreetingPattern, with: "?\n\n") }),
+              apply({ eachLine(of: $0, separateTopicParagraphs) }),
+              apply({ eachLine(of: $0) { formatSpokenList($0) ?? wrapLongParagraph($0) } })
+        else { return nil }
+        return leading + text + trailing
     }
 
-    private static func removingRepeatedPronouns(_ text: String) -> String {
-        text.replacing(
-            #/
+    private static func eachLine(of text: String, _ transform: (Substring) -> String) -> String {
+        text.split(separator: "\n", omittingEmptySubsequences: false).map(transform).joined(separator: "\n")
+    }
+
+    nonisolated(unsafe) private static let repeatedPronounPattern = #/
             (?ix:
                 (^|[^\w'’])
                 (
@@ -130,8 +192,10 @@ enum DictationTextFormatter {
                 )
                 (?=[\x20\t]+\p{L})
             )
-            /#
-        ) { match in
+        /#
+
+    private static func removingRepeatedPronouns(_ text: String) -> String {
+        text.replacing(repeatedPronounPattern) { match in
             var result = String(match.1)
             var end = match.2.startIndex
             var previous = ""
@@ -145,23 +209,26 @@ enum DictationTextFormatter {
         }
     }
 
-    private static func formatSpokenValues(_ input: String, normalize: (String) -> String) -> String {
-        var text = input
-        text = normalizeSpokenQuantities(text)
-        text = normalizeSpokenCurrency(text)
-        text = normalizeSpokenDates(text)
-        text = normalizeSpokenTimes(text)
-        return normalize(text)
+    private static func formatSpokenValues(
+        _ text: inout String, normalize: (String) -> String, budget: inout Budget
+    ) -> Bool {
+        for pass in [normalizeSpokenQuantities, normalizeSpokenCurrency, normalizeSpokenDates, normalizeSpokenTimes] {
+            guard budget.spend(on: text) else { return false }
+            text = pass(text)
+        }
+        guard budget.spend(on: text) else { return false }
+        text = normalize(text)
+        return true
     }
 
-    private static func insertSpokenPunctuation(_ text: String) -> String {
-        text.replacing(
-            #/
+    nonisolated(unsafe) private static let spokenPunctuationPattern = #/
             (?i:,[\x20\t]+insert[\x20\t]+
                 (comma|period|full stop|question mark|exclamation mark|colon|semicolon|ellipsis))
             (?:[,.!?]|$)(?=\s|$)
-            /#
-        ) {
+        /#
+
+    private static func insertSpokenPunctuation(_ text: String) -> String {
+        text.replacing(spokenPunctuationPattern) {
             switch $0.1.lowercased() {
             case "comma": ","
             case "period", "full stop": "."
@@ -182,9 +249,8 @@ enum DictationTextFormatter {
         "kilobyte": "KB", "megabyte": "MB", "gigabyte": "GB", "terabyte": "TB"
     ]
 
-    private static func normalizeSpokenQuantities(_ text: String) -> String {
-        text.replacing(
-            #/
+    nonisolated(unsafe) private static let quantityPrefixPattern = /(?:[0-9][.,]|[+−$€£₵\/-])$/
+    nonisolated(unsafe) private static let spokenQuantityPattern = #/
             (?ix:
                 (?<sign>[-−+]|(?:minus|negative|plus|positive)[\x20\t]+)?\b
                 (?<whole>[0-9]+(?:,[0-9]{3})*|
@@ -205,12 +271,14 @@ enum DictationTextFormatter {
                     (?:kilo|mega|giga|tera)bytes?|degrees?[\x20\t]+(?:Celsius|Fahrenheit))\b
                 (?![\x20\t]+(?:percentage[\x20\t]+)?points?\b)
             )
-            /#
-        ) { match in
+        /#
+
+    private static func normalizeSpokenQuantities(_ text: String) -> String {
+        text.replacing(spokenQuantityPattern) { match in
             let prefix = text[..<match.range.lowerBound].suffix(48)
             let prior = prefix.split(whereSeparator: \.isWhitespace).last?.lowercased() ?? ""
             if prefix.last?.isLetter == true || prefix.last?.isNumber == true
-                || prefix.firstMatch(of: /(?:[0-9][.,]|[+−$€£₵\/-])$/) != nil
+                || prefix.firstMatch(of: quantityPrefixPattern) != nil
                 || prior.first?.isNumber == true || units.contains(prior) || tens.contains(prior)
                 || ["hundred", "thousand", "million", "billion", "trillion", "point", "minus", "negative",
                     "plus", "positive", "half", "quarter"].contains(prior)
@@ -268,8 +336,7 @@ enum DictationTextFormatter {
         let hasColon: Bool
     }
 
-    private static func listHeading(in text: Substring) -> ListHeading? {
-        guard let match = text.firstMatch(of: #/
+    nonisolated(unsafe) private static let listHeadingPattern = #/
             (?ix:
                 (?:^|[.!?][\x20\t]+)
                 (?<title>
@@ -286,7 +353,10 @@ enum DictationTextFormatter {
                 )
                 (?<delimiter>[:.,])[\x20\t]+
             )
-            /#)
+        /#
+
+    private static func listHeading(in text: Substring) -> ListHeading? {
+        guard let match = text.firstMatch(of: listHeadingPattern)
         else { return nil }
         let count = match.count.flatMap { number in
             Int(number) ?? spokenListNumbers.firstIndex(of: number.lowercased()).map { $0 + 1 }
@@ -301,14 +371,16 @@ enum DictationTextFormatter {
             hasColon: match.delimiter == ":")
     }
 
-    private static func formatSpokenList(_ text: Substring) -> String? {
-        let ending = text.firstMatch(of: #/
+    nonisolated(unsafe) private static let listEndingPattern = #/
             (?ix:
                 (?:[.!?,;][\x20\t]+)
                 (?:end|exit)[\x20\t]+(?:the[\x20\t]+)?list\b
                 (?:[.!?,][\x20\t]*|$)
             )
-            /#)
+        /#
+
+    private static func formatSpokenList(_ text: Substring) -> String? {
+        let ending = text.firstMatch(of: listEndingPattern)
         let bodyEnd = ending.map { match in
             let start = match.range.lowerBound
             return ".!?".contains(text[start]) ? text.index(after: start) : start
@@ -323,8 +395,7 @@ enum DictationTextFormatter {
         return remainder.isEmpty ? formatted : formatted + "\n\n" + remainder
     }
 
-    private static func formatMarkedList(_ text: Substring, heading: ListHeading?) -> String? {
-        let markers = text.matches(of: #/
+    nonisolated(unsafe) private static let listMarkerPattern = #/
             (?ix: \b (?:
                 (?<kind>bullet|item|step|number)[\x20\t]+
                 (?<label>point|one|two|three|four|five|six|seven|eight|nine|ten|10|[1-9])\b
@@ -333,7 +404,10 @@ enum DictationTextFormatter {
                   (?<ordinal>first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|
                     next|then|finally)\b(?=[,.:\x20\t])
             ) (?<delimiter>[,.:])?[\x20\t]+ )
-            /#)
+        /#
+
+    private static func formatMarkedList(_ text: Substring, heading: ListHeading?) -> String? {
+        let markers = text.matches(of: listMarkerPattern)
         let explicit = markers.filter { marker in
             marker.kind?.lowercased() == "bullet" || (marker.kind != nil && marker.delimiter != nil)
         }
@@ -390,25 +464,30 @@ enum DictationTextFormatter {
         return renderList(items, numbered: family != "bullet", prefix: matchedHeading?.text ?? String(prefix))
     }
 
-    private static func beginsWithAction(_ text: String) -> Bool {
-        text.firstMatch(of: #/
+    nonisolated(unsafe) private static let actionVerbPattern = #/
             (?ix: ^(?:add|ask|book|bring|buy|call|check|choose|clean|close|collect|confirm|contact|copy|create|
                 download|edit|email|fill|find|finish|get|give|include|install|keep|make|measure|mix|move|notify|
                 open|pack|pay|place|prepare|print|read|remove|replace|review|save|schedule|select|send|set|share|
                 sign|start|submit|take|test|turn|update|upload|use|verify|wait|write|archive)\b[\x20\t]+\p{L})
-            /#) != nil
+        /#
+
+    private static func beginsWithAction(_ text: String) -> Bool {
+        text.prefixMatch(of: actionVerbPattern) != nil
     }
 
-    private static func formatCommandList(_ text: Substring) -> String? {
-        guard let start = text.firstMatch(of: #/
+    nonisolated(unsafe) private static let commandListStartPattern = #/
             (?ix: ^(?:start|create)[\x20\t]+(?:a[\x20\t]+)?
                 (numbered[\x20\t]+list|bulleted[\x20\t]+list|bullet[\x20\t]+list|list)[.,:][\x20\t]+)
-            /#)
+        /#
+    nonisolated(unsafe) private static let commandListBoundaryPattern = #/
+            (?ix: [.!?,;][\x20\t]+(?:next[\x20\t]+(?:item|bullet|line)|new[\x20\t]+bullet)\b[.,:]?[\x20\t]+)
+        /#
+
+    private static func formatCommandList(_ text: Substring) -> String? {
+        guard let start = text.prefixMatch(of: commandListStartPattern)
         else { return nil }
         let body = text[start.range.upperBound...]
-        let boundaries = body.matches(of: #/
-            (?ix: [.!?,;][\x20\t]+(?:next[\x20\t]+(?:item|bullet|line)|new[\x20\t]+bullet)\b[.,:]?[\x20\t]+)
-            /#)
+        let boundaries = body.matches(of: commandListBoundaryPattern)
         guard !boundaries.isEmpty else { return nil }
         var startOfItem = body.startIndex
         var items: [String] = []
@@ -423,12 +502,23 @@ enum DictationTextFormatter {
         return renderList(items, numbered: start.1.lowercased().hasPrefix("numbered"), prefix: "")
     }
 
-    private static func formatIntroducedList(_ text: Substring, heading: ListHeading) -> String? {
-        let body = text[heading.range.upperBound...]
-        guard body.firstMatch(of: #/
+    nonisolated(unsafe) private static let pronounStartPattern = /(?i:^(?:i|we|you|he|she|it|they|this|that|there)\b)/
+    nonisolated(unsafe) private static let semicolonSeparatorPattern = /;[ \t]+/
+    nonisolated(unsafe) private static let commaSeparatorPattern = /,[ \t]+/
+    nonisolated(unsafe) private static let leadingAndPattern = /(?i:^and[ \t]+)/
+    nonisolated(unsafe) private static let conjunctionPattern = /(?i:[ \t]+and[ \t]+)/
+    nonisolated(unsafe) private static let markedListStartPattern = #/
             (?ix: ^(?:first|second|third|finally)[,.:]|
                 ^(?:bullet|item|number|step)[\x20\t]+(?:point|one|two|three|[0-9]+)\b)
-            /#) == nil
+        /#
+    nonisolated(unsafe) private static let subordinateClausePattern = #/
+            (?ix: ^(?:if|when|while|because|although|unless|before|after|since|once|until|
+                even[\x20\t]+though)[\x20\t]+)
+        /#
+
+    private static func formatIntroducedList(_ text: Substring, heading: ListHeading) -> String? {
+        let body = text[heading.range.upperBound...]
+        guard body.prefixMatch(of: markedListStartPattern) == nil
         else { return nil }
         let sentences = sentenceBoundaries(in: body)
         var items: [String]
@@ -445,29 +535,27 @@ enum DictationTextFormatter {
                 let parallelActions = items.allSatisfy(beginsWithAction)
                 let shortFragments = items.allSatisfy { item in
                     item.split(whereSeparator: \.isWhitespace).count <= 5 &&
-                        item.firstMatch(of: /(?i:^(?:i|we|you|he|she|it|they|this|that|there)\b)/) == nil
+                        item.prefixMatch(of: pronounStartPattern) == nil
                 }
                 guard parallelActions || shortFragments else { return nil }
             }
         } else {
             guard heading.hasColon else { return nil }
-            let separator: Regex<Substring> = body.firstMatch(of: /;[ \t]+/) == nil ? /,[ \t]+/ : /;[ \t]+/
+            let separator = body.firstMatch(of: semicolonSeparatorPattern) == nil
+                ? commaSeparatorPattern : semicolonSeparatorPattern
             items = body.split(separator: separator, omittingEmptySubsequences: false).map(String.init)
-            if let last = items.last, last.firstMatch(of: /(?i:^and[ \t]+)/) == nil,
+            if let last = items.last, last.prefixMatch(of: leadingAndPattern) == nil,
                heading.count.map({ items.count < $0 }) ?? (items.count > 1 && items.count < 3),
-               let conjunction = last.firstMatch(of: /(?i:[ \t]+and[ \t]+)/) {
+               let conjunction = last.firstMatch(of: conjunctionPattern) {
                 items.removeLast()
                 items.append(String(last[..<conjunction.range.lowerBound]))
                 items.append(String(last[conjunction.range.upperBound...]))
             }
             if let last = items.last {
-                items[items.count - 1] = last.replacing(/(?i:^and[ \t]+)/, with: "")
+                items[items.count - 1] = last.replacing(leadingAndPattern, with: "")
             }
             guard !items.contains(where: { item in
-                item.firstMatch(of: #/
-                    (?ix: ^(?:if|when|while|because|although|unless|before|after|since|once|until|
-                        even[\x20\t]+though)[\x20\t]+)
-                    /#) != nil
+                item.prefixMatch(of: subordinateClausePattern) != nil
             }) else { return nil }
         }
         guard ((heading.count ?? 3)...10).contains(items.count), heading.count.map({ $0 == items.count }) ?? true,
@@ -476,15 +564,17 @@ enum DictationTextFormatter {
         return renderList(items, numbered: heading.numbered, prefix: heading.text)
     }
 
+    nonisolated(unsafe) private static let listClosingPattern = #/
+            (?ix: ^(?:let[\x20\t]+me[\x20\t]+know|if[\x20\t]+you[\x20\t]+have[\x20\t]+(?:any[\x20\t]+)?questions|
+                thanks[\x20\t]+for|thank[\x20\t]+you[\x20\t]+for|that['’]s[\x20\t]+all)\b)
+        /#
+
     private static func renderList(_ items: [String], numbered: Bool, prefix: String) -> String {
         var items = items
         var closing = ""
         let last = items[items.count - 1]
         if let boundary = sentenceBoundaries(in: last[...]).first(where: {
-            last[$0.upperBound...].firstMatch(of: #/
-                (?ix: ^(?:let[\x20\t]+me[\x20\t]+know|if[\x20\t]+you[\x20\t]+have[\x20\t]+(?:any[\x20\t]+)?questions|
-                    thanks[\x20\t]+for|thank[\x20\t]+you[\x20\t]+for|that['’]s[\x20\t]+all)\b)
-                /#) != nil
+            last[$0.upperBound...].prefixMatch(of: listClosingPattern) != nil
         }) {
             closing = "\n\n" + last[boundary.upperBound...]
             items[items.count - 1] = String(last[..<last.index(after: boundary.lowerBound)])
@@ -498,18 +588,35 @@ enum DictationTextFormatter {
         return (prefix.isEmpty ? list : prefix + "\n" + list) + closing
     }
 
+    nonisolated(unsafe) private static let sentenceBoundaryPattern = /[.!?][ \t]+(?=\p{L})/
+    nonisolated(unsafe) private static let initialismPattern = /(?:\p{L}\.)+\p{L}/
+
     private static func sentenceBoundaries(in text: Substring) -> [Range<String.Index>] {
-        text.matches(of: /[.!?][ \t]+(?=\p{L})/).compactMap { match in
+        text.matches(of: sentenceBoundaryPattern).compactMap { match in
             if text[match.range.lowerBound] == "." {
                 let lastWord = text[..<match.range.lowerBound].suffix(16).split(whereSeparator: \.isWhitespace).last ?? ""
                 if (lastWord.count == 1 && lastWord.first?.isLetter == true) ||
-                    lastWord.wholeMatch(of: /(?:\p{L}\.)+\p{L}/) != nil ||
+                    lastWord.wholeMatch(of: initialismPattern) != nil ||
                     ["mr", "mrs", "ms", "dr", "st", "jr", "sr", "prof", "vs", "etc", "fig", "no"]
                     .contains(lastWord.lowercased()) { return nil }
             }
             return match.range
         }
     }
+
+    nonisolated(unsafe) private static let explicitTransitionPattern = #/
+            (?ix: ^
+                (?: (?:on[\x20\t]+(?:another|a[\x20\t]+(?:separate|different))[\x20\t]+note|
+                      changing[\x20\t]+(?:topics|subjects)|switching[\x20\t]+gears|
+                      in[\x20\t]+(?:summary|conclusion)|to[\x20\t]+(?:sum[\x20\t]+up|recap|wrap[\x20\t]+up)|
+                      next[\x20\t]+topic|one[\x20\t]+last[\x20\t]+thing)
+                      [,:\x20\t]
+                    | (?:moving[\x20\t]+on[\x20\t]+to|let['’]s[\x20\t]+move[\x20\t]+on[\x20\t]+to|
+                        turning[\x20\t]+(?:now[\x20\t]+)?to|
+                        as[\x20\t]+for|that[\x20\t]+brings[\x20\t]+(?:me|us)[\x20\t]+to)[\x20\t]+\p{L}
+                )
+            )
+        /#
 
     private static func separateTopicParagraphs(_ text: Substring) -> String {
         var start = text.startIndex
@@ -518,19 +625,7 @@ enum DictationTextFormatter {
         for boundary in sentenceBoundaries(in: text) {
             sentenceCount += 1
             let remainder = text[boundary.upperBound...]
-            let explicitTransition = remainder.firstMatch(of: #/
-                (?ix: ^
-                    (?: (?:on[\x20\t]+(?:another|a[\x20\t]+(?:separate|different))[\x20\t]+note|
-                          changing[\x20\t]+(?:topics|subjects)|switching[\x20\t]+gears|
-                          in[\x20\t]+(?:summary|conclusion)|to[\x20\t]+(?:sum[\x20\t]+up|recap|wrap[\x20\t]+up)|
-                          next[\x20\t]+topic|one[\x20\t]+last[\x20\t]+thing)
-                          [,:\x20\t]
-                        | (?:moving[\x20\t]+on[\x20\t]+to|let['’]s[\x20\t]+move[\x20\t]+on[\x20\t]+to|
-                            turning[\x20\t]+(?:now[\x20\t]+)?to|
-                            as[\x20\t]+for|that[\x20\t]+brings[\x20\t]+(?:me|us)[\x20\t]+to)[\x20\t]+\p{L}
-                    )
-                )
-                /#) != nil
+            let explicitTransition = remainder.prefixMatch(of: explicitTransitionPattern) != nil
             let end = text.index(after: boundary.lowerBound)
             let developedPassage = sentenceCount >= 2
                 && text[start..<end].split(maxSplits: 29, whereSeparator: \.isWhitespace).count == 30
@@ -548,49 +643,42 @@ enum DictationTextFormatter {
         return paragraphs.joined(separator: "\n\n")
     }
 
-    private static func startsParagraphTransition(_ text: Substring) -> Bool {
-        if text.firstMatch(of: #/
+    nonisolated(unsafe) private static let contrastTransitionPattern = #/
             (?ix: ^(?:however|nevertheless|meanwhile|instead|but|yet)\b[,:\x20\t]
                 | ^(?:for[\x20\t]+(?:example|instance)|on[\x20\t]+the[\x20\t]+other[\x20\t]+hand|
                       in[\x20\t]+contrast|as[\x20\t]+a[\x20\t]+result)[,:\x20\t])
-            /#) != nil { return true }
-        return text.firstMatch(of: #/
+        /#
+    nonisolated(unsafe) private static let directQuestionPattern = #/
             (?ix: ^(?:what|why|how|when|where|who|which)\b[^.!?\r\n]{0,160}\?)
-            /#) != nil
+        /#
+
+    private static func startsParagraphTransition(_ text: Substring) -> Bool {
+        if text.prefixMatch(of: contrastTransitionPattern) != nil { return true }
+        return text.prefixMatch(of: directQuestionPattern) != nil
     }
 
-    private static func formatSpokenStructure(_ text: String) -> String {
-        let separated = formatCorrespondence(text)
-            .replacing(
-                #/
-                ([.!?])[\x20\t]+(?=(\p{Lu}\p{Ll}+),[\x20\t]+[^.!?\r\n]{0,65}?
-                    (?i:good[\x20\t]+(?:morning|afternoon|evening)),[\x20\t]+\2[.!?])
-                /#
-            ) { String($0.1) + "\n\n" }
-            .replacing(
-                #/
-                \?[\x20\t]+(?=(?i:(?:good[\x20\t]+)?(?:morning|afternoon|evening)|hello|hi),?[\x20\t]+\p{Lu}\p{Ll}+[.!])
-                /#,
-                with: "?\n\n")
-        return separated.split(separator: "\n", omittingEmptySubsequences: false)
-            .map(separateTopicParagraphs).joined(separator: "\n")
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { formatSpokenList($0) ?? wrapLongParagraph($0) }.joined(separator: "\n")
-    }
+    nonisolated(unsafe) private static let greetingHandoffPattern = #/
+            ([.!?])[\x20\t]+(?=(\p{Lu}\p{Ll}+),[\x20\t]+[^.!?\r\n]{0,65}?
+                (?i:good[\x20\t]+(?:morning|afternoon|evening)),[\x20\t]+\2[.!?])
+        /#
+    nonisolated(unsafe) private static let questionGreetingPattern = #/
+            \?[\x20\t]+(?=(?i:(?:good[\x20\t]+)?(?:morning|afternoon|evening)|hello|hi),?[\x20\t]+\p{Lu}\p{Ll}+[.!])
+        /#
 
-    private static func formatCorrespondence(_ text: String) -> String {
-        guard let closing = text.firstMatch(of: #/
+    nonisolated(unsafe) private static let correspondenceClosingPattern = #/
             [.!?][\x20\t]+
             ((?i:(?:(?:best|kind|warm)[\x20\t]+)?regards|sincerely|yours[\x20\t]+truly|best[\x20\t]+wishes),)
             [\x20\t]+(\p{Lu}\p{L}*(?:[\x20\t]+\p{Lu}\p{L}*){0,2}\.?)$
-            /#)
+        /#
+    nonisolated(unsafe) private static let correspondenceGreetingPattern = #/
+            ^((?i:dear|hello|hi)[\x20\t]+\p{Lu}\p{L}*(?:[\x20\t]+\p{Lu}\p{L}*){0,2},)[\x20\t]+
+        /#
+
+    private static func formatCorrespondence(_ text: String) -> String {
+        guard let closing = text.firstMatch(of: correspondenceClosingPattern)
         else { return text }
         let endOfBody = text.index(after: closing.range.lowerBound)
-        let body = text[..<endOfBody].replacing(
-            #/
-            ^((?i:dear|hello|hi)[\x20\t]+\p{Lu}\p{L}*(?:[\x20\t]+\p{Lu}\p{L}*){0,2},)[\x20\t]+
-            /#
-        ) { String($0.1) + "\n\n" }
+        let body = text[..<endOfBody].replacing(correspondenceGreetingPattern) { String($0.1) + "\n\n" }
         return body + "\n\n" + closing.1 + "\n" + closing.2
     }
 
@@ -616,56 +704,62 @@ enum DictationTextFormatter {
         return result + text[paragraphStart...]
     }
 
+    nonisolated(unsafe) private static let dateFollowerPattern = /^(?:[,.!?;:]|[ \t]+(?i:at|to|through|until)\b)/
+    nonisolated(unsafe) private static let dayFirstDatePattern = #/
+            (?ix:
+                \b(?:the[\x20\t]+)?
+                (?<day>(?:twenty|thirty)[-\x20\t]+(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|
+                    first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|
+                    thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth|
+                    [0-9]{1,2}(?:st|nd|rd|th)?)
+                [\x20\t]+of[\x20\t]+
+                (?<month>January|February|March|April|May|June|July|August|September|October|November|December)\b
+                (?:,?[\x20\t]+(?<year>[0-9]{4}|(?:nineteen|twenty)[\x20\t]+
+                    (?:(?:oh|zero)[\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine)|
+                    (?:ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|
+                    twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
+                    (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)|
+                    two[\x20\t]+thousand(?:[\x20\t]+(?:and[\x20\t]+)?
+                    (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|
+                    fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
+                    (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)?)(?=[,.!?]|$))?
+            )
+        /#
+    nonisolated(unsafe) private static let monthFirstDatePattern = #/
+            (?ix:
+                \b(?<month>January|February|March|April|May|June|July|August|September|October|November|December)
+                [\x20\t]+(?:the[\x20\t]+)?
+                (?<day>(?:twenty|thirty)[-\x20\t]+(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|
+                    first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|
+                    thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth|
+                    [0-9]{1,2}(?:st|nd|rd|th)?)\b
+                (?:,?[\x20\t]+(?<year>[0-9]{4}|(?:nineteen|twenty)[\x20\t]+
+                    (?:(?:oh|zero)[\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine)|
+                    (?:ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|
+                    twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
+                    (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)|
+                    two[\x20\t]+thousand(?:[\x20\t]+(?:and[\x20\t]+)?
+                    (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|
+                    fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
+                    (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)?)(?=[,.!?]|$))?
+            )
+        /#
+
+    private static let monthNames = [
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december"
+    ]
+
     private static func normalizeSpokenDates(_ text: String) -> String {
+        guard monthNames.contains(where: { text.range(of: $0, options: .caseInsensitive) != nil }) else { return text }
         let dayFirst = text
-            .replacing(
-                #/
-                (?ix:
-                    \b(?:the[\x20\t]+)?
-                    (?<day>(?:twenty|thirty)[-\x20\t]+(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|
-                        first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|
-                        thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth|
-                        [0-9]{1,2}(?:st|nd|rd|th)?)
-                    [\x20\t]+of[\x20\t]+
-                    (?<month>January|February|March|April|May|June|July|August|September|October|November|December)\b
-                    (?:,?[\x20\t]+(?<year>[0-9]{4}|(?:nineteen|twenty)[\x20\t]+
-                        (?:(?:oh|zero)[\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine)|
-                        (?:ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|
-                        twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
-                        (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)|
-                        two[\x20\t]+thousand(?:[\x20\t]+(?:and[\x20\t]+)?
-                        (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|
-                        fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
-                        (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)?)(?=[,.!?]|$))?
-                )
-                /#
-            ) { match in
+            .replacing(dayFirstDatePattern) { match in
                 formattedDate(day: match.day, month: match.month, year: match.year) ?? String(match.output.0)
             }
-        return dayFirst.replacing(
-                #/
-                (?ix:
-                    \b(?<month>January|February|March|April|May|June|July|August|September|October|November|December)
-                    [\x20\t]+(?:the[\x20\t]+)?
-                    (?<day>(?:twenty|thirty)[-\x20\t]+(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|
-                        first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|
-                        thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth|
-                        [0-9]{1,2}(?:st|nd|rd|th)?)\b
-                    (?:,?[\x20\t]+(?<year>[0-9]{4}|(?:nineteen|twenty)[\x20\t]+
-                        (?:(?:oh|zero)[\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine)|
-                        (?:ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|
-                        twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
-                        (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)|
-                        two[\x20\t]+thousand(?:[\x20\t]+(?:and[\x20\t]+)?
-                        (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|
-                        fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)
-                        (?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?)?)(?=[,.!?]|$))?
-                )
-                /#
-            ) { match in
+        return dayFirst.replacing(monthFirstDatePattern) { match in
                 guard match.year != nil || match.range.upperBound == dayFirst.endIndex
-                    || dayFirst[match.range.upperBound...].firstMatch(
-                        of: /^(?:[,.!?;:]|[ \t]+(?i:at|to|through|until)\b)/) != nil
+                    || dayFirst[match.range.upperBound...].prefixMatch(
+                        of: dateFollowerPattern) != nil
                 else { return String(match.output.0) }
                 return formattedDate(day: match.day, month: match.month, year: match.year) ?? String(match.output.0)
             }
@@ -736,15 +830,74 @@ enum DictationTextFormatter {
         "billion": 9, "trillion": 12, "quadrillion": 15, "quintillion": 18
     ]
 
+    private static let currencyMatchReach = 600
+    private static let clauseBreaks: Set<Character> = [".", "!", "?", ",", ";", ":"]
+
+    private static func currencyAlternatives(_ phrases: some Sequence<String>) -> String {
+        phrases.sorted { $0.count == $1.count ? $0 < $1 : $0.count > $1.count }.map { phrase in
+            NSRegularExpression.escapedPattern(for: phrase).replacingOccurrences(of: " ", with: #"[\t ]+"#)
+        }.joined(separator: "|")
+    }
+
+    private static let currencyMarkerWords: Set<String> = {
+        let phrases = Array(currencyNames.keys) + ["pesewa", "pesewas", "peswa", "peswas", "g h s"]
+        return Set(phrases.compactMap { phrase in
+            phrase.split(separator: " ").first.map { $0.trimmingCharacters(in: currencyWordTrim) }
+        })
+    }()
+
+    private static let currencyWordTrim = CharacterSet.punctuationCharacters.union(.symbols)
+        .subtracting(CharacterSet(charactersIn: "₵¢"))
+
+    /// A currency match never crosses a clause break outside a name, so only marked clauses are scanned.
+    private static func currencyWindows(in text: String) -> [NSRange] {
+        var windows: [Range<String.Index>] = []
+        for word in text.split(whereSeparator: \.isWhitespace) {
+            let core = word.trimmingCharacters(in: currencyWordTrim)
+            guard word.contains(where: { $0 == "₵" || $0 == "¢" }) || DictationCurrencyData.digits[core] != nil
+                || currencyMarkerWords.contains(core.lowercased()) else { continue }
+            let lower = clauseStart(in: text, before: word.startIndex)
+            let upper = clauseEnd(in: text, after: word.endIndex)
+            if let last = windows.last, lower <= last.upperBound {
+                windows[windows.count - 1] = last.lowerBound..<max(last.upperBound, upper)
+            } else {
+                windows.append(lower..<upper)
+            }
+        }
+        return windows.map { NSRange($0, in: text) }
+    }
+
+    private static func clauseStart(in text: String, before index: String.Index) -> String.Index {
+        let limit = text.index(index, offsetBy: -currencyMatchReach, limitedBy: text.startIndex) ?? text.startIndex
+        var cursor = index
+        while cursor > limit {
+            let previous = text.index(before: cursor)
+            if text[previous].isNewline { return cursor }
+            if text[previous].isWhitespace, previous > limit, clauseBreaks.contains(text[text.index(before: previous)]) {
+                return cursor
+            }
+            cursor = previous
+        }
+        return limit
+    }
+
+    private static func clauseEnd(in text: String, after index: String.Index) -> String.Index {
+        let limit = text.index(index, offsetBy: currencyMatchReach, limitedBy: text.endIndex) ?? text.endIndex
+        var cursor = index
+        while cursor < limit {
+            let character = text[cursor]
+            if character.isNewline { return cursor }
+            let next = text.index(after: cursor)
+            if clauseBreaks.contains(character), next == text.endIndex || text[next].isWhitespace { return next }
+            cursor = next
+        }
+        return limit
+    }
+
     private static let currencyPattern: NSRegularExpression? = {
         let whitespace = #"[\t ]"#
-        func alternatives(_ phrases: some Sequence<String>) -> String {
-            phrases.sorted { $0.count == $1.count ? $0 < $1 : $0.count > $1.count }.map { phrase in
-                NSRegularExpression.escapedPattern(for: phrase).replacingOccurrences(of: " ", with: whitespace + "+")
-            }.joined(separator: "|")
-        }
-        let codes = alternatives(DictationCurrencyData.digits.keys)
-        let word = "(?i:" + alternatives(units + tens + ["a", "an", "hundred", "point", "oh"]
+        let codes = currencyAlternatives(DictationCurrencyData.digits.keys)
+        let word = "(?i:" + currencyAlternatives(units + tens + ["a", "an", "hundred", "point", "oh"]
             + currencyScales.keys.map { String($0) }) + ")"
         let digits = #"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"#
         let number = "(?:\(digits)|\(word))"
@@ -752,16 +905,16 @@ enum DictationTextFormatter {
             .map { "(?<=\($0))" }.joined(separator: "|")
         let amount = #"(?:[+−-][\t ]*|(?i:plus|positive|minus|negative)[\t ]+)?"#
             + number + "(?:(?:(?i:\(scaleConjunction))\(whitespace)+(?i:and)\(whitespace)+|[\\t -]+)\(number)){0,30}"
-        let aliases = alternatives(currencyNames.keys)
+        let aliases = currencyAlternatives(currencyNames.keys)
         let marker = "(?:\(codes)|(?i:\(aliases))|GH[₵¢])"
         let prefix = "(?:\(codes)|(?i:GHS|G[\\t ]+H[\\t ]+S|GH[₵¢])|₵)"
         let bound = #"(?![\p{L}\p{N}_]|['’]\p{L})"#
-        let unitsPattern = alternatives(Set(minorUnits.values.flatMap(\.keys)))
+        let unitsPattern = currencyAlternatives(Set(minorUnits.values.flatMap(\.keys)))
         func minor(_ valueName: String, _ unitName: String) -> String {
             "(?:\(whitespace)+(?:(?i:and)\(whitespace)+)?(?<\(valueName)>\(amount))"
                 + "\(whitespace)+(?<\(unitName)>(?i:\(unitsPattern)))\(bound))?"
         }
-        let standalone = alternatives(["pesewa", "pesewas", "peswa", "peswas"])
+        let standalone = currencyAlternatives(["pesewa", "pesewas", "peswa", "peswas"])
         let range = "(?:(?<rangeStart>(?i:between|from)\(whitespace)+)(?<first>\(amount))"
             + "(?<rangeJoin>\(whitespace)+(?i:and|to)\(whitespace)+))?"
         let suffixForm = "\(range)(?<value>\(amount))\(whitespace)+(?<unit>\(marker))\(bound)"
@@ -775,17 +928,24 @@ enum DictationTextFormatter {
         )
     }()
 
-    static func currencyCleanup(_ transcript: String, now: () -> ContinuousClock.Instant = { .now }) -> String {
-        cleanLines(transcript, now: now) { line in
-            preservesLiteral(line) ? String(line) : normalizeSpokenCurrency(String(line))
+    static func currencyCleanup(_ transcript: String, now: @escaping () -> ContinuousClock.Instant = { .now }) -> String {
+        var budget = Budget(now: now)
+        return cleanLines(transcript, budget: &budget) { line, budget in
+            guard !preservesLiteral(line) else { return String(line) }
+            let text = String(line)
+            return budget.spend(on: text) ? normalizeSpokenCurrency(text) : nil
         } ?? transcript
     }
 
     private static func normalizeSpokenCurrency(_ text: String) -> String {
         guard let currencyPattern else { return text }
+        let windows = currencyWindows(in: text)
+        let matches = windows.flatMap { window in
+            currencyPattern.matches(in: text, options: [.withTransparentBounds, .withoutAnchoringBounds], range: window)
+        }
         var output = ""
         var cursor = text.startIndex
-        for match in currencyPattern.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+        for match in matches {
             guard let range = Range(match.range, in: text) else { continue }
             output += text[cursor..<range.lowerBound]
             let prior = text[..<range.lowerBound].suffix(32)
@@ -796,13 +956,26 @@ enum DictationTextFormatter {
         return output + text[cursor...]
     }
 
+    nonisolated(unsafe) private static let currencyPrefixPattern = /(?:[0-9][.,:]|[+−$€£₵¢¥₹-])$/
+    nonisolated(unsafe) private static let groupedNumberPattern = /[0-9]+(?:[.,][0-9]+)*/
+
     private static func isCurrencyBoundary(_ prefix: Substring) -> Bool {
-        if prefix.firstMatch(of: /(?:[0-9][.,:]|[+−$€£₵¢¥₹-])$/) != nil { return false }
+        if prefix.firstMatch(of: currencyPrefixPattern) != nil { return false }
         guard let prior = prefix.split(whereSeparator: \.isWhitespace).last?.lowercased() else { return true }
-        return !(prior.wholeMatch(of: /[0-9]+(?:[.,][0-9]+)*/) != nil || units.contains(prior) || tens.contains(prior)
+        return !(prior.wholeMatch(of: groupedNumberPattern) != nil || units.contains(prior) || tens.contains(prior)
             || currencyScales[prior[...]] != nil
             || ["hundred", "point", "plus", "positive", "minus", "negative"].contains(prior))
     }
+
+    nonisolated(unsafe) private static let followingWordPattern = /^[ \t]+\p{L}/
+    nonisolated(unsafe) private static let paymentContextPattern = #/
+            (?ix: \b(?:paid|pay|costs?|spent|spend|charged?|worth|(?:fee|salary|price|budget)[\x20\t]+(?:is|of))
+                [\x20\t]+(?:(?:about|around|roughly|approximately|at[\x20\t]+least|up[\x20\t]+to)[\x20\t]+)?$)
+        /#
+    nonisolated(unsafe) private static let ghanaContextPattern = #/
+            (?ix: \b(?:invoice[\x20\t]+lists|cost[\x20\t]+(?:is|of))[\x20\t]+
+                (?:(?:about|around|roughly|approximately|at[\x20\t]+least|up[\x20\t]+to)[\x20\t]+)?$)
+        /#
 
     private static func currencyReplacement(_ match: NSTextCheckingResult, in text: String, range: Range<String.Index>)
         -> String? {
@@ -826,17 +999,11 @@ enum DictationTextFormatter {
         let name = normalizedCurrencyName(unit)
         let ghanaMishearing = ["ghana cities", "ghana sades", "ghana sadis"].contains(name)
         let ambiguousCode = currencyCodeWords.contains(String(unit)) && group("followingUnit") == nil
-            && text[range.upperBound...].firstMatch(of: /^[ \t]+\p{L}/) != nil
+            && text[range.upperBound...].prefixMatch(of: followingWordPattern) != nil
         if ghanaMishearing || ambiguousCode {
             let context = text[..<range.lowerBound].suffix(80)
-            let paymentContext = context.firstMatch(of: #/
-                (?ix: \b(?:paid|pay|costs?|spent|spend|charged?|worth|(?:fee|salary|price|budget)[\x20\t]+(?:is|of))
-                    [\x20\t]+(?:(?:about|around|roughly|approximately|at[\x20\t]+least|up[\x20\t]+to)[\x20\t]+)?$)
-                /#) != nil
-            let ghanaContext = ghanaMishearing && context.firstMatch(of: #/
-                (?ix: \b(?:invoice[\x20\t]+lists|cost[\x20\t]+(?:is|of))[\x20\t]+
-                    (?:(?:about|around|roughly|approximately|at[\x20\t]+least|up[\x20\t]+to)[\x20\t]+)?$)
-                /#) != nil
+            let paymentContext = context.firstMatch(of: paymentContextPattern) != nil
+            let ghanaContext = ghanaMishearing && context.firstMatch(of: ghanaContextPattern) != nil
             guard paymentContext || ghanaContext else { return nil }
         }
         if let followingUnit = group("followingUnit"), currencyCode(followingUnit) != code { return nil }
@@ -953,9 +1120,12 @@ enum DictationTextFormatter {
         afterScale && words.first == "and" ? words.dropFirst() : words
     }
 
+    nonisolated(unsafe) private static let numericAmountPattern = /(?:[0-9]{1,20}|[0-9]{1,3}(?:,[0-9]{3}){1,6})(?:\.[0-9]{1,12})?/
+    nonisolated(unsafe) private static let fractionDigitsPattern = /[0-9]{1,12}/
+
     private static func currencyCoefficient(_ words: ArraySlice<Substring>) -> (whole: String, fraction: String)? {
         if words.count == 1, let numeric = words.first,
-           numeric.wholeMatch(of: /(?:[0-9]{1,20}|[0-9]{1,3}(?:,[0-9]{3}){1,6})(?:\.[0-9]{1,12})?/) != nil {
+           numeric.wholeMatch(of: numericAmountPattern) != nil {
             let parts = numeric.split(separator: ".")
             return (String(parts[0]), parts.count == 2 ? String(parts[1]) : "")
         }
@@ -973,7 +1143,7 @@ enum DictationTextFormatter {
         }
         guard parts.count == 2 else { return (whole, "") }
         let digits = parts[1].compactMap { word -> String? in
-            if word.wholeMatch(of: /[0-9]{1,12}/) != nil { return String(word) }
+            if word.wholeMatch(of: fractionDigitsPattern) != nil { return String(word) }
             if word == "oh" { return "0" }
             guard let digit = spokenNumber(word), digit < 10 else { return nil }
             return String(digit)
@@ -990,37 +1160,57 @@ enum DictationTextFormatter {
         return UInt64(whole + fraction + String(repeating: "0", count: scale - fraction.count))
     }
 
+    nonisolated(unsafe) private static let noonMidnightPattern =
+        /(?i:\b(?<lead>(?:at|by|around|before|after|from|until|to)[ \t]+)(?<time>noon|midnight)\b)/
+    nonisolated(unsafe) private static let twentyFourHourPattern = #/
+            (?i: \b(?<lead>(?:at|by|around|before|after|from|until|to)[\x20\t]+)
+                (?<hour>[0-9]{2})[\x20\t]*(?<minute>[0-9]{2})[\x20\t]+hours\b )
+        /#
+    nonisolated(unsafe) private static let relativeClockPattern = #/
+            (?ix:
+                (?<lead>\b(?:at|by|around|before|after|from|until)[\x20\t]+|^)
+                (?:a[\x20\t]+)?(?<offset>quarter|half|[0-9]{1,2}|
+                    (?:twenty|thirty|forty|fifty)(?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?|
+                    one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|
+                    fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)
+                [\x20\t]+(?:minutes?[\x20\t]+)?(?<direction>past|to)[\x20\t]+
+                (?<hour>one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})\b
+                (?:[\x20\t]+(?<period>[ap]\.m(?:\.(?=[,!?]|[\x20\t]+\p{Ll}))?|[ap][\x20\t]*m|
+                    in[\x20\t]+the[\x20\t]+(?:morning|afternoon|evening)))?
+                (?![\p{L}\p{N}])
+            )
+        /#
+    nonisolated(unsafe) private static let clockPattern = #/
+            (?ix:
+                (?<lead>\b(?:at|by|around|before|after|from|until|to)[\x20\t]+|^)
+                (?<hour>one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|
+                    thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty(?:[-\x20\t]+(?:one|two|three))?|
+                    [0-9]{1,2})(?=\b|[ap]m\b)
+                (?:
+                    (?:[\x20\t]+|:)(?<minute>[0-9]{1,2}|
+                    (?:oh|zero)[\x20\t]+(?:[1-9]|one|two|three|four|five|six|seven|eight|nine)|
+                    (?:twenty|thirty|forty|fifty)(?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?|
+                    zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|
+                    fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)(?=\b|[ap]m\b)
+                    |[\x20\t]+(?<oclock>o(?:['’]|[\x20\t]+)?clock)\b
+                )?
+                (?:[\x20\t]*(?<period>[ap]\.m(?:\.(?=[,!?]|[\x20\t]+\p{Ll}))?|[ap][\x20\t]*m|
+                    in[\x20\t]+the[\x20\t]+(?:morning|afternoon|evening)))?
+                (?![\p{L}\p{N}])
+            )
+        /#
+
     private static func normalizeSpokenTimes(_ text: String) -> String {
         let anchored = text
-            .replacing(
-                #/
-                (?i: \b(?<lead>(?:at|by|around|before|after|from|until|to)[\x20\t]+)
-                    (?<hour>[0-9]{2})[\x20\t]*(?<minute>[0-9]{2})[\x20\t]+hours\b )
-                /#
-            ) { match in
+            .replacing(twentyFourHourPattern) { match in
                 guard let hour = Int(match.hour), hour < 24, let minute = Int(match.minute), minute < 60
                 else { return String(match.output.0) }
                 return String(match.lead) + match.hour + ":" + match.minute
             }
-            .replacing(/(?i:\b(?<lead>(?:at|by|around|before|after|from|until|to)[ \t]+)(?<time>noon|midnight)\b)/) {
+            .replacing(noonMidnightPattern) {
                 String($0.lead) + ($0.time.lowercased() == "noon" ? "12:00 PM" : "12:00 AM")
             }
-        let explicit = anchored.replacing(
-                #/
-                (?ix:
-                    (?<lead>\b(?:at|by|around|before|after|from|until)[\x20\t]+|^)
-                    (?:a[\x20\t]+)?(?<offset>quarter|half|[0-9]{1,2}|
-                        (?:twenty|thirty|forty|fifty)(?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?|
-                        one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|
-                        fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)
-                    [\x20\t]+(?:minutes?[\x20\t]+)?(?<direction>past|to)[\x20\t]+
-                    (?<hour>one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})\b
-                    (?:[\x20\t]+(?<period>[ap]\.m(?:\.(?=[,!?]|[\x20\t]+\p{Ll}))?|[ap][\x20\t]*m|
-                        in[\x20\t]+the[\x20\t]+(?:morning|afternoon|evening)))?
-                    (?![\p{L}\p{N}])
-                )
-                /#
-            ) { match in
+        let explicit = anchored.replacing(relativeClockPattern) { match in
                 guard let hour = spokenNumber(match.hour), (1...12).contains(hour)
                 else { return String(match.output.0) }
                 let offset: Int?
@@ -1039,27 +1229,7 @@ enum DictationTextFormatter {
                 let hours = total / 60 % 12
                 return String(match.lead) + clockText(hours == 0 ? 12 : hours, total % 60, pm: period.map { _ in total >= 720 })
             }
-        return explicit.replacing(
-                #/
-                (?ix:
-                    (?<lead>\b(?:at|by|around|before|after|from|until|to)[\x20\t]+|^)
-                    (?<hour>one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|
-                        thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty(?:[-\x20\t]+(?:one|two|three))?|
-                        [0-9]{1,2})(?=\b|[ap]m\b)
-                    (?:
-                        (?:[\x20\t]+|:)(?<minute>[0-9]{1,2}|
-                        (?:oh|zero)[\x20\t]+(?:[1-9]|one|two|three|four|five|six|seven|eight|nine)|
-                        (?:twenty|thirty|forty|fifty)(?:[-\x20\t]+(?:one|two|three|four|five|six|seven|eight|nine))?|
-                        zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|
-                        fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)(?=\b|[ap]m\b)
-                        |[\x20\t]+(?<oclock>o(?:['’]|[\x20\t]+)?clock)\b
-                    )?
-                    (?:[\x20\t]*(?<period>[ap]\.m(?:\.(?=[,!?]|[\x20\t]+\p{Ll}))?|[ap][\x20\t]*m|
-                        in[\x20\t]+the[\x20\t]+(?:morning|afternoon|evening)))?
-                    (?![\p{L}\p{N}])
-                )
-                /#
-            ) { match in
+        return explicit.replacing(clockPattern) { match in
                 guard let hour = spokenNumber(match.hour), hour < 24 else { return String(match.output.0) }
                 let period = afternoon(match.period)
                 if period != nil, !(1...12).contains(hour) { return String(match.output.0) }
@@ -1081,8 +1251,10 @@ enum DictationTextFormatter {
             }
     }
 
+    nonisolated(unsafe) private static let clockBoundaryPattern = /^(?:$|[,.;!?]|[ \t]+(?i:today|tomorrow|tonight|on|to|until)\b)/
+
     private static func isClockBoundary(_ text: Substring) -> Bool {
-        text.firstMatch(of: /^(?:$|[,.;!?]|[ \t]+(?i:today|tomorrow|tonight|on|to|until)\b)/) != nil
+        text.prefixMatch(of: clockBoundaryPattern) != nil
     }
 
     private static func afternoon(_ period: Substring?) -> Bool? {
@@ -1157,8 +1329,9 @@ enum DictationTextFormatter {
         return (words[0] == "twenty" ? 2_000 : 1_900) + tail
     }
 
-    static func format(_ transcription: String, context: Context?, adaptCapitalization: Bool = true) -> String
-    {
+    static func format(
+        _ transcription: String, context: Context?, adaptCapitalization: Bool = true, properNouns: Set<String> = []
+    ) -> String {
         var text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, let context else { return text }
         if adaptCapitalization, let first = text.first, first.isLetter {
@@ -1167,6 +1340,8 @@ enum DictationTextFormatter {
                 || context.lastNonWhitespace.map({ ".!?".contains($0) }) == true
             {
                 replacement = String(first).uppercased()
+            } else if keepsLeadingCapital(text, properNouns: properNouns) {
+                replacement = String(first)
             } else {
                 replacement = String(first).lowercased()
             }
@@ -1185,5 +1360,27 @@ enum DictationTextFormatter {
             text += " "
         }
         return text
+    }
+
+    private static let pronounI: Set<String> = ["I", "I'm", "I'll", "I've", "I'd"]
+
+    private static func keepsLeadingCapital(_ text: String, properNouns: Set<String>) -> Bool {
+        let tokens = text.split(whereSeparator: \.isWhitespace)
+        guard let firstToken = tokens.first, firstToken.first?.isUppercase == true else { return false }
+        let word = capitalizationWord(firstToken)
+        if pronounI.contains(word.replacing("’", with: "'")) { return true }
+        if word.dropFirst().first?.isUppercase == true { return true }
+        if properNouns.contains(where: { $0 == word || $0.hasPrefix(word + " ") }) { return true }
+        for index in tokens.indices.dropFirst() where capitalizationWord(tokens[index]) == word {
+            let previous = tokens[index - 1]
+            let gap = text[previous.endIndex..<tokens[index].startIndex]
+            if previous.last.map({ ".!?:".contains($0) }) == false, !gap.contains(where: \.isNewline) { return true }
+        }
+        return false
+    }
+
+    private static func capitalizationWord(_ token: Substring) -> String {
+        let letters = token.drop { !$0.isLetter }
+        return String(letters.prefix { $0.isLetter || $0 == "'" || $0 == "’" || $0 == "-" })
     }
 }

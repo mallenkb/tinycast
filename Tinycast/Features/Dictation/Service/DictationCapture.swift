@@ -4,7 +4,7 @@ import CoreMedia
 
 @MainActor
 final class DictationCapture {
-    nonisolated static let maximumSegmentSamples = 30 * DictationWire.sampleRate
+    nonisolated static let maximumSegmentSamples = DictationPausePolicy.maximumSegmentSamples
 
     enum Failure: LocalizedError {
         case microphoneUnavailable
@@ -28,6 +28,7 @@ final class DictationCapture {
     }
 
     var onLevels: (([Float]) -> Void)?
+    var onCountdown: ((Int) -> Void)?
     var onLimit: (() -> Void)?
 
     private var active: CaptureSessionBox?
@@ -50,6 +51,12 @@ final class DictationCapture {
                 Task { @MainActor [weak self] in
                     guard let self, active?.id == id else { return }
                     onLevels?(levels)
+                }
+            },
+            onCountdown: { [weak self] seconds in
+                Task { @MainActor [weak self] in
+                    guard let self, active?.id == id else { return }
+                    onCountdown?(seconds)
                 }
             },
             onLimit: { [weak self] in
@@ -95,6 +102,7 @@ private struct CaptureSessionBox: @unchecked Sendable {
     @concurrent static func configure(
         id: UUID, microphoneID: String?, stream: AsyncStream<[Float]>.Continuation?,
         onLevels: @escaping @Sendable ([Float]) -> Void,
+        onCountdown: @escaping @Sendable (Int) -> Void,
         onLimit: @escaping @Sendable () -> Void
     ) async throws -> Self {
         try Task.checkCancellation()
@@ -123,15 +131,18 @@ private struct CaptureSessionBox: @unchecked Sendable {
         }
         capture.addInput(input)
         capture.addOutput(output)
-        let collector = try AudioCollector(stream: stream, onLevels: onLevels, onLimit: onLimit)
+        let collector = try AudioCollector(
+            stream: stream, onLevels: onLevels, onCountdown: onCountdown, onLimit: onLimit)
         output.setSampleBufferDelegate(collector, queue: collector.queue)
         return Self(id: id, isBluetooth: isBluetooth, session: capture, output: output, collector: collector)
     }
 
     @concurrent func start() async -> Bool {
         guard !Task.isCancelled else { return false }
-        session.startRunning()
-        return session.isRunning
+        return Signposts.interval("Dictation capture start") {
+            session.startRunning()
+            return session.isRunning
+        }
     }
 
     @concurrent func stop() async -> [Float] {
@@ -152,28 +163,32 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     @unchecked Sendable
 {
     let queue = DispatchQueue(label: "com.tinycast.dictation.audio")
+    /// Growing by a minute at a time avoids doubling copies of a long recording on this queue.
+    private static let reservationStep = 60 * DictationWire.sampleRate
     private var samples: [Float] = []
     private var streamedSamples = 0
-    private var segmentScanStart: Int?
-    private var segmentScanEnd = 0
-    private var quietFrames = 0
+    private var segmentScan: (start: Int, earliest: Int)?
     private let stream: AsyncStream<[Float]>.Continuation?
     private var displayedLevels: [Float]
     private let spectrum: DictationSpectrum
     private var waveformStartIndex = 0
     private var lastLevelUpdate: TimeInterval = 0
     private var reachedLimit = false
+    private var lastCountdown: Int?
     private let onLevels: @Sendable ([Float]) -> Void
+    private let onCountdown: @Sendable (Int) -> Void
     private let onLimit: @Sendable () -> Void
 
     init(
         stream: AsyncStream<[Float]>.Continuation?, onLevels: @escaping @Sendable ([Float]) -> Void,
+        onCountdown: @escaping @Sendable (Int) -> Void,
         onLimit: @escaping @Sendable () -> Void
     ) throws {
         self.stream = stream
         spectrum = try DictationSpectrum()
         displayedLevels = [Float](repeating: 0, count: DictationSpectrum.barCount)
         self.onLevels = onLevels
+        self.onCountdown = onCountdown
         self.onLimit = onLimit
     }
 
@@ -196,7 +211,15 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
         guard count > 0, samples.count < DictationWire.maximumSamples else { return }
         let floats = data.assumingMemoryBound(to: Float.self)
         let accepted = min(count, DictationWire.maximumSamples - samples.count)
+        if samples.capacity < samples.count + accepted {
+            samples.reserveCapacity(
+                min(DictationWire.maximumSamples, samples.count + accepted + Self.reservationStep))
+        }
         samples.append(contentsOf: UnsafeBufferPointer(start: floats, count: accepted))
+        if let remaining = DictationWire.remainingSeconds(afterCapturing: samples.count), remaining != lastCountdown {
+            lastCountdown = remaining
+            onCountdown(remaining)
+        }
         if let stream, samples.count - streamedSamples >= DictationWire.sampleRate / 10 {
             stream.yield(Array(samples[streamedSamples...]))
             streamedSamples = samples.count
@@ -233,35 +256,14 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
 
     func nextSegment(after start: Int) -> (end: Int, samples: [Float])? {
         queue.sync {
-            let frameSize = DictationWire.sampleRate / 50
-            let minimumQuietFrames = 30
-            let minimumSamples = 10 * DictationWire.sampleRate
-            let scanLimit = min(samples.count, start + DictationCapture.maximumSegmentSamples)
-            if segmentScanStart != start {
-                segmentScanStart = start
-                segmentScanEnd = start + minimumSamples
-                quietFrames = 0
+            if segmentScan?.start != start {
+                segmentScan = (start, start + DictationPausePolicy.minimumSegmentSamples)
             }
-            while segmentScanEnd + frameSize <= scanLimit {
-                let frameStart = segmentScanEnd
-                segmentScanEnd += frameSize
-                let frame = samples[frameStart..<segmentScanEnd]
-                let energy = frame.reduce(Float.zero) { $0 + $1 * $1 }
-                let quiet = energy < Float(frameSize) * 0.003 * 0.003
-                    && !frame.contains { abs($0) > 0.01 }
-                if quiet {
-                    quietFrames += 1
-                } else {
-                    let run = quietFrames
-                    quietFrames = 0
-                    // Wait for audio to resume so a trailing pause stays available for final recognition.
-                    if run >= minimumQuietFrames {
-                        let end = frameStart - run * frameSize / 2
-                        return (end, Array(samples[start..<end]))
-                    }
-                }
-            }
-            return nil
+            guard let earliest = segmentScan?.earliest,
+                let cut = DictationPausePolicy.nextCut(in: samples, start: start, earliest: earliest)
+            else { return nil }
+            segmentScan = (start, cut.resume)
+            return (cut.end, Array(samples[start..<cut.end]))
         }
     }
 }

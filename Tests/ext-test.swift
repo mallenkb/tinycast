@@ -67,6 +67,8 @@ struct ExtensionTests {
             }
         }
 
+        func authorizeProcesses() async -> ExtensionProcessAccess { .allowed }
+
         func sessionEnded() {
             sockets.closeAll()
         }
@@ -253,7 +255,7 @@ struct ExtensionTests {
     }
 
     static func nodeShimChecks() {
-        let result = ExtensionNodeShims().perform(api: "os", method: "cpus", argsJSON: "[]")
+        let result = ExtensionNodeShims(authorizeProcesses: { .allowed }).perform(api: "os", method: "cpus", argsJSON: "[]")
         guard
             let data = result.data(using: .utf8),
             let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -281,7 +283,7 @@ struct ExtensionTests {
         check("os.cpus returns finite Node timing fields", valid, result)
 
         func value(_ method: String) -> Any? {
-            let result = ExtensionNodeShims().perform(api: "os", method: method, argsJSON: "[]")
+            let result = ExtensionNodeShims(authorizeProcesses: { .allowed }).perform(api: "os", method: method, argsJSON: "[]")
             guard let data = result.data(using: .utf8),
                 let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                 envelope["ok"] as? Bool == true

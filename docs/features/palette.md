@@ -31,7 +31,7 @@ The command palette is a borderless floating `NSPanel` hosting SwiftUI; see
 ## Summoning
 
 ```
-⌥Space (Carbon) → HotKeyCenter → HotKeyManager.perform → AppCore's onTogglePalette closure
+⌥Space (Carbon) → HotKeyCenter → HotKeyManager.perform → HotKeyRoutes.togglePalette (AppCore)
                                                               ↓
                                           PaletteCoordinator.togglePalette()
                                                               ↓
@@ -50,7 +50,7 @@ The command palette is a borderless floating `NSPanel` hosting SwiftUI; see
 ```
 
 Everything resolved "once per summon" is resolved there deliberately, not per render. `AppCore` holds
-only the closure wiring; the behaviour is `PaletteCoordinator`'s.
+only the `HotKeyRoutes` wiring; the behaviour is `PaletteCoordinator`'s.
 
 Opening the app summons the launcher too: a Dock click or a second open through `handleReopen`, and a
 cold launch from Finder, Spotlight or a relaunch through `start(launchedByUser:)`. A login-item or URL
@@ -83,6 +83,19 @@ palette indexes into it. Adding a mode means adding a conformer, not a branch in
 A chord aimed at the selected row — ⌃X, ⇧⌘F, ⌘Y and the rest — follows the same rule:
 `PaletteShortcut` recognises the key and carries its compact-bar and open-menu guards, and the screen
 answers through `perform(_:at:)`, so a new chord never adds a cast to the shell.
+
+Which session hears a query edit or a mode change is `PaletteCoordinator`'s to say, not the view's.
+`RootPaletteView`'s `onChange(of: vm.query)` lands the list, then calls `queryDidChange`, which feeds
+the one session `PaletteQueryRoute` names for the mode. `onChange(of: vm.mode)` resets the filters,
+closes any menu, lands and refocuses, then calls `modeDidChange(to:)`, which applies
+`PaletteModeTransition`: start the entered screen's session and end every other one. Both policies
+are Foundation-only and covered by `palette-coordinator-test`.
+
+The launcher's list is the costliest screen to build and the palette resolves `screen` on every
+key press. `LauncherResultsCache`, owned by `LauncherCoordinator`, computes `LauncherResults` once
+under `withObservationTracking` and reuses it until a store it read changes, the minute turns
+(`AppIndex` re-ranks with the clock) or the carded meeting changes. The `Launcher results` and
+`LauncherScreen` signposts measure both halves.
 
 Where a reset leaves the highlight is the screen's to say too. Every reset — an open, a new query, a
 new filter — goes through `RootPaletteView.land()`, which reads `landingSelection`, so handlers that
@@ -225,7 +238,7 @@ these invariants:
 - Returning focus this way leaves the query selected, because AppKit selects the whole string as the
   field editor comes back — here that is the wanted reset rather than the hazard it is under ↵.
 - A field declaring `options=` is **chosen, not typed**: it hands back a `PopoverMenuContent` and the
-  palette opens it as `OpenMenu.argumentOptions`, the same window every other menu uses. There is no
+  palette opens it as `PaletteMenu.argumentOptions`, the same window every other menu uses. There is no
   second dropdown control to keep in step, which is the whole reason the accessory vends a menu rather
   than a view of its own.
 
@@ -495,8 +508,11 @@ The textarea routes undo/redo to its own manager, as the Notes editor does in a 
 
 ## One menu at a time
 
-`RootPaletteView` holds a single `OpenMenu?` rather than a flag per menu, so "at most one is open" is
-structural instead of a pair of `onChange` handlers pushing each other closed. The ⌘K Actions menu
+`PaletteMenuState`, which `PaletteCoordinator` owns as `menus`, holds a single `PaletteMenu?` rather
+than a flag per menu, so "at most one is open" is structural instead of a pair of `onChange` handlers
+pushing each other closed. It is the menu state machine — open, close, move, activate, Escape — and
+compiles without SwiftUI, so `palette-coordinator-test` drives it directly; `RootPaletteView` only
+builds the rows (`menuContent`) and presents them (`syncMenuPanel`). The ⌘K Actions menu
 hangs `.bottomTrailing`, the app menu `.bottomLeading`, and everything drawn as a header control —
 the clipboard type filter, the AI model and effort menus, an `options=` argument field's choices and
 a running command's `searchBarAccessory` dropdown — hangs `.belowHeaderTrailing`, under its own
@@ -512,7 +528,7 @@ the default `menuContent` wraps them; a screen whose rows the palette's menu can
 `menuContent` and hands over its own view instead — `ExtensionCommandScreen` is the only one, for
 both its ⌘K panel and its search-bar dropdown, and the reason the seam exists (see
 [extensions.md](extensions.md)). The view is a closure because `moveMenu` resolves the open menu on
-every arrow key and needs the row count alone. Every open path goes through `open(_:highlighting:)`
+every arrow key and needs the row count alone. Every open path goes through `PaletteMenuState.open(_:highlighting:)`
 and states where the highlight starts: the first row, except the pop-up-shaped menus — the type
 filter, the AI model and effort menus, an extension's search-bar dropdown — which open on the choice
 they already hold.
@@ -561,8 +577,8 @@ light on real pointer movement, never on a scroll under a still cursor.
 Deferred focus-loss dismissal checks the presentation identity and that the menu has not regained key
 status, so an old callback cannot close a reopened menu.
 
-The panel is a second SwiftUI hierarchy, so it observes nothing of `RootPaletteView`'s `@State`:
-`syncMenuPanel` pushes a rebuilt tree on every `openMenu` or `menuSelection` change, and
+The panel is a second SwiftUI hierarchy, so it observes nothing of `RootPaletteView`'s state:
+`syncMenuPanel` pushes a rebuilt tree on every `menus.openMenu` or `menus.selection` change, and
 `paletteEnvironment` injects the same stores into both hierarchies so they cannot drift.
 `WindowReader` reports the palette's `NSWindow`. Corner menus use the visible palette bounds
 inside its transparent margin. Input menus use the control's frame in window coordinates.

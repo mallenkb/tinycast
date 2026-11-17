@@ -202,9 +202,10 @@ final class SnippetKeywordListener: HealthCheckable {
         onUserActivity?()
     }
 
-    func healthCheck() {
+    @discardableResult
+    func healthCheck() -> Bool {
         if secureEventInputEnabled() { policy.reset() }
-        syncTapPresence()
+        return syncTapPresence() && status != .needsAccessibility
     }
 
     private var isRequested: Bool { onMatch != nil }
@@ -246,13 +247,15 @@ final class SnippetKeywordListener: HealthCheckable {
         ]
     }
 
-    private func syncTapPresence() {
+    /// True when the tap already matched what is wanted, so nothing had to change.
+    @discardableResult
+    private func syncTapPresence() -> Bool {
         let decision = lifecycleDecision()
         switch decision.tapAction {
         // Nothing moved, so the decision still describes the tap: don't pay for a second one.
         case .none:
             status = decision.status
-            return
+            return true
         case .install:
             installTapIfNeeded()
         case .reenable:
@@ -262,6 +265,7 @@ final class SnippetKeywordListener: HealthCheckable {
             tapController.tearDown()
         }
         status = lifecycleDecision().status
+        return false
     }
 
     private func installTapIfNeeded() {
@@ -302,6 +306,7 @@ final class SnippetKeywordListener: HealthCheckable {
     fileprivate func tapWasDisabled() {
         policy.reset()
         syncTapPresence()
+        healthTicker?.wake()
     }
 
     private func sessionDidResign() {

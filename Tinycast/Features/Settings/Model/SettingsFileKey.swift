@@ -81,6 +81,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case dictationAdvancedCleanup = "dictation.advancedCleanup"
     case dictationAutoTransform = "dictation.autoTransform"
     case dictationTransformID = "dictation.transformID"
+    case dictationAppOverrides = "dictation.appOverrides"
     case dictationRemovesFillerWords = "dictation.removesFillerWords"
     case dictationMicrophone = "dictation.microphone"
     case dictationAdaptsCapitalization = "dictation.adaptsCapitalization"

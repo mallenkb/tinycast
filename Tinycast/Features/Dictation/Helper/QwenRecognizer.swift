@@ -16,6 +16,10 @@ final class QwenRecognizer {
     private let width: Int
     private let capacity: Int
     private let vocabularySize: Int
+    private let prefix: [Int]
+    private let suffix: [Int]
+    private let languageSuffixes: [String: [Int]]
+    private let promptEmbeddings: [Int: [Float]]
 
     init(directory: URL) throws {
         let json = JSONDecoder()
@@ -29,15 +33,42 @@ final class QwenRecognizer {
         width = configuration.hiddenSize
         capacity = configuration.maxSeqLength
         vocabularySize = configuration.vocabSize
-        tokenizer = try DictationTokenizer(
+        let tokenizer = try DictationTokenizer(
             vocabulary: Data(contentsOf: directory.appendingPathComponent("vocab.json")),
             merges: String(contentsOf: directory.appendingPathComponent("merges.txt"), encoding: .utf8),
             prompts: ["system\n", "user\n", "assistant\n"]
                 + DictationLanguage.allCases.map { "language " + $0.rawValue })
+        self.tokenizer = tokenizer
         mel = try DictationMel()
         encoder = try DictationTensor.load("encoder", at: directory)
-        embedding = try DictationTensor.load("embedding", at: directory, units: .cpuOnly)
+        let embedding = try DictationTensor.load("embedding", at: directory, units: .cpuOnly)
+        self.embedding = embedding
         decoder = try DictationTensor.load("decoder", at: directory, units: .cpuAndGPU)
+        let prefix =
+            [151644] + (try tokenizer.tokens(for: "system\n"))
+            + [151645, 198, 151644] + (try tokenizer.tokens(for: "user\n")) + [151669]
+        let suffix = [151670, 151645, 198, 151644] + (try tokenizer.tokens(for: "assistant\n"))
+        self.prefix = prefix
+        self.suffix = suffix
+        var languageSuffixes = [String: [Int]]()
+        for language in DictationLanguage.allCases {
+            languageSuffixes[language.rawValue] =
+                try tokenizer.tokens(for: "language " + language.rawValue) + [151704]
+        }
+        self.languageSuffixes = languageSuffixes
+        var promptEmbeddings = [Int: [Float]]()
+        for id in prefix + suffix + languageSuffixes.values.joined() where promptEmbeddings[id] == nil {
+            promptEmbeddings[id] = try Self.embed(id, with: embedding, width: configuration.hiddenSize)
+        }
+        self.promptEmbeddings = promptEmbeddings
+    }
+
+    private static func embed(_ id: Int, with embedding: MLModel, width: Int) throws -> [Float] {
+        let output = try DictationTensor.predict(
+            embedding, ["token_id": DictationTensor.integer(id, shape: [1, 1])])
+        let values = try DictationTensor.array("embedding", from: output)
+        guard values.count == width else { throw DictationInferenceError.incompatibleModel }
+        return MLShapedArray<Float>(converting: values).scalars
     }
 
     func transcribe(_ samples: [Float], language: String?) throws -> String {
@@ -78,23 +109,17 @@ final class QwenRecognizer {
             return try DictationTensor.array("logits", from: result)
         }
         func token(_ id: Int) throws -> MLMultiArray {
-            let output = try DictationTensor.predict(
-                embedding,
-                ["token_id": DictationTensor.integer(id, shape: [1, 1])])
-            let values = try DictationTensor.array("embedding", from: output)
-            guard values.count == width else { throw DictationInferenceError.incompatibleModel }
-            MLShapedArray<Float>(converting: values).withUnsafeShapedBufferPointer { source, _, _ in
-                vector.withUnsafeMutableBufferPointer(ofType: Float.self) { target, _ in
-                    _ = target.update(from: source)
-                }
+            let values = try promptEmbeddings[id] ?? Self.embed(id, with: embedding, width: width)
+            vector.withUnsafeMutableBufferPointer(ofType: Float.self) { target, _ in
+                _ = target.update(from: values)
             }
             return try step(vector)
         }
-        let prefix =
-            [151644] + (try tokenizer.tokens(for: "system\n"))
-            + [151645, 198, 151644] + (try tokenizer.tokens(for: "user\n")) + [151669]
-        var suffix = [151670, 151645, 198, 151644] + (try tokenizer.tokens(for: "assistant\n"))
-        if let language { suffix += try tokenizer.tokens(for: "language " + language) + [151704] }
+        var suffix = self.suffix
+        if let language {
+            suffix += try languageSuffixes[language]
+                ?? (tokenizer.tokens(for: "language " + language) + [151704])
+        }
         guard prefix.count + count + suffix.count < capacity - 32 else {
             throw DictationInferenceError.outputLimit
         }

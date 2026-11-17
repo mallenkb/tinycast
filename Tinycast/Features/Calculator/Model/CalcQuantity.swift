@@ -2,7 +2,7 @@ import Foundation
 
 enum CalcQuantity {
     static func evaluate(
-        _ tokens: [CalcToken], query: String, rates: CurrencyRates?, region: String? = nil,
+        _ tokens: [CalcToken], query: String, rates: @autoclosure @escaping () -> CurrencyRates?, region: String? = nil,
         preserveStandaloneUnit: Bool = false
     ) -> CalcResult? {
         if tokens.count == 1, case .intLiteral = tokens[0] { return nil }
@@ -38,7 +38,7 @@ enum CalcQuantity {
         }
 
         if parser.usedCurrency && !parser.usedCurrencyRate {
-            guard let rates else {
+            guard let rates = rates() else {
                 return CalcResult(
                     expression: query,
                     payload: .error(
@@ -99,7 +99,7 @@ enum CalcQuantity {
             let expression = "\(definition.code) \(CalcFormatter.display(value.amount))"
             // A bare amount names no target, so the Mac's own currency becomes one once it's typed.
             guard !preserveStandaloneUnit, let target = regionTarget(region, from: definition),
-                let output = rates?.convert(value.amount, from: definition.code, to: target.code)
+                let output = rates()?.convert(value.amount, from: definition.code, to: target.code)
             else {
                 return currencyResult(value.amount, definition: definition, expression: expression)
             }

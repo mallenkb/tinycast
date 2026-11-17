@@ -183,12 +183,13 @@ struct ExtensionStorePanel: View {
         installing[listing.id] = .downloading
         Task {
             do {
-                try await core.extensions.install(
+                try await core.extensions.library.install(
                     listing,
                     onProgress: { progress in
                         Task { @MainActor in installing[listing.id] = progress }
                     })
                 installed.insert(listing.name)
+            } catch is CancellationError {
             } catch {
                 failures[listing.id] = error.localizedDescription
             }

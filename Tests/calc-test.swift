@@ -7,6 +7,19 @@ struct CalcTests {
     static var passes = 0
 
     static func main() {
+        var rateReads = 0
+        func readRates() -> CurrencyRates? {
+            rateReads += 1
+            return nil
+        }
+        let now = Date()
+        for query in ["", "Safari", "2+2", "10 pounds to kg"] {
+            _ = CalcEngine.evaluate(query, now: now, calendar: .current, rates: readRates())
+        }
+        precondition(rateReads == 0, "Launcher searches and noncurrency calculations never request rates")
+        _ = CalcEngine.evaluate("10 usd to eur", now: now, calendar: .current, rates: readRates())
+        precondition(rateReads > 0, "Currency conversions request rates even when the cache is empty")
+
         expectDisplay("2+2", "4")
         expectDisplay("5*7", "35")
         expectDisplay("100/4", "25")

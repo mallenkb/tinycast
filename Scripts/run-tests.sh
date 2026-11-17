@@ -82,7 +82,14 @@ run() {
     while :; do
         case "$1" in
             slow)  pri=0; shift;;
-            exclusive) queue="$EXCLUSIVE_QUEUE"; shift;;
+            exclusive)
+                # A hosted runner has no desktop to hand focus to.
+                [ -n "${TINYCAST_HOSTED_RUNNER:-}" ] && return 0
+                queue="$EXCLUSIVE_QUEUE"; shift;;
+            device)
+                # Vision text recognition throws on a hosted runner's virtual machine.
+                [ -n "${TINYCAST_HOSTED_RUNNER:-}" ] && return 0
+                shift;;
             -O)    opt=-O; shift;;
             index) index_only=1; shift;;
             *)     break;;
@@ -120,17 +127,23 @@ run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift 
                            $L/LauncherMatch.swift $L/EntryNaming.swift $L/LauncherOrder.swift \
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift
 FS=Tinycast/Features/FileSearch
+CB=Tinycast/Features/Clipboard
+CLIPBOARD_DATABASE="$CB/Service/ClipboardStore.swift $CB/Service/ClipboardDatabase.swift"
+CLIPBOARD_DATABASE="$CLIPBOARD_DATABASE $CB/Service/ClipboardDatabase+Search.swift"
+CLIPBOARD_STORE="$CB/Model/ClipboardItem.swift $CB/Model/ClipboardRetention.swift $CB/Model/ClipboardDefaultAction.swift"
+CLIPBOARD_STORE="$CLIPBOARD_STORE $CLIPBOARD_DATABASE"
 SEARCH_DESCRIPTION="Tinycast/Features/SearchDescription.swift Tinycast/Features/SearchDatePhrase.swift Tinycast/Features/SearchFileConstraints.swift Tinycast/Features/SearchCalendarDate.swift Tinycast/Features/SearchFileQuery.swift"
 SEARCH_INTENT=Tinycast/Features/IntelligentSearch/Model
 IMAGE_CONTENT=Tinycast/Features/ImageSearch/Model/ImageContent.swift
 IMAGE_STORE=Tinycast/Features/ImageSearch/Service/ImageContentStore.swift
-FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileSearchMetadata.swift $FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+FILE_INDEX="$IMAGE_CONTENT $IMAGE_STORE $FS/Service/FileSearchMetadata.swift $FS/Service/FileIndex.swift"
+FILE_INDEX="$FILE_INDEX $FS/Service/FileIndexLiveChanges.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
 run file-filters-test $FS/Model/*.swift $FILE_INDEX $SEARCH_DESCRIPTION
 run spotlight-content-test Tinycast/Platform/ProcessExit.swift $FS/Service/SpotlightContentSearch.swift \
                            $FS/Service/SpotlightContentRequest.swift $FS/Helper/SpotlightContentQuery.swift \
                            $FS/Helper/SpotlightContentHandler.swift Tinycast/Features/SearchFileConstraints.swift
 run description-search-test $FS/Model/*.swift $FILE_INDEX $FS/Service/FileSearchSession.swift \
-                           $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift Tinycast/Features/Clipboard/Model/*.swift \
+                           $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift $CB/Model/*.swift $CLIPBOARD_DATABASE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
 run index search-intent-live-test $SEARCH_DESCRIPTION $SEARCH_INTENT/*.swift \
@@ -201,7 +214,7 @@ run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift \
                            Tinycast/Features/Calendar/UI/EventEditorSession.swift
-run clipboard-test         $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+run clipboard-test         $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -209,7 +222,7 @@ run clipboard-test         $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/Clip
                            Tinycast/Features/Clipboard/Model/ColorFormat.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift
 run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinator.swift \
-                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift \
+                           $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Palette/PaletteState.swift Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/HoverArming.swift \
@@ -220,7 +233,7 @@ run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinat
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run file-preview-thumbnail-test Tinycast/Platform/Images/FilePreviewThumbnail.swift \
                            Tinycast/Platform/Images/ThumbnailCache.swift
-run clipboard-thumbnail-test $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+run clipboard-thumbnail-test $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -232,16 +245,16 @@ run clipboard-thumbnail-test $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/Cl
                            Tinycast/Platform/Images/ThumbnailCache.swift
 # `Q` is the URL detector a drag payload builds its link with, rather than a second one.
 Q=Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
-run clipboard-search-test  $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q
-run paste-sequence-test    $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q
-run clipboard-text-test    $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/*.swift Tinycast/Platform/Images/ImageDerivative.swift $Q \
+run clipboard-search-test  $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q
+run paste-sequence-test    $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q
+run device clipboard-text-test $IMAGE_CONTENT $CB/Model/*.swift $CLIPBOARD_DATABASE Tinycast/Platform/Images/ImageDerivative.swift $Q \
                            Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardTextIndexer.swift \
                            Tinycast/Features/ImageSearch/Service/ImageContentWorker.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardTextWorker.swift \
                            Tinycast/Platform/ProcessExit.swift
 run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
-                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -252,7 +265,7 @@ run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Features/Clipboard/Service/Paster.swift
 run index clipboard-file-performance \
                            Tinycast/Platform/PasteboardFiles.swift \
-                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -346,7 +359,24 @@ run palette-navigation-test Tinycast/Palette/PaletteState.swift \
                            Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/HoverArming.swift \
                            Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
-                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT $CLIPBOARD_STORE \
+                           Tinycast/Platform/Images/ImageDerivative.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ColorValue.swift \
+                           Tinycast/Features/Clipboard/Model/ColorFormat.swift \
+                           Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
+                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run palette-coordinator-test Tinycast/Palette/PaletteState.swift \
+                           Tinycast/Palette/PaletteRouting.swift Tinycast/Palette/PaletteMenuState.swift \
+                           Tinycast/Palette/PalettePlacement.swift \
+                           Tinycast/Palette/PaletteMode.swift \
+                           Tinycast/Palette/HoverArming.swift \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
+                           $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -424,28 +454,43 @@ run dictionary-pronunciation-session-test Tinycast/Features/Dictionary/Model/Dic
                            Tinycast/Platform/LocalizedResource.swift Tinycast/Platform/NotificationToken.swift
 run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.swift \
                            Tinycast/Features/Dictionary/Model/DictionaryMarkup.swift
-run dictation-test         Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationCorrection.swift Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift
+run dictation-test         Tinycast/Features/Dictation/Model/DictationAppOverride.swift Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationCorrection.swift Tinycast/Features/Dictation/Model/DictationCorrectionPolicy.swift Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift
+run dictation-correction-test Tinycast/Features/Dictation/Model/DictationCorrection.swift \
+                           Tinycast/Features/Dictation/Model/DictationCorrectionPolicy.swift \
+                           Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift \
+                           Tinycast/Features/Dictation/Model/DictationInsertionAnchor.swift \
+                           Tinycast/Features/Dictation/Service/DictationCorrectionStore.swift \
+                           Tinycast/Features/Dictation/Service/DictationSpellingLexicon.swift \
+                           Tinycast/Platform/AppPaths.swift
 run -O dictation-advanced-test Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift
 run dictation-cleanup-test Tinycast/Features/Dictation/Model/DictationCleanupChunks.swift
 run dictation-cue-test     Tinycast/Features/Dictation/Service/DictationCueRunner.swift
-run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swift \
+run dictation-field-test   Tinycast/Features/Dictation/Model/DictationAppOverride.swift \
+                           Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Model/DictationCorrection.swift \
+                           Tinycast/Features/Dictation/Model/DictationCorrectionPolicy.swift \
                            Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift \
                            Tinycast/Features/Dictation/Model/DictationIndicatorStyle.swift \
+                           Tinycast/Features/Dictation/Model/DictationInsertionAnchor.swift \
                            Tinycast/Features/Dictation/Model/DictationLanguage.swift \
                            Tinycast/Features/Dictation/Model/DictationMode.swift \
                            Tinycast/Features/Dictation/Model/DictationPreviewSequence.swift \
+                           Tinycast/Features/Dictation/Model/DictationPausePolicy.swift \
+                           Tinycast/Features/Dictation/Model/DictationPreviewPacing.swift \
+                           Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
                            Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
                            Tinycast/Features/Dictation/Service/AppleDictationSession.swift \
                            Tinycast/Features/Dictation/Service/DictationCoordinator.swift \
                            Tinycast/Features/Dictation/Service/DictationCorrectionStore.swift \
                            Tinycast/Features/Dictation/Service/DictationInsertionContext.swift \
                            Tinycast/Features/Dictation/Service/DictationLocalCleanup.swift \
+                           Tinycast/Features/Dictation/Service/DictationSpellingLexicon.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \
                            Tinycast/Features/AI/UI/ChatComposerTextView.swift \
                            Tinycast/Features/TextInjection/Service/*.swift \
                            Tinycast/Features/Snippets/Model/*.swift \
                            Tinycast/Platform/AccessibilityText.swift Tinycast/Platform/AppPaths.swift \
+                           Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift
 run index -O dictation-performance Tinycast/Platform/ProcessExit.swift \
@@ -454,14 +499,19 @@ run index -O dictation-performance Tinycast/Platform/ProcessExit.swift \
 run dictation-inference-test Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
     Tinycast/Features/Dictation/Service/DictationSpectrum.swift \
     Tinycast/Features/Dictation/Helper/DictationTensor.swift Tinycast/Features/Dictation/Helper/DictationTokenizer.swift \
-    Tinycast/Features/Dictation/Helper/DictationMel.swift
+    Tinycast/Features/Dictation/Helper/DictationMel.swift \
+    Tinycast/Features/Dictation/Model/DictationPausePolicy.swift \
+    Tinycast/Features/Dictation/Model/DictationPreviewPacing.swift \
+    Tinycast/Features/Dictation/Helper/CoherePipeline.swift \
+    Tinycast/Features/Dictation/Helper/CohereAsrConfig.swift
 run dictation-worker-test  Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Model/DictationIdleRelease.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \
                            Tinycast/Features/Dictation/Service/DictationWorker.swift \
                            Tinycast/Features/Dictation/Service/DictationModelStore.swift \
                            Tinycast/Features/Dictation/Service/DictationModelDownloader.swift \
-                           Tinycast/Platform/ProcessExit.swift Tinycast/Platform/AppPaths.swift
+                           Tinycast/Platform/ProcessExit.swift Tinycast/Platform/AppPaths.swift \
+                           Tinycast/Platform/Signposts.swift
 run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKey.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKeyDetector.swift \
@@ -510,6 +560,7 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/Features/Extensions/Service/ExtensionFetcher.swift \
                            Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/Extensions/Service/ExtensionNodeShims.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionProcessAccess.swift \
                            Tinycast/Features/Extensions/Service/ExtensionRuntime.swift \
                            Tinycast/Features/Extensions/Service/ExtensionIconCache.swift \
                            Tinycast/Features/Extensions/UI/ExtensionAnimatedImage.swift \
@@ -732,7 +783,7 @@ run slow -O raycast-test   Tinycast/Features/Backup/Model/RaycastImportError.swi
                            Tinycast/Features/Backup/Service/Scrypt.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
                            Tinycast/Features/Clipboard/Model/RaycastClipboardImport.swift \
-                           $IMAGE_CONTENT Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           $IMAGE_CONTENT $CLIPBOARD_STORE \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
@@ -741,6 +792,22 @@ run slow -O raycast-test   Tinycast/Features/Backup/Model/RaycastImportError.swi
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift
 run settings-backup-test   Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift
+run settings-backup-roundtrip-test Tinycast/Features/Backup/Model/SettingsBackup.swift \
+                           Tinycast/Features/Backup/Service/SettingsDataMapping.swift \
+                           Tinycast/Features/Settings/AppAppearance.swift \
+                           Tinycast/Features/Settings/AppLanguage.swift \
+                           Tinycast/Features/Settings/AppTypography.swift \
+                           Tinycast/Features/Settings/EscapeKeyBehavior.swift \
+                           Tinycast/Features/Settings/PopToRootTimeout.swift \
+                           Tinycast/Features/Calendar/Model/JoinWindow.swift \
+                           Tinycast/Features/Calendar/Model/MenuBarEvents.swift \
+                           Tinycast/Features/Calendar/Model/CalendarMenuBarDisplay.swift \
+                           Tinycast/Features/Calendar/Model/CalendarLauncherLimit.swift \
+                           Tinycast/Features/Calendar/Model/HideCurrentEvent.swift \
+                           Tinycast/Features/Calendar/Model/MeetingSpan.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
+                           Tinycast/Features/Launcher/Model/SearchScopes.swift \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift
 run hyper-key-engine-test  Tinycast/Features/HotKeys/Model/HyperKeyEngine.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
                            Tinycast/Features/HotKeys/Model/HIDKeyMapping.swift \
@@ -771,10 +838,12 @@ run hotkey-dispatch-test   Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
                            Tinycast/Features/HotKeys/Service/HotKeyManager.swift \
+                           Tinycast/Features/HotKeys/Service/HotKeyRoutes.swift \
                            Tinycast/Platform/ASCIIKeyboardLayout.swift \
                            Tests/hotkey-dispatch-fixtures.swift
 run extension-output-tail-test Tinycast/Features/Extensions/Service/ExtensionOutputTail.swift
 
+run settings-preference-test Tinycast/Features/Settings/Model/Preference.swift
 run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
                            Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
                            Tinycast/Features/Settings/Service/SettingsFileRepository.swift \
@@ -821,6 +890,30 @@ run ext-accessory-test     $E/Model/RenderNode.swift \
                            $E/Model/ExtensionPickerItem.swift \
                            $E/Model/ExtensionSearchAccessory.swift \
                            $E/Service/ExtensionStorage.swift
+run ext-host-bridge-test   -parse-as-library \
+                           $E/Service/ExtensionHostBridge.swift \
+                           $E/Service/ExtensionCapabilityScanner.swift \
+                           $E/Service/ExtensionProcessGrantStore.swift \
+                           $E/Model/ExtensionCapability.swift \
+                           $E/Model/ExtensionProcessAccess.swift \
+                           $E/Service/ExtensionStorage.swift \
+                           $E/Service/ExtensionSignInSession.swift \
+                           $E/Service/ExtensionFetcher.swift \
+                           Tinycast/Platform/ProcessExit.swift \
+                           $E/Service/ExtensionNodeShims.swift \
+                           $E/Service/ExtensionRuntime.swift \
+                           $E/Service/ExtensionNameResolver.swift \
+                           $E/Service/ExtensionWebSocketBridge.swift \
+                           $E/Model/ExtensionBootConfig.swift \
+                           $E/Model/ExtensionDeepLink.swift \
+                           $E/Model/ExtensionLaunchType.swift \
+                           $E/Model/ExtensionManifest.swift \
+                           $E/Model/RenderNode.swift \
+                           $E/Model/ExtensionRefreshPolicy.swift \
+                           $E/Model/ExtensionRefreshState.swift \
+                           $E/Service/ExtensionCatalog.swift \
+                           Tinycast/Platform/Compression/Zlib.swift \
+                           Tinycast/Platform/AppDisplayName.swift
 run slow ext-test          -parse-as-library \
                            Tests/ext-menu-bar-test.swift \
                            Tests/ext-fetch-test.swift \
@@ -855,6 +948,7 @@ run slow ext-test          -parse-as-library \
                            Tinycast/Platform/ProcessExit.swift \
                            $E/Service/ExtensionIconCache.swift \
                            $E/Service/ExtensionNodeShims.swift \
+                           $E/Model/ExtensionProcessAccess.swift \
                            $E/Service/ExtensionRuntime.swift \
                            $E/Service/ExtensionNameResolver.swift \
                            $E/Service/ExtensionWebSocketBridge.swift \

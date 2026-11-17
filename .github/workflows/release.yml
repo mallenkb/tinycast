@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write
+      checks: read
     env:
       VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
@@ -32,6 +33,19 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Require a passing Build for this commit
+        run: |
+          set -euo pipefail
+          CONCLUSION="$(gh api "repos/$GH_REPO/commits/$GITHUB_SHA/check-runs?check_name=validate" \
+            --jq '[.check_runs[] | select(.app.slug == "github-actions") | .conclusion] | first // "missing"')"
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::Build has not passed for $GITHUB_SHA (result: $CONCLUSION). Push without [skip ci] and wait for it."
+            exit 1
+          fi
+          if git log -1 --format=%B "$GITHUB_SHA" | grep -qi '\[skip ci\]'; then
+            echo "::error::The release commit carries [skip ci]."
+            exit 1
+          fi
       - name: Validate release prerequisites
         env:
           P12_BASE64: ${{ secrets.SIGNING_P12_BASE64 }}
@@ -60,12 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           ./Scripts/lint.sh
-          for harness in dictionary-test pronunciation-respelling-test dictionary-pronunciation-display-test \
-            dictionary-pronunciation-provider-test dictionary-recording-session-test dictionary-speech-voice-test \
-            dictionary-speech-session-test dictionary-pronunciation-session-test \
-            icon-cache-test settings-file-test settings-backup-test; do
-            ./Scripts/run-tests.sh "$harness"
-          done
+          TINYCAST_HOSTED_RUNNER=1 ./Scripts/run-tests.sh
       - name: Import existing signing identity
         env:
           P12_BASE64: ${{ secrets.SIGNING_P12_BASE64 }}

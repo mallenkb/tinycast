@@ -62,6 +62,8 @@ typealias MenuPanelClipPath =
     }
 }
 
+extension PaletteMenuContent: PaletteMenuRows {}
+
 private extension MenuPanelCorner {
     var popoverAttachment: PopoverMenu.Attachment {
         switch self {

@@ -110,7 +110,6 @@ struct LanguageTests {
             ("apple-shortcuts-empty", "Nothing here yet.", ["fr": "Aucun raccourci à afficher."]),
             ("snippets-use-default-folder", "Use Default", ["fr": "Utiliser le dossier par défaut"]),
             ("notes-use-default-folder", "Use Default", ["fr": "Utiliser le dossier par défaut"]),
-            ("dictation-model-installed", "Installed", ["fr": "Installé"]),
             ("dictation-language-auto", "Auto", ["fr": "Détection automatique"]),
             ("ai-installed-tools", "Installed", ["fr": "Outils installés"]),
             ("extensions-installed-section", "Installed", ["fr": "Extensions installées"]),

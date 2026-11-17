@@ -168,9 +168,10 @@ final class HyperKeyManager: HealthCheckable {
         settings.hyperKey.supportsSecureInputCompatibility && settings.hyperKeySecureInputCompatibility
     }
 
-    /// One-second retry while waiting, never while active. See docs/features/hotkeys.md#lifecycle.
-    func healthCheck() {
+    /// Retries while waiting, never while active. See docs/features/hotkeys.md#lifecycle.
+    func healthCheck() -> Bool {
         apply()
+        return status == .active
     }
 
     /// macOS drops a tap whose grant is revoked, so rebuilding also re-checks the grant.

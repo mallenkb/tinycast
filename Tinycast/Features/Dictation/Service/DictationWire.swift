@@ -13,8 +13,14 @@ nonisolated enum DictationWire {
     }
 
     static let sampleRate = 16_000
-    static let maximumSamples = sampleRate * 60 * 5
+    static let maximumSamples = sampleRate * 60 * 10
     static let maximumMessageBytes = 64_000
+
+    /// Whole seconds left before the length limit, once a recording reaches its final minute.
+    static func remainingSeconds(afterCapturing count: Int) -> Int? {
+        let remaining = (maximumSamples - min(max(count, 0), maximumSamples) + sampleRate - 1) / sampleRate
+        return (1...60).contains(remaining) ? remaining : nil
+    }
 
     struct Request: Codable, Sendable {
         let id: UUID
@@ -50,14 +56,19 @@ nonisolated enum DictationWire {
     }
 
     static func readExactly(_ count: Int, from handle: FileHandle) throws -> Data {
-        var data = Data()
-        data.reserveCapacity(count)
-        while data.count < count {
-            guard let bytes = try handle.read(upToCount: count - data.count), !bytes.isEmpty else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            data.append(bytes)
-        }
+        var data = Data(count: count)
+        try data.withUnsafeMutableBytes { try readExactly(into: $0, from: handle) }
         return data
+    }
+
+    static func readExactly(into buffer: UnsafeMutableRawBufferPointer, from handle: FileHandle) throws {
+        guard let base = buffer.baseAddress else { return }
+        var offset = 0
+        while offset < buffer.count {
+            let count = Darwin.read(handle.fileDescriptor, base + offset, buffer.count - offset)
+            if count < 0, errno == EINTR { continue }
+            guard count > 0 else { throw CocoaError(.fileReadCorruptFile) }
+            offset += count
+        }
     }
 }

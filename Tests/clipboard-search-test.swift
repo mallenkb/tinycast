@@ -30,7 +30,7 @@ struct ClipboardSearchTests {
             if kind != .text, index % 7 != 0 { metadata[item.id] = "Common invoice" + suffix }
             return item
         }
-        precondition(ClipboardStore.importStoredItems(inDatabaseAt: store.dbURL, entries) == entries.count)
+        precondition(ClipboardDatabase.importStoredItems(inDatabaseAt: store.dbURL, entries) == entries.count)
         store.load()
         try await compare(store, phase: "disabled by default")
         precondition(store.setTextSearchEnabled(true))
@@ -99,7 +99,7 @@ struct ClipboardSearchTests {
 
     static func compare(_ store: ClipboardStore, phase: String) async throws {
         var stored: [ClipboardItem] = []
-        ClipboardStore.forEachStoredItem(inDatabaseAt: store.dbURL) { stored.append($0) }
+        ClipboardDatabase.forEachStoredItem(inDatabaseAt: store.dbURL) { stored.append($0) }
         let all = Array(stored.reversed())
         let pins = store.items.filter(\.isPinned).sorted { $0.pinnedAt! < $1.pinnedAt! }
         for query in queries {

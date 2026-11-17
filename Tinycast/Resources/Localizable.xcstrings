@@ -1,9 +1,7 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-
-    },
+    "" : {},
     "%@ %@ is available" : {
       "localizations" : {
         "de" : {
@@ -21515,6 +21513,58 @@
         }
       }
     },
+    "Allow Once" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal erlauben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir una vez"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser une fois"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1回だけ許可"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번 허용"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir uma vez"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить один раз"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许一次"
+          }
+        }
+      }
+    },
     "Allow This Chat" : {
       "localizations" : {
         "de" : {
@@ -21979,6 +22029,110 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请在“隐私与安全性”▸“日历”中允许。"
+          }
+        }
+      }
+    },
+    "Allow only extensions you trust." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erlaube nur Erweiterungen, denen du vertraust."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite solo extensiones de confianza."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "N’autorisez que les extensions de confiance."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信頼できる拡張機能だけを許可してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "신뢰하는 확장 프로그램만 허용하세요."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permita apenas extensões em que você confia."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешайте только расширения, которым доверяете."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只允许你信任的扩展。"
+          }
+        }
+      }
+    },
+    "Allow running programs" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Programme ausführen erlauben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir ejecutar programas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser l’exécution de programmes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プログラムの実行を許可"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로그램 실행 허용"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir executar programas"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить запуск программ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许运行程序"
           }
         }
       }
@@ -23176,6 +23330,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "应用设置"
+          }
+        }
+      }
+    },
+    "App overrides" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App-Ausnahmen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes por app"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages par app"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリごとの設定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱별 설정"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes por app"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки для приложений"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按应用设置"
           }
         }
       }
@@ -30929,6 +31135,58 @@
         }
       }
     },
+    "Can stop other processes." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kann andere Prozesse beenden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puede detener otros procesos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peut arrêter d’autres processus."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのプロセスを停止できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 프로세스를 중지할 수 있습니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pode parar outros processos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Может останавливать другие процессы."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可以停止其他进程。"
+          }
+        }
+      }
+    },
     "Can't attach .%@ files — only images, PDFs and text." : {
       "localizations" : {
         "de" : {
@@ -30977,6 +31235,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法附加 .%@ 文件，仅支持图像、PDF 和文本。"
+          }
+        }
+      }
+    },
+    "Can't undo the last dictation here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das letzte Diktat kann hier nicht widerrufen werden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se puede deshacer el último dictado aquí"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’annuler la dernière dictée ici"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ここでは最後の音声入力を取り消せません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여기에서는 마지막 받아쓰기를 실행 취소할 수 없습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não é possível desfazer o último ditado aqui"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь нельзя отменить последнюю диктовку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法在此处撤销上次听写"
           }
         }
       }
@@ -31620,6 +31930,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法将货币与 %@ 相减。"
+          }
+        }
+      }
+    },
+    "Capabilities" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fähigkeiten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capacidades"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capacités"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "機能"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기능"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recursos"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Возможности"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "能力"
           }
         }
       }
@@ -35265,6 +35627,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要清理 %@ 吗？"
+          }
+        }
+      }
+    },
+    "Cleanup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereinigung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpieza"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettoyage"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整形"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정리"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpeza"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обработка"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理"
           }
         }
       }
@@ -40801,6 +41215,58 @@
         }
       }
     },
+    "Copied dictation because you switched apps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diktat kopiert, weil du die App gewechselt hast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictado copiado porque cambiaste de app"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictée copiée, car vous avez changé d’app"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリが切り替わったため、音声入力をコピーしました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱이 전환되어 받아쓰기를 복사했습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ditado copiado porque você trocou de app"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Диктовка скопирована, так как вы переключили приложение"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于你切换了应用，听写内容已拷贝"
+          }
+        }
+      }
+    },
     "Copied file" : {
       "localizations" : {
         "de" : {
@@ -43202,54 +43668,54 @@
         }
       }
     },
-    "Couldn't paste dictation into this app" : {
+    "Couldn't paste here, so the dictation was copied" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Diktat konnte nicht in diese App eingesetzt werden"
+            "value" : "Einsetzen war hier nicht möglich, daher wurde das Diktat kopiert"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo pegar el dictado en esta app"
+            "value" : "No se pudo pegar aquí, así que se copió el dictado"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de coller la dictée dans cette app"
+            "value" : "Impossible de coller ici, la dictée a donc été copiée"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声入力をこのAppにペーストできませんでした"
+            "value" : "ここにはペーストできないため、音声入力をコピーしました"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 앱에 받아쓰기 내용을 붙여넣을 수 없음"
+            "value" : "여기에 붙여넣을 수 없어 받아쓰기를 복사했습니다"
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível colar o ditado neste app"
+            "value" : "Não foi possível colar aqui, então o ditado foi copiado"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не удалось вставить диктовку в это приложение"
+            "value" : "Здесь нельзя вставить текст, поэтому диктовка скопирована"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法将听写内容粘贴到此 App"
+            "value" : "无法在此处粘贴，因此已拷贝听写内容"
           }
         }
       }
@@ -49568,6 +50034,58 @@
         }
       }
     },
+    "Download %@ in Dictation settings to run transforms." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade %@ in den Diktiereinstellungen herunter, um Transformationen auszuführen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descarga %@ en los ajustes de Dictado para ejecutar transformaciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargez %@ dans les réglages de Dictée pour exécuter des transformations."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換を実行するには、音声入力の設定で%@をダウンロードしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환을 실행하려면 받아쓰기 설정에서 %@을(를) 다운로드하세요."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baixe %@ nos ajustes de Ditado para executar transformações."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузите %@ в настройках диктовки, чтобы выполнять преобразования."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在听写设置中下载 %@ 以运行转换。"
+          }
+        }
+      }
+    },
     "Download %@ to use this engine." : {
       "localizations" : {
         "de" : {
@@ -51656,54 +52174,54 @@
         }
       }
     },
-    "Emberon-2 handles Smart cleanup. After dictation uses S1-mini." : {
+    "Emberon-2 handles Smart cleanup. With After dictation, S1-mini does both in one pass." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 übernimmt die intelligente Bereinigung. Nach dem Diktat wird S1-mini verwendet."
+            "value" : "Emberon-2 übernimmt die intelligente Bereinigung. Mit „Nach dem Diktieren“ erledigt S1-mini beides in einem Durchgang."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 se encarga de la limpieza inteligente. Después del dictado se usa S1-mini."
+            "value" : "Emberon-2 se encarga de la limpieza inteligente. Con Después del dictado, S1-mini hace ambas cosas en una sola pasada."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 assure le nettoyage intelligent. Après la dictée, S1-mini prend le relais."
+            "value" : "Emberon-2 assure le nettoyage intelligent. Avec Après la dictée, S1-mini fait les deux en une seule passe."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スマートクリーンアップには Emberon-2 を使用します。音声入力後の処理には S1-mini を使用します。"
+            "value" : "スマート整形には Emberon-2 を使用します。「音声入力後」がオンのときは、S1-mini が両方を一度に処理します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "스마트 정리에는 Emberon-2를 사용합니다. 받아쓰기 후 처리에는 S1-mini를 사용합니다."
+            "value" : "스마트 정리에는 Emberon-2를 사용합니다. 받아쓰기 후가 켜져 있으면 S1-mini가 두 작업을 한 번에 처리합니다."
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Emberon-2 faz a limpeza inteligente. Depois do ditado, é usado o S1-mini."
+            "value" : "O Emberon-2 faz a limpeza inteligente. Com Após o ditado, o S1-mini faz as duas coisas de uma só vez."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 выполняет умную очистку. После диктовки используется S1-mini."
+            "value" : "Emberon-2 выполняет умную очистку. С параметром «После диктовки» S1-mini делает и то и другое за один проход."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emberon-2 负责智能清理。听写后处理使用 S1-mini。"
+            "value" : "Emberon-2 负责智能整理。开启“听写后”时，S1-mini 一次完成两项处理。"
           }
         }
       }
@@ -68463,6 +68981,58 @@
         }
       }
     },
+    "Install “%@”?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“ installieren?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Instalar «%@»?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer « %@ » ?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」をインストールしますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”을(를) 설치할까요?"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalar “%@”?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить «%@»?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装“%@”吗？"
+          }
+        }
+      }
+    },
     "Installed" : {
       "localizations" : {
         "de" : {
@@ -69188,6 +69758,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切换完成前它已关闭。请重新搜索并重试。"
+          }
+        }
+      }
+    },
+    "It wants to run commands on this Mac with your permissions." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es möchte mit deinen Berechtigungen Befehle auf diesem Mac ausführen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quiere ejecutar comandos en este Mac con tus permisos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elle veut exécuter des commandes sur ce Mac avec vos autorisations."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたの権限でこのMac上のコマンドを実行しようとしています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용자의 권한으로 이 Mac에서 명령을 실행하려고 합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ela quer executar comandos neste Mac com as suas permissões."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оно хочет выполнять команды на этом Mac с вашими правами."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它想以你的权限在这台 Mac 上运行命令。"
           }
         }
       }
@@ -72115,53 +72737,157 @@
       }
     },
     "Learn spelling corrections while the dictation field is focused." : {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rechtschreibkorrekturen lernen, solange das Diktatfeld aktiv ist."
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtschreibkorrekturen lernen, solange das Diktatfeld aktiv ist."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aprender correcciones ortográficas mientras el campo de dictado está activo."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprender correcciones ortográficas mientras el campo de dictado está activo."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apprendre les corrections orthographiques tant que le champ de dictée est actif."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apprendre les corrections orthographiques tant que le champ de dictée est actif."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "音声入力欄にフォーカスがある間、つづりの修正を学習します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声入力欄にフォーカスがある間、つづりの修正を学習します。"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "받아쓰기 입력란에 포커스가 있는 동안 철자 수정을 학습합니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "받아쓰기 입력란에 포커스가 있는 동안 철자 수정을 학습합니다."
           }
         },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aprender correções ortográficas enquanto o campo de ditado estiver ativo."
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprender correções ortográficas enquanto o campo de ditado estiver ativo."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запоминать исправления, пока поле диктовки активно."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запоминать исправления, пока поле диктовки активно."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "听写输入框处于焦点时学习拼写更正。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "听写输入框处于焦点时学习拼写更正。"
+          }
+        }
+      }
+    },
+    "Learned from your edits" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus deinen Korrekturen gelernt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprendido de tus correcciones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appris de vos corrections"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたの修正から学習"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수정한 내용에서 학습함"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprendido com suas correções"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изучено по вашим исправлениям"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从你的修改中学到"
+          }
+        }
+      }
+    },
+    "Learned new dictionary words" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Wörterbucheinträge gelernt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aprendieron palabras nuevas del diccionario"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveaux mots appris dans le dictionnaire"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "辞書に新しい単語を学習しました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사전에 새 단어를 학습했습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novas palavras aprendidas no dicionário"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новые слова добавлены в словарь"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已学习新的词典词语"
           }
         }
       }
@@ -72266,6 +72992,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按使用习惯排序"
+          }
+        }
+      }
+    },
+    "Learned “%@” → “%@”" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gelernt: „%1$@“ → „%2$@“"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprendido: «%1$@» → «%2$@»"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appris : « %1$@ » → « %2$@ »"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "学習しました：「%1$@」→「%2$@」"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "학습함: “%1$@” → “%2$@”"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprendido: “%1$@” → “%2$@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изучено: «%1$@» → «%2$@»"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已学习：“%1$@” → “%2$@”"
           }
         }
       }
@@ -72839,6 +73617,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "允许 Tinycast 将项目粘贴回你正在使用的 App。"
+          }
+        }
+      }
+    },
+    "Let “%@” run programs?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“ Programme ausführen lassen?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Permitir que «%@» ejecute programas?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser « %@ » à exécuter des programmes ?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」にプログラムの実行を許可しますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”이(가) 프로그램을 실행하도록 허용할까요?"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir que “%@” execute programas?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить «%@» запускать программы?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许“%@”运行程序吗？"
           }
         }
       }
@@ -83075,6 +83905,58 @@
         }
       }
     },
+    "No dictation to paste yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch kein Diktat zum Einsetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay ningún dictado para pegar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune dictée à coller pour l’instant"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペーストできる音声入力はまだありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아직 붙여넣을 받아쓰기가 없습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não há ditado para colar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока нет диктовки для вставки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还没有可粘贴的听写"
+          }
+        }
+      }
+    },
     "No dictations yet" : {
       "localizations" : {
         "de" : {
@@ -85051,6 +85933,58 @@
         }
       }
     },
+    "No recent recording to try again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine aktuelle Aufnahme zum Wiederholen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna grabación reciente para reintentar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun enregistrement récent à réessayer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試行できる最近の録音はありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도할 최근 녹음이 없습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma gravação recente para tentar de novo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет недавней записи для повтора"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可重试的最近录音"
+          }
+        }
+      }
+    },
     "No recording available." : {
       "localizations" : {
         "de" : {
@@ -85363,54 +86297,54 @@
         }
       }
     },
-    "No speech was recorded" : {
+    "No speech detected" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es wurde keine Sprache aufgenommen"
+            "value" : "Keine Sprache erkannt"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se grabó ninguna voz"
+            "value" : "No se detectó voz"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune parole n’a été enregistrée"
+            "value" : "Aucune parole détectée"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声が録音されませんでした"
+            "value" : "音声が検出されませんでした"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "녹음된 음성이 없습니다"
+            "value" : "음성이 감지되지 않았습니다"
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma fala foi gravada"
+            "value" : "Nenhuma fala detectada"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Речь не записана"
+            "value" : "Речь не обнаружена"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未录到语音"
+            "value" : "未检测到语音"
           }
         }
       }
@@ -89218,6 +90152,58 @@
         }
       }
     },
+    "Off asks the next time it starts a program" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus fragt beim nächsten Programmstart"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivado, pregunta la próxima vez que inicie un programa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé, demande au prochain lancement d’un programme"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オフの場合、次にプログラムを起動するときに確認します"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끄면 다음에 프로그램을 시작할 때 묻습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desativado, pergunta na próxima vez que iniciar um programa"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если выключено, спросит при следующем запуске программы"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭后，下次启动程序时会询问"
+          }
+        }
+      }
+    },
     "Off keeps a window's size when it moves to another display." : {
       "localizations" : {
         "de" : {
@@ -89943,6 +90929,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在它启动后。"
+          }
+        }
+      }
+    },
+    "One minute of recording left" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch eine Minute Aufnahme"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queda un minuto de grabación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus qu’une minute d’enregistrement"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音できるのはあと1分です"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹음 시간이 1분 남았습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resta um minuto de gravação"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Осталась одна минута записи"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音剩余一分钟"
           }
         }
       }
@@ -94112,6 +95150,58 @@
         }
       }
     },
+    "Paste Last Transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letztes Transkript einsetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar última transcripción"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coller la dernière transcription"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最後の文字起こしをペースト"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 받아쓰기 붙여넣기"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colar última transcrição"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить последнюю расшифровку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粘贴上次转写"
+          }
+        }
+      }
+    },
     "Paste Sequentially" : {
       "localizations" : {
         "de" : {
@@ -94372,6 +95462,58 @@
         }
       }
     },
+    "Paste last transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letztes Transkript einsetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar última transcripción"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coller la dernière transcription"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最後の文字起こしをペースト"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 받아쓰기 붙여넣기"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colar última transcrição"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить последнюю расшифровку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粘贴上次转写"
+          }
+        }
+      }
+    },
     "Paste to %@" : {
       "localizations" : {
         "de" : {
@@ -94472,6 +95614,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "粘贴到"
+          }
+        }
+      }
+    },
+    "Pastes your latest dictation again where you're typing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setzt dein letztes Diktat erneut dort ein, wo du tippst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a pegar tu último dictado donde estás escribiendo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colle de nouveau votre dernière dictée là où vous écrivez."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最新の音声入力を、入力中の場所にもう一度ペーストします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "최근 받아쓰기를 입력 중인 위치에 다시 붙여넣습니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cola de novo seu último ditado onde você está digitando."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снова вставляет последнюю диктовку туда, где вы печатаете."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将最近一次听写再次粘贴到你正在输入的位置。"
           }
         }
       }
@@ -96453,6 +97647,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "随时按 %@ 即可开始使用 Tinycast。"
+          }
+        }
+      }
+    },
+    "Press Esc again to discard this recording" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drücke erneut Esc, um diese Aufnahme zu verwerfen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa Esc de nuevo para descartar esta grabación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appuyez de nouveau sur Échap pour supprimer cet enregistrement"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この録音を破棄するには、もう一度Escキーを押してください"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 녹음을 버리려면 Esc를 다시 누르세요"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pressione Esc de novo para descartar esta gravação"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите Esc ещё раз, чтобы удалить эту запись"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再次按下 Esc 以丢弃此录音"
           }
         }
       }
@@ -99749,6 +100995,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在读取窗口…"
+          }
+        }
+      }
+    },
+    "Reads and writes files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liest und schreibt Dateien."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lee y escribe archivos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lit et écrit des fichiers."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイルを読み書きします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파일을 읽고 씁니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lê e grava arquivos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читает и записывает файлы."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取和写入文件。"
           }
         }
       }
@@ -103369,6 +104667,58 @@
         }
       }
     },
+    "Remove override for %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellung für %@ entfernen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar el ajuste de %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le réglage de %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@の設定を削除"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 설정 제거"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remover o ajuste de %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить настройку для %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除 %@ 的设置"
+          }
+        }
+      }
+    },
     "Remove repetition and unnecessary wording. Preserve every important detail." : {
       "localizations" : {
         "de" : {
@@ -103677,6 +105027,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除该扩展及其存储的所有内容，包括其偏好设置、缓存和自有文件。其命令也会从启动器中消失。"
+          }
+        }
+      }
+    },
+    "Removes the last dictation if nothing was typed after it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernt das letzte Diktat, wenn danach nichts getippt wurde."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina el último dictado si no se escribió nada después."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprime la dernière dictée si rien n’a été saisi après."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "その後に何も入力していなければ、最後の音声入力を削除します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이후에 아무것도 입력하지 않았다면 마지막 받아쓰기를 제거합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove o último ditado se nada foi digitado depois."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удаляет последнюю диктовку, если после неё ничего не вводилось."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果之后未输入任何内容，则移除上次听写。"
           }
         }
       }
@@ -106049,6 +107451,58 @@
         }
       }
     },
+    "Retry Last Dictation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letztes Diktat wiederholen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar último dictado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer la dernière dictée"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最後の音声入力を再試行"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 받아쓰기 다시 시도"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tentar último ditado de novo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить последнюю диктовку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试上次听写"
+          }
+        }
+      }
+    },
     "Return to Tinycast. You can close this tab." : {
       "localizations" : {
         "de" : {
@@ -107975,6 +109429,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在这台 Mac 上运行，数据不会离开本机。"
+          }
+        }
+      }
+    },
+    "Runs programs and shell commands on this Mac." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Führt Programme und Shell-Befehle auf diesem Mac aus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ejecuta programas y comandos de shell en este Mac."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécute des programmes et des commandes shell sur ce Mac."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このMacでプログラムやシェルコマンドを実行します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 Mac에서 프로그램과 셸 명령을 실행합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Executa programas e comandos de shell neste Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает программы и команды оболочки на этом Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在这台 Mac 上运行程序和 shell 命令。"
           }
         }
       }
@@ -119698,6 +121204,58 @@
         }
       }
     },
+    "Still finishing the last dictation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das letzte Diktat wird noch abgeschlossen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún se está terminando el último dictado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La dernière dictée est encore en cours de traitement"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前回の音声入力をまだ処理しています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이전 받아쓰기를 아직 처리하는 중입니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda finalizando o último ditado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предыдущая диктовка ещё обрабатывается"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在完成上一次听写"
+          }
+        }
+      }
+    },
     "Stitching" : {
       "localizations" : {
         "de" : {
@@ -122644,6 +124202,58 @@
         }
       }
     },
+    "Ten seconds of recording left" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch zehn Sekunden Aufnahme"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quedan diez segundos de grabación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus que dix secondes d’enregistrement"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音できるのはあと10秒です"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹음 시간이 10초 남았습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restam dez segundos de gravação"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Осталось десять секунд записи"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音剩余十秒"
+          }
+        }
+      }
+    },
     "Test Connection" : {
       "localizations" : {
         "de" : {
@@ -122954,58 +124564,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "文本整理"
-          }
-        }
-      }
-    },
-    "Text cleanup failed. Using the original transcript." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Textbereinigung ist fehlgeschlagen. Das Original wird verwendet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Falló la limpieza del texto. Se usa la transcripción original."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le nettoyage a échoué. La transcription originale est utilisée."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テキストの整形に失敗しました。元の文字起こしを使用します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 정리에 실패했습니다. 원본 텍스트를 사용합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A limpeza falhou. A transcrição original será usada."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось обработать текст. Используется исходная расшифровка."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "文本整理失败。正在使用原始转录。"
           }
         }
       }
@@ -128966,6 +130524,58 @@
         }
       }
     },
+    "The speech model failed, so Apple Dictation transcribed this" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Sprachmodell ist fehlgeschlagen, daher hat Apple Diktat dies transkribiert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El modelo de voz falló, así que Dictado de Apple lo transcribió"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le modèle vocal a échoué, Dictée d’Apple a donc transcrit ceci"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声モデルが失敗したため、Appleの音声入力で文字起こししました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음성 모델이 실패하여 Apple 받아쓰기로 변환했습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O modelo de voz falhou, então o Ditado da Apple transcreveu isto"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Речевая модель дала сбой, поэтому текст распознала Диктовка Apple"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语音模型失败，因此由 Apple 听写进行了转写"
+          }
+        }
+      }
+    },
     "The system automation could not be prepared." : {
       "localizations" : {
         "de" : {
@@ -129118,6 +130728,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已勾选的项目，合为一个 .tinycast 文件。"
+          }
+        }
+      }
+    },
+    "The transform couldn't finish, so the transcript was kept without it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Transformation konnte nicht abgeschlossen werden. Das Transkript wurde ohne sie übernommen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transformación no pudo terminar, así que se conservó la transcripción sin ella."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transformation n’a pas pu aboutir. La transcription a été conservée sans elle."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換を完了できなかったため、変換せずに文字起こしを使用しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환을 완료하지 못해 변환 없이 텍스트를 유지했습니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A transformação não pôde terminar, então a transcrição foi mantida sem ela."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось выполнить преобразование, поэтому расшифровка сохранена без него."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转换未能完成，因此保留了未转换的转录。"
           }
         }
       }
@@ -131824,54 +133486,54 @@
         }
       }
     },
-    "This transcript is too long to transform on this Mac." : {
+    "This transcript is too long for this transform." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Transkript ist für die Transformation auf diesem Mac zu lang."
+            "value" : "Dieses Transkript ist für diese Transformation zu lang."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta transcripción es demasiado larga para transformarla en este Mac."
+            "value" : "Esta transcripción es demasiado larga para esta transformación."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette transcription est trop longue pour être transformée sur ce Mac."
+            "value" : "Cette transcription est trop longue pour cette transformation."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この文字起こしは長すぎるため、このMacでは変換できません。"
+            "value" : "この文字起こしはこの変換には長すぎます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 텍스트는 이 Mac에서 변환하기에 너무 깁니다."
+            "value" : "이 텍스트는 이 변환에 사용하기에 너무 깁니다."
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta transcrição é longa demais para transformar neste Mac."
+            "value" : "Esta transcrição é longa demais para esta transformação."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Эта расшифровка слишком длинная для преобразования на этом Mac."
+            "value" : "Эта расшифровка слишком длинная для этого преобразования."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此转录过长，无法在此 Mac 上转换。"
+            "value" : "此转录过长，无法用于此转换。"
           }
         }
       }
@@ -133548,53 +135210,53 @@
       }
     },
     "Tinycast needs microphone access for dictation and Accessibility to paste into other apps. Audio is processed on this Mac. Tinycast watches the pasted dictation while its field is focused and saves spelling corrections on this Mac." : {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast benötigt Mikrofonzugriff für das Diktat und Bedienungshilfen zum Einsetzen in andere Apps. Audio wird auf diesem Mac verarbeitet. Tinycast beobachtet das eingefügte Diktat, solange das Feld aktiv ist, und speichert Rechtschreibkorrekturen auf diesem Mac."
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast benötigt Mikrofonzugriff für das Diktat und Bedienungshilfen zum Einsetzen in andere Apps. Audio wird auf diesem Mac verarbeitet. Tinycast beobachtet das eingefügte Diktat, solange das Feld aktiv ist, und speichert Rechtschreibkorrekturen auf diesem Mac."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast necesita acceso al micrófono para dictar y a Accesibilidad para pegar en otras apps. El audio se procesa en este Mac. Tinycast observa el dictado pegado mientras el campo está activo y guarda las correcciones ortográficas en este Mac."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast necesita acceso al micrófono para dictar y a Accesibilidad para pegar en otras apps. El audio se procesa en este Mac. Tinycast observa el dictado pegado mientras el campo está activo y guarda las correcciones ortográficas en este Mac."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast a besoin du micro pour la dictée et de l’accessibilité pour coller dans les autres apps. Le son est traité sur ce Mac. Tinycast surveille la dictée collée tant que le champ est actif et enregistre les corrections orthographiques sur ce Mac."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast a besoin du micro pour la dictée et de l’accessibilité pour coller dans les autres apps. Le son est traité sur ce Mac. Tinycast surveille la dictée collée tant que le champ est actif et enregistre les corrections orthographiques sur ce Mac."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycastは音声入力にマイクへのアクセス権、ほかのアプリへのペーストにアクセシビリティのアクセス権が必要です。音声はこのMacで処理されます。入力欄にフォーカスがある間、Tinycastはペーストした音声入力を監視し、つづりの修正をこのMacに保存します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycastは音声入力にマイクへのアクセス権、ほかのアプリへのペーストにアクセシビリティのアクセス権が必要です。音声はこのMacで処理されます。入力欄にフォーカスがある間、Tinycastはペーストした音声入力を監視し、つづりの修正をこのMacに保存します。"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast는 받아쓰기에 마이크 접근 권한이, 다른 앱에 붙여넣기에 손쉬운 사용 권한이 필요합니다. 오디오는 이 Mac에서 처리됩니다. Tinycast는 입력란에 포커스가 있는 동안 붙여넣은 받아쓰기를 확인하고 철자 수정을 이 Mac에 저장합니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast는 받아쓰기에 마이크 접근 권한이, 다른 앱에 붙여넣기에 손쉬운 사용 권한이 필요합니다. 오디오는 이 Mac에서 처리됩니다. Tinycast는 입력란에 포커스가 있는 동안 붙여넣은 받아쓰기를 확인하고 철자 수정을 이 Mac에 저장합니다."
           }
         },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Tinycast precisa de acesso ao microfone para ditado e à Acessibilidade para colar em outros apps. O áudio é processado neste Mac. O Tinycast acompanha o ditado colado enquanto o campo estiver ativo e salva as correções ortográficas neste Mac."
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Tinycast precisa de acesso ao microfone para ditado e à Acessibilidade para colar em outros apps. O áudio é processado neste Mac. O Tinycast acompanha o ditado colado enquanto o campo estiver ativo e salva as correções ortográficas neste Mac."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast нужен доступ к микрофону для диктовки и к Универсальному доступу для вставки в другие приложения. Аудио обрабатывается на этом Mac. Tinycast отслеживает вставленный текст, пока поле активно, и сохраняет исправления на этом Mac."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast нужен доступ к микрофону для диктовки и к Универсальному доступу для вставки в другие приложения. Аудио обрабатывается на этом Mac. Tinycast отслеживает вставленный текст, пока поле активно, и сохраняет исправления на этом Mac."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tinycast 需要麦克风访问权限来进行听写，以及辅助功能权限来粘贴到其他 App。音频在这台 Mac 上处理。当输入框处于焦点时，Tinycast 会观察粘贴的听写文本，并将拼写更正保存在这台 Mac 上。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast 需要麦克风访问权限来进行听写，以及辅助功能权限来粘贴到其他 App。音频在这台 Mac 上处理。当输入框处于焦点时，Tinycast 会观察粘贴的听写文本，并将拼写更正保存在这台 Mac 上。"
           }
         }
       }
@@ -135843,6 +137505,110 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在转写…"
+          }
+        }
+      }
+    },
+    "Transcription failed; run Retry Last Dictation within a minute to try again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transkription fehlgeschlagen; führe innerhalb einer Minute „Letztes Diktat wiederholen“ aus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transcripción falló; ejecuta Reintentar último dictado antes de un minuto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transcription a échoué ; lancez Réessayer la dernière dictée dans la minute"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字起こしに失敗しました。1分以内に「最後の音声入力を再試行」を実行してください"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "받아쓰기 변환에 실패했습니다. 1분 안에 마지막 받아쓰기 다시 시도를 실행하세요"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A transcrição falhou; execute Tentar último ditado de novo em até um minuto"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось распознать речь; запустите «Повторить последнюю диктовку» в течение минуты"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转写失败；请在一分钟内运行“重试上次听写”"
+          }
+        }
+      }
+    },
+    "Transform" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformação"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преобразование"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转换"
           }
         }
       }
@@ -138169,6 +139935,110 @@
         }
       }
     },
+    "Undo Last Dictation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letztes Diktat widerrufen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer último dictado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler la dernière dictée"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最後の音声入力を取り消す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 받아쓰기 실행 취소"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desfazer último ditado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить последнюю диктовку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销上次听写"
+          }
+        }
+      }
+    },
+    "Undo last dictation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letztes Diktat widerrufen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer último dictado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler la dernière dictée"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最後の音声入力を取り消す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 받아쓰기 실행 취소"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desfazer último ditado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить последнюю диктовку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销上次听写"
+          }
+        }
+      }
+    },
     "Unexpected text after quoted value" : {
       "localizations" : {
         "de" : {
@@ -140359,6 +142229,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用工具"
+          }
+        }
+      }
+    },
+    "Use a different cleanup or transform when dictating into these apps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende eine andere Bereinigung oder Transformation beim Diktieren in diese Apps."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa otra limpieza o transformación al dictar en estas apps."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez un autre nettoyage ou une autre transformation quand vous dictez dans ces apps."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "これらのアプリに音声入力するときは、別の整形または変換を使います。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱에 받아쓰기할 때 다른 정리나 변환을 사용합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use outra limpeza ou transformação ao ditar nestes apps."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать другую обработку или преобразование при диктовке в эти приложения."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在这些应用中听写时使用其他整理方式或转换。"
           }
         }
       }

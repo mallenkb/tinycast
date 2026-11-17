@@ -98,6 +98,7 @@ enum SettingsBackupCoverage {
         AppSettingsKey.dictationAdvancedCleanup.rawValue: "Dictation writing preferences stay local to this Mac.",
         AppSettingsKey.dictationAutoTransform.rawValue: "Dictation writing preferences stay local to this Mac.",
         AppSettingsKey.dictationTransformID.rawValue: "Dictation writing preferences stay local to this Mac.",
+        AppSettingsKey.dictationAppOverrides.rawValue: "Dictation writing preferences stay local to this Mac.",
         AppSettingsKey.dictationLanguage.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationMicrophone.rawValue: "Names a microphone attached to this Mac.",

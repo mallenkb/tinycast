@@ -45,13 +45,14 @@ A backup carries five independently selectable categories, ticked on export and 
 | `Model/BackupBundle.swift` | The payload directory's layout and part-by-part encode/decode |
 | `Model/BackupArchive.swift` | Directory ⇄ `.tinycast`; the only file importing `AppleArchive` |
 | `Model/BackupClipboardItem.swift` | The portable clip, with no path in it |
-| `Model/SettingsBackup.swift` | The settings, fixed/per-item hotkey payloads, and their `Codable` shape |
+| `Model/SettingsBackup.swift` | The settings, fixed/per-item hotkey payloads, and their `Codable` shape, nothing else |
 | `Model/SettingsBackupCoverage.swift` | The coverage declaration the harness checks |
 | `Model/RaycastImport.swift` | The importable categories, the `Result` and its per-category trim |
 | `Model/RaycastImportError.swift` | The three failures an import reports |
 | `Service/BackupStaging.swift` | One scratch tree, created on init and removed on discard |
-| `Service/BackupComposer.swift` | Stores → staging; `plan` on main, `write` off it |
-| `Service/BackupApplier.swift` | Staging → stores, returning a per-category summary |
+| `Service/SettingsDataMapping.swift` | `AppSettings` ⇄ `SettingsData`, the one place a carried field is read and written |
+| `Service/BackupComposer.swift` | Stores → staging; `plan` on main, `write` off it; `settingsBackup(from:)` gathers |
+| `Service/BackupApplier.swift` | Staging → stores, returning a per-category summary; `apply(_:to:)` for settings |
 | `Service/BackupActions.swift` | The effectful half: file pickers, the archive calls, dialogs, the settings-file switch |
 | `Service/RaycastDecoder.swift` | Container recognition, decrypt and decode |
 | `Service/RaycastImportReader.swift` | Raycast → Tinycast field mapping |
@@ -113,6 +114,10 @@ capability-granting key — `snippetsEnabled`, `extensionsEnabled`, `calendarEna
 duplication between `AppSettings` and this file is the point: it forces a decision about every new
 setting rather than defaulting it into a backup.
 
+`settings-backup-roundtrip-test` checks the other half: every `SettingsData` field gathers from a
+stand-in `AppSettings`, survives encoding and applies back to a fresh one, while a file that names a
+capability flag still grants nothing.
+
 ## Importing
 
 Applying an import writes through `AppSettings` like any other change, so feature switches reproject into
@@ -123,7 +128,7 @@ Per category:
 
 - **Settings** merge field by field, and a file carrying custom commands or their shortcuts still hits
   `confirmExecutableImport` first.
-- **Clipboard** streams through `ClipboardStore.importStoredItems`, off the main actor and on its own
+- **Clipboard** streams through `ClipboardDatabase.importStoredItems`, off the main actor and on its own
   connection: a restored history runs past the memory window and must never sit in memory or freeze the
   UI. A row is deduped on its text, or on the path its image takes; the blob keeps the name the bundle
   gave it, so importing one file twice lands on the same path and adds nothing. Only a file inside

@@ -31,13 +31,15 @@ enum DictationHelper {
                     recognizer = nil
                     loaded = nil
                     do {
-                        recognizer = try autoreleasepool { () throws -> any DictationRecognizer in
-                            if request.model.isCohere { return try CohereRecognizer(directory: request.directory) }
-                            if request.model == .unified {
-                                return try UnifiedRecognizer(directory: request.directory)
+                        recognizer = try Signposts.interval("Dictation helper load") {
+                            try autoreleasepool { () throws -> any DictationRecognizer in
+                                if request.model.isCohere { return try CohereRecognizer(directory: request.directory) }
+                                if request.model == .unified {
+                                    return try UnifiedRecognizer(directory: request.directory)
+                                }
+                                if request.model.isQwen { return try QwenRecognizer(directory: request.directory) }
+                                return try ParakeetRecognizer(directory: request.directory, model: request.model)
                             }
-                            if request.model.isQwen { return try QwenRecognizer(directory: request.directory) }
-                            return try ParakeetRecognizer(directory: request.directory, model: request.model)
                         }
                         loaded = request.model
                     } catch {
@@ -50,12 +52,8 @@ enum DictationHelper {
                 try DictationWire.write(DictationWire.Response(id: request.id, status: .ready), to: output)
                 if request.isPreparation { continue }
                 try autoreleasepool {
-                    let data = try DictationWire.readExactly(
-                        request.sampleCount * MemoryLayout<Float>.size, from: input)
-                    let samples = [Float](unsafeUninitializedCapacity: request.sampleCount) { buffer, count in
-                        data.withUnsafeBytes { bytes in
-                            UnsafeMutableRawBufferPointer(buffer).copyMemory(from: bytes)
-                        }
+                    let samples = try [Float](unsafeUninitializedCapacity: request.sampleCount) { buffer, count in
+                        try DictationWire.readExactly(into: UnsafeMutableRawBufferPointer(buffer), from: input)
                         count = request.sampleCount
                     }
                     guard samples.allSatisfy({ $0.isFinite }) else {

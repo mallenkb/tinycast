@@ -4,9 +4,8 @@ Tinycast is signed with a **stable self-signed identity** called `Tinycast Self-
 _same_ identity on every build is what makes macOS remember the Accessibility permission across
 rebuilds and updates — ad-hoc signing changes every build and macOS forgets the grant.
 
-The upstream project documents an Apple Developer ID migration
-[below](#the-developer-id-migration). That does not establish that this fork has a Developer ID
-certificate. This fork’s current local packages use its local self-signed identity.
+This fork has no Developer ID certificate. It signs with its self-signed identity, and the updater
+pins that certificate's hash ([rotating it](#rotating-the-forks-certificate)).
 
 You create this identity **once**. The same identity is used for:
 
@@ -114,26 +113,13 @@ entitlement for every usage string `Info.plist` declares. Both release jobs run 
 a nested binary missing the runtime flag is the most common notarization rejection, and a usage string
 missing its entitlement ships a permission that can never be granted.
 
-## The Developer ID migration
+## Rotating the fork's certificate
 
-`BundleSignature` already accepts a bundle signed by the Tinycast team under Apple's Developer ID
-chain, even though releases are still signed with `Tinycast Self-Signed`. That is deliberate and
-staged: the updater compares signatures before it installs, so the code that trusts the new identity
-has to reach users *before* the first build carrying it. Until the switch it also accepts the running
-app's own leaf, which is the only thing a copy installed earlier knows how to check.
-
-The requirement pins the team rather than the certificate, so a Developer ID renewal strands nobody.
-It deliberately omits the `notarized` keyword — that resolves a ticket through `syspolicyd` or the
-network, and the updater verifies in a cache directory Gatekeeper has never assessed, so an offline
-Mac would refuse a bundle the chain already proves is ours.
-
-**The Developer ID identity stays a CI-only fact.** When the switch happens it is named on the
-release workflow's `xcodebuild` line and nowhere else: `project.yml` keeps signing with
-`Tinycast Self-Signed`, so a contributor keeps building with the one they created in §1 — same name,
-their own key, never shared. Nothing about local development changes.
-
-**Keep `Tinycast Self-Signed` in the login keychain after the switch.** It is the only way to ship a
-build that a copy predating the migration could still install.
+`BundleSignature.trustedLeaves` pins the SHA-1 of each `Tinycast Self-Signed` leaf this fork
+releases with; read it with `codesign -d -r- /Applications/Tinycast.app`. The updater trusts only those
+leaves and the running copy's own leaf, never upstream's Developer ID team. To rotate: add the new
+leaf's hash, ship that change signed with the old certificate, wait until users have it, then switch
+the release workflow's signing secret. Skipping the first release strands every installed copy.
 
 ## Quarantine (separate from signing)
 

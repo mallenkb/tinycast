@@ -12,7 +12,8 @@ Rows show language coverage and approximate disk size; published
 benchmark figures are external measurements, with their sources in the row help. Hovering over language coverage shows the supported languages.
 Choose an installed model, download one from its row, or remove it after selecting another. Cohere Q8
 uses a separate Core ML encoder-decoder pipeline and 14 selectable languages, with English as its default.
-Its fixed 35-second batch encoder does not provide live preview. Cohere Q4 requires a separate GGUF
+Its fixed 35-second batch encoder does not provide live preview. A window that fills the decoder's
+cache keeps the text it produced. Its six-token repetition ban covers only generated text. Cohere Q4 requires a separate GGUF
 speech runtime and remains unavailable.
 Qwen models remain available. Apple Dictation uses speech assets managed by macOS.
 After microphone access is granted, enabling Dictation offers the missing recommended downloads for
@@ -40,25 +41,43 @@ models use CPU/Neural Engine.
   and, like every Dictation preference, is excluded from backups so importing settings cannot arm
   a global recording shortcut.
 - Auto-learn words is active when Dictation is enabled. After a confirmed paste into a readable text
-  field, Tinycast watches that insertion while the field remains focused. After two seconds without
-  an edit, it aligns the original and edited words and learns multiple clear spelling corrections.
+  field, Tinycast watches that insertion while the field remains focused. It finds the insertion again
+  by up to 48 characters on each side, so edits elsewhere in the document or a moved caret don't lose
+  it; editing those neighboring characters ends the watch. An `AXObserver` (or `NSText` change
+  notifications in Tinycast's own editors) wakes the watcher on edits and focus moves, with a
+  5-second safety poll; a field without notifications is polled every second. The watcher stops 60
+  seconds after the last edit and 5 minutes after the paste at most. Fields over 8,192 UTF-16 units,
+  checked through `AXNumberOfCharacters` before the value is copied, are not observed.
+  After two seconds without an edit, it aligns the original and edited words and passes each changed
+  span of up to three words to `DictationCorrectionPolicy`. If the field closes or clears, the last
+  read edit counts only if it had already paused for a second, so a half-typed word is never learned.
   Starting another recording flushes readable pending edits before taking the next vocabulary snapshot.
-  The watcher stops when focus leaves, the surrounding text changes, the insertion is deleted,
-  Dictation is disabled, or its composer is closed or rebound. Stopping releases the field probe and
-  transcript snapshots. Fields over 8,192 UTF-16 units are not observed.
-  Numeric edits, recognized English number/date/negation words, and unrelated rewrites are excluded.
-  Word swaps and conflicting replacements of the same source are rejected. Ambiguous spelling candidates
-  require matching evidence from two distinct dictations in the same app session and only apply with
-  the same neighboring words. Up to 100 candidates
-  are kept in memory; they do not load a speech or cleanup model and are discarded on quit.
-  Revisions and undo update the original recognition mapping, rather than teaching a replacement chain.
+  The watcher also stops when the insertion is deleted, Dictation is disabled, or its composer is
+  closed or rebound. Stopping releases the field probe, observer and transcript snapshots.
+  The policy treats the system spell checker as the vocabulary: changing one real word to another
+  (affect/effect, Monday/Tuesday, a rewrite) is a choice, not a misrecognition, and is never learned.
+  Numeric edits, recognized English number/date/negation words, punctuation-only edits, swaps and
+  conflicting replacements of the same source are rejected. A name-like target (capitalized mid-sentence
+  or with inner capitals) close in spelling or in a coarse sound key is learned on first sight
+  (cubernetes → Kubernetes, Jhon → John, mc donald → McDonald). Weaker pairs are candidates: a
+  merged multi-word mishearing (there sure → Thiessen), a capitalization of an unknown term
+  (tinycast → Tinycast, never at a sentence start), a fix to a real word, or a swap between two names.
+  A candidate is learned when a second dictation in the same app session makes the same change; the
+  same neighboring words keep the entry scoped to them, different ones learn it everywhere. Up to 100
+  candidates are kept in memory; they do not load a speech or cleanup model and are discarded on quit.
+  Revisions and undo update the original recognition mapping, rather than teaching a replacement chain,
+  and changing a replaced word back to what was heard removes the entry. Restoring the field's original
+  selection while the watcher is active rolls back the corrections it saved for that insertion.
+  Each newly learned entry shows a “Learned” HUD, and Dictation Settings > Dictionary marks learned
+  entries so they can be removed.
   A user's manual dictionary entries take priority. Add a word or phrase under Dictation Settings >
   Dictionary to keep its preferred spelling, or enter a misspelling to replace it explicitly.
   The dictionary stores up to 100 entries on this Mac and keeps manual entries when learned ones are
   dropped. Learned entries persist across restarts and apply once to finished text after cleanup and
-  transforms. Apple Dictation also uses unscoped saved words as recognition hints. Remove an entry in Dictation
-  Settings to stop using it. Casing-only edits and edits to part of an already replaced multiword alias
-  are skipped. These rules infer spelling preferences, not changes to the speaker's intent.
+  transforms, as whole words (a possessive ’s still matches). Apple Dictation also uses unscoped saved
+  words as recognition hints. Remove an entry in Dictation Settings to stop using it. Edits to part of an
+  already replaced multiword alias are skipped. These rules infer spelling preferences, not changes to
+  the speaker's intent.
 - Microphone status appears in Permissions and the Dictation pane. Neither pane prompts on display;
   only a user action requests access, while revoked access is refreshed from macOS.
 - Push to talk and Hands-free have separate global shortcuts and can both be assigned.
@@ -72,7 +91,10 @@ models use CPU/Neural Engine.
 - Carbon or the shared modifier monitor reports release to stop a held recording. A hold release
   or cancellation does not stop a recording started by the toggle shortcut or a composer mic.
   Return finishes dictation. Escape cancels even when another app has focus. It dismisses the
-  preview and indicator without restoring the idle bar. Opening a shortcut recorder cancels a held recording before
+  preview and indicator without restoring the idle bar. Once a recording passes 30 seconds, the
+  first Escape only shows a reminder HUD and a second Escape within two seconds discards it. A
+  dialog would take focus from the app being dictated into, so the confirmation stays a key press.
+  Starting a dictation while the last one is still transcribing shows a "Still finishing" HUD. Opening a shortcut recorder cancels a held recording before
   pausing its shortcuts. A session token prevents stale transcription from inserting text later.
 - AI Chat's composer mic is always click-to-toggle into that field: `toggle(into:)` targets its
   `ComposerTextView` in process whatever has focus. `field` tells only that button it is running.
@@ -83,6 +105,17 @@ models use CPU/Neural Engine.
   Spaces, full-screen windows and Stage Manager. Text insertion reuses `TextInjector`, including
   its temporary clipboard ownership, focus, secure-input and protected-target checks. Dictation History
   keeps completed transcripts on this Mac, including transcripts that could not be pasted.
+  When the app focused at stop differs from the one focused when the text is ready, or the paste
+  fails, Tinycast copies the transcript and says so in a HUD instead of pasting.
+  A tap under 250 ms is ignored silently; an empty result shows a neutral "No speech detected".
+  Paste Last Transcript pastes the newest History entry. Undo Last Dictation removes the last
+  insertion only when the original field still holds exactly what dictation left. In another app,
+  the original field must be focused, the caret must still follow the insertion, and Accessibility
+  must support replacing the inserted range. Otherwise a HUD explains it can't undo. Both commands
+  have optional shortcuts in Dictation settings and are unbound by default.
+  After a failed transcription or a cancel, the recording stays in memory for 60 seconds.
+  Retry Last Dictation transcribes it again into the focused input; quitting discards it.
+  When a speech model fails, Apple Dictation transcribes the recording instead and a HUD says so.
   History keeps transcripts for three months by default. Choose how long to keep them in Dictation
   Settings. Shortening the retention period removes transcripts older than the new cutoff.
   Dictation History uses the clipboard list's date groups and copy and paste shortcuts. Its rows
@@ -105,13 +138,16 @@ models use CPU/Neural Engine.
   default position. The transcript card follows the pill, flips below it near the top edge, and aligns with the pill's outer edge on either side.
   It stays centered on the pill in the middle of the display.
   Revealing a bottom Dock moves the indicator above it. It repositions when Spaces,
-  display configuration or system presentation changes and checks visible Dock bounds twice per second.
+  display configuration or system presentation changes. While recording, transcribing or dragging,
+  it also checks Dock bounds and the frontmost window twice per second; the idle bar does not poll.
   When the window list lacks the Dock's bounds, the indicator can use the Dock's accessibility
-  bounds to distinguish a hidden Dock from space macOS still reserves for it.
+  bounds to distinguish a hidden Dock from space macOS still reserves for it. Those bounds are
+  read once and reused until the Dock changes.
   The indicator and transcript follow the frontmost app's frontmost visible standard window,
   using the display containing the largest portion of that window. Without an app window, they
   use the pointer's display. App activation updates placement immediately; window moves and
-  switches within the same app are picked up by the existing twice-per-second placement check.
+  switches within the same app are picked up by the active pill's placement check.
+  Idle hover uses a tracking area on the bar itself rather than a global mouse monitor.
   The optional idle indicator shows a small bar while dictation is enabled without recording audio
   or loading a model. It restores on launch when enabled. Hovering reveals a microphone button
   at the same height as the recording pill. The button starts hands-free dictation. The indicator
@@ -122,11 +158,20 @@ models use CPU/Neural Engine.
   audio and finalizes that session. If the stream fails, the full recording is still available for
   a fresh Apple Dictation pass. Parakeet and Qwen use overlapping five-second audio windows and aim
   to start requests at least 350 ms and 500 ms apart, respectively. One request runs at a time.
+  A request is skipped when the audio since the previous one stays near the recording's noise floor
+  and a request has already covered the end of speech. After three unchanged results the interval
+  doubles, and after six it triples, until the text changes. Five-second windows stay because
+  the decoders' cost grows with the audio, even though the encoders pad to 15 seconds.
   For Parakeet and Qwen, the recognition loop also looks for a pause of at least 600 milliseconds
-  within each 10 to 30 second audio window. It transcribes completed audio at those pauses, even
-  with the preview off. On stop it transcribes the remaining audio and joins the results in order.
-  It retries the full recording if a segment fails, the tail cannot be reused, or an amount may
-  cross a segment boundary. The app retains the bounded capture until this check finishes.
+  from 10 seconds into each segment. A pause is quiet relative to the tenth-percentile frame level
+  of the last 30 seconds, never below the original absolute threshold. Without a pause by 30 seconds,
+  it cuts at the quietest 200 ms of the last three seconds. A cut rejected for an unfinished
+  number moves the next forced cut at most five seconds later. It transcribes completed audio at
+  those cuts, even with the preview off. On stop it transcribes the remaining audio and joins the
+  results in order. A failed segment is dropped and the next one covers its audio again; after three
+  failures in a row, segmentation stops. It retries the full recording if the tail is longer than
+  30 seconds or cannot be reused, or an amount may cross a segment boundary. The app retains the
+  bounded capture until this check finishes.
   A preview error hides stale text and retries after 1.5 seconds. Three consecutive failures end
   the preview loop; the full recording remains available for final transcription.
   After four seconds without new preview text, the card fades out while the recording pill stays visible.
@@ -170,7 +215,12 @@ models use CPU/Neural Engine.
   longest word so cycling does not clip the capsule or shift its position. Active labeled edge snaps
   reserve the same room; idle edge placement stays unchanged. Settings uses the same
   cycling preview. Reduce Motion and disabled animations make width changes immediate.
-  The ring and the text shimmer pause when Reduce Motion is on.
+  The ring and the text shimmer are repeating SwiftUI animations rather than per-frame timelines,
+  and pause when Reduce Motion is on. Only the waveform view reads live levels. After five seconds
+  of processing, labeled styles add an elapsed clock. In the final minute of a recording, labeled
+  styles show a countdown after Listening; the compact pill keeps its size and VoiceOver announces
+  one minute and ten seconds left in every style. The Settings preview stops cycling words while
+  its window is inactive or the preview is scrolled away.
   Closing the panel releases its hosting view.
 - Recording leaves the system output volume alone.
 - Play sounds is on by default. When on, macOS's `dt-begin.caf` plays on the microphone's first samples
@@ -186,23 +236,27 @@ models use CPU/Neural Engine.
   model loading, audio features and decoding run in `Tinycast Dictation` (`Tinycast Dev Dictation` in Debug). The helper
   starts loading the selected model alongside microphone setup. If the user stops before it is ready,
   the transcription waits for the same load before sending the buffered audio. A failed preload
-  leaves the audio available for a regular transcription request. Phonon-2 has up to three minutes
-  to load because its first Neural Engine compilation can take longer than a minute. Once it is ready,
-  transcription uses the normal timeout. Main-app state never retains Core ML models.
+  leaves the audio available for a regular transcription request. Every model has up to three
+  minutes to load, because a first Core ML compilation can take longer than a minute. Once it is
+  ready, transcription uses the normal timeout. Capture start, model loads and each preview,
+  segment and final transcription emit `com.tinycast.perf` signpost intervals for Instruments. Main-app state never retains Core ML models.
   The helper is an embedded accessory app with no bundled icon, Dock item or windows.
 - The Apple Dictation engine uses Apple's on-device `DictationTranscriber` and the Mac's preferred
   language. Tinycast starts preparation when recording begins. macOS installs missing speech assets,
   then manages those assets and their memory. The analyzer lives for one recording.
-- Dev and release share Core ML models under `~/Library/Caches/com.tinycast.app/Dictation/`. By default, the store terminates and reaps
-  the helper as soon as speech recognition finishes, so cleanup can run without keeping the speech
-  model resident. Choose a delay or Never to keep it warm between recordings. Switching models
+- Dev and release share Core ML models under `~/Library/Caches/com.tinycast.app/Dictation/`. By default, the store reaps
+  the helper one minute after the last recording, so back-to-back dictation finds the model warm.
+  Choose After each dictation to reap it as soon as speech recognition finishes, or a longer delay or
+  Never to keep it longer. Switching models
   reaps the old helper before loading the next. Removing a loaded model
   stops its helper before deleting the directory and blocks new requests for that model meanwhile.
-  Cancelling an in-flight load or transcription, failed inference and normal quit stop the helper.
-  Late results cannot paste.
-- Audio stays in memory, bounded to five minutes of mono 16 kHz Float32 samples. Pipes carry
+  Cancelling an in-flight load or final transcription, failed final inference and normal quit
+  stop the helper. A cancelled or failed preview or segment request keeps the loaded helper: the
+  exchange finishes and its result is discarded. Late results cannot paste.
+- Audio stays in memory, bounded to ten minutes of mono 16 kHz Float32 samples. Pipes carry
   bounded JSON control messages and binary audio; recordings are never written to disk or sent
   over the network. Long recordings split near a quiet passage without overlapping samples.
+  The capture buffer grows a minute at a time, and the helper reads audio straight into its buffer.
 - Tinycast transcribes the complete recording after the user stops, then inserts the finished
   text in the target app.
 - Model files download through a feature-private ephemeral session without a disk URL cache.
@@ -219,10 +273,13 @@ models use CPU/Neural Engine.
   the same cache root. Its empty lock file stays in place; macOS releases the lock on process exit.
 - An installed Qwen model exposes a language hint; Auto leaves language detection to the model. Parakeet
   does not accept a language hint. Neither adapter exposes user vocabulary. Qwen prepares its fixed
-  prompts and supported language hints once, then retains only the tokenizer's decoding tables
-  and prepared tokens, not the BPE encoding rules.
+  prompts, supported language hints and their embeddings once, then retains only the tokenizer's
+  decoding tables and prepared tokens, not the BPE encoding rules.
 - The `Model/` folder imports Foundation only. Context-sensitive spaces and capitalization are a
   pure decision driven by text around the caret. Capitalization adapts by default.
+  Mid-sentence, the first letter stays capitalized for "I" and its contractions, a word whose
+  second letter is uppercase, a word the transcript capitalizes mid-sentence elsewhere, and a
+  word that starts a Dictionary spelling.
   The `dictation.adaptsCapitalization` override in `settings.json` leaves contextual spaces enabled.
   Capitalization, spacing, and correction learning share one snapshot of the focused editor.
   If an app does not expose caret context through Accessibility, Tinycast inserts the plain transcript.
@@ -237,12 +294,17 @@ models use CPU/Neural Engine.
 and cue timing with synthetic capture and real AppKit editors, without recording audio or touching
 the shared clipboard.
 `dictation-test` checks formatting, model options, multi-edit alignment, confidence checks, source
-attribution, undo, debounce, input bounds and repeated inference. Hidden-editor checks in
+attribution, undo, debounce, input bounds and repeated inference. `dictation-correction-test` runs a
+table of realistic correction scenarios (misheard words and names, rewrites, deletions, casing,
+punctuation, changes of mind, autocorrect, shifted insertions, abandoned edits, reverts) through the
+detection, session timing, insertion anchor and store, with a fixture vocabulary. Hidden-editor checks in
 `dictation-field-test` also cover learning across dictations, persistence, candidate corroboration,
 manual-entry priority and correction watcher teardown. These fixtures do not activate windows,
 record audio or write to the shared clipboard. `dictation-inference-test` checks score selection,
-byte BPE, Fourier/mel features, listening bands and audio partitioning without downloading a model. `dictation-worker-test`
-exercises framed IPC, worker reuse/switching, removal, cancellation and broken pipes with a fixture.
+byte BPE, Fourier/mel features, listening bands, audio partitioning, pause cuts, preview pacing,
+Cohere's mel features against a scalar reference and its repetition ban without downloading a model. `dictation-worker-test`
+exercises framed IPC, worker reuse/switching, removal, cancellation, dropped previews and segments
+that keep the helper, and broken pipes with a fixture.
 An in-process URLProtocol fixture checks byte progress before the first file completes, combined
 progress and atomic installation for both families, including cancellation, stale staging cleanup
 and competing downloads on shared or independent cache roots, without sockets or timed waits.
@@ -285,17 +347,22 @@ between sections. Text without a safe break within that limit stays as dictated.
 one helper serves sections sequentially. Sentences with recognized numbers, currency, and literal
 text use local rules. If a model response loses too many source words or adds a protected value,
 the source section stays in the transcript. If a model request fails, completed sections are kept
-and Advanced cleanup handles the remaining sections. Saved transforms still process the whole
-transcript in one request.
-Local transforms accept up to 3,500 characters; Apple Intelligence transforms accept up to 8,000
-characters, subject to the model's limits. Apple Intelligence combines Smart cleanup with an
-automatic transform in that same whole-transcript request when both are enabled.
+and Advanced cleanup handles the remaining sections. A transform sends the whole transcript in one
+request when it fits: up to 3,500 characters for a local engine, and up to 8,000 for Apple
+Intelligence, subject to the model's limits. Longer transcripts go through Polish, Shorten, and Make a
+list in the same 1,800-byte sections. Prompt Engineer and custom transforms need the whole text, so a
+longer transcript fails at once with a too-long message. Apple Intelligence gives one request, or all
+of its sections, a single deadline of 15 seconds plus 8 ms per byte, and prewarms the next section's
+session while the current one runs. Apple Intelligence and Emberon-2 each combine Smart cleanup with
+an automatic transform in one request when both are enabled.
 For Smart cleanup, the S1 models use their published settings and disable thinking. S1-mini uses
 semi-formal, lists, and general. S1-ASR-Cleanup uses semi-formal, prose, general, and layers 1 and 2.
 Emberon-2 uses Promethic Labs' cleanup prompt and the transcript without an S1 control line.
-When Emberon-2 is selected, After dictation and manual transforms use S1-mini.
-When a recording will use Smart cleanup or an automatic transform, Tinycast starts loading the
-selected cleanup engine at recording start. The local helper stays available through the recording
+When Emberon-2 is selected, After dictation and manual transforms use S1-mini. With an automatic
+transform, S1-mini also takes the Smart cleanup instructions, so the recording loads one model and
+makes one pass. Emberon-2 can't follow transform instructions, and loading both would mean two
+servers or a cold start between key release and paste. When a recording will use Smart cleanup or an
+automatic transform, Tinycast starts loading the engine that recording will use at recording start. The local helper stays available through the recording
 and exits when the recording and its cleanup or transform finish. Cancelling a recording releases
 its helper too. Standalone previews and manual transforms keep a one-minute idle grace period.
 The helper also stops on request errors, disabling dictation, changing engines, or quitting.
@@ -312,9 +379,18 @@ Transforms use the same engine selection as Smart cleanup, even in the Off, Basi
 modes. Local models receive the transform instructions directly. Apple Intelligence honors its
 availability and route switch. Auto-apply is off by default. Automatic processing occurs before
 insertion, with the original recording token checked again after processing. Smart cleanup failures
-use Advanced cleanup and report the underlying error alongside the fallback notice. The app also
-logs the error for diagnosis. If only an automatic transform was requested and it fails, Tinycast keeps
-the transcript it received. Cleanup and transforms run locally.
+use Advanced cleanup and show one notice: the missing model or disabled route when that is the
+cause, otherwise the fallback notice. When an automatic transform fails, Tinycast keeps the Smart
+cleanup result, or the transcript it received, and the notice names the transform's own reason: too
+long, a model to download, a timeout, or a generic failure. When Smart cleanup shared that request,
+Advanced cleanup runs on the original instead. The app also logs each error for diagnosis. Cleanup
+and transforms run locally.
+
+App overrides on the Text cleanup page choose a cleanup level and an automatic transform per app by
+bundle ID. Each choice can stay on Default. The app is the dictation's target when recording starts.
+The overrides live in `dictationAppOverrides`, mirror to `settings.json` as `dictation.appOverrides`,
+and stay out of settings backups with the other writing preferences. Deleting a transform sets any
+override that named it to No transform.
 
 History preserves original recognition text when the inserted text was processed. Its actions
 include saved transforms, Copy original, and Restore original. The preview shows only the current
@@ -336,7 +412,8 @@ requirements as placeholders. It generates a prompt instead of executing the dic
 ## Settings organization
 
 The main Dictation page groups the Dictation History and Dictation Settings commands with Enable
-Dictation. Recording groups Push to talk, both Hands-free shortcuts, the microphone,
+Dictation. Recording groups Push to talk, both Hands-free shortcuts, Paste last transcript,
+Undo last dictation, the microphone,
 Indicator & feedback, and Speech recognition. Writing groups Text cleanup, After dictation,
 Dictionary, and history retention. The Indicator & feedback row previews
 the current style alongside the preview on its detail page. Settings search opens the detail
@@ -354,13 +431,15 @@ other supported stutters, clear weekday
 corrections, and spoken punctuation. It can format lists from explicit commands, ordered cues,
 headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps,
 or at transitions and questions after a substantial passage. See the
-[formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
-budget expires, Basic keeps its filler removal and tries currency formatting on its own. Advanced
-keeps the original text if its budget expires. Smart runs the
+[formatting reference](dictation-formatting.md) for examples and limits. If the formatter's fixed
+work allowance runs out, Basic keeps its filler removal and tries currency formatting on its own.
+Advanced keeps the original text. Smart runs the
 selected engine. The After dictation switch
 pauses automatic transforms without clearing the Default transform selection. Transform instructions,
 shortcuts and sample preview appear while editing that transform. Smart cleanup and transforms
-share the engine selected in Text cleanup. The Text cleanup page also manages its model downloads.
+share the engine selected in Text cleanup. The Text cleanup page also manages its model downloads,
+including S1-mini when Emberon-2 is selected and After dictation is on. The After dictation page offers
+the transform engine's download whenever it is missing.
 Speech recognition manages the speech model. Sounds are under Indicator & feedback.
 
 The cleanup model download shows transferred bytes and percentage in a linear progress bar. At 100%,

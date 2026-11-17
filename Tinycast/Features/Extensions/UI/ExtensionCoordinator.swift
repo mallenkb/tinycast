@@ -49,7 +49,7 @@ final class ExtensionCoordinator {
             return
         }
 
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         Task {
             guard
                 await core.confirm(
@@ -138,7 +138,7 @@ final class ExtensionCoordinator {
 
     func confirmUninstall(_ owner: InstalledExtension) {
         paletteCoordinator.hidePalette(restoreFocus: false)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         Task {
             guard
                 await core.confirm(
@@ -150,7 +150,7 @@ final class ExtensionCoordinator {
                             """),
                     symbol: "trash", confirmTitle: String(localized: "Uninstall"))
             else { return }
-            await extensions.uninstall(owner)
+            await extensions.library.uninstall(owner)
         }
     }
 
@@ -329,7 +329,7 @@ final class ExtensionCoordinator {
 
     /// The dialog outranks the palette, so a view command keeps its screen behind it.
     func confirmExtensionAlert(_ alert: ExtensionAlert) async -> Bool {
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         return await core.confirm(
             title: alert.title, message: alert.message,
             symbol: alert.isDestructive ? "exclamationmark.triangle" : "questionmark.circle",
@@ -337,5 +337,49 @@ final class ExtensionCoordinator {
             tone: alert.isDestructive ? .danger : .neutral,
             confirmRole: alert.isDestructive ? .destructive : .standard,
             dismissTitle: alert.dismissTitle)
+    }
+
+    enum ProcessConsent: Int {
+        case always, once, deny
+    }
+
+    /// Deny is the default: the panel takes key, and a stray Return must not start anything.
+    func askProcessConsent(title: String) async -> ProcessConsent {
+        NSApp.activate()
+        let answer = await core.choose(
+            title: String(localized: "Let “\(title)” run programs?"),
+            message: String(localized: "It wants to run commands on this Mac with your permissions.")
+                + " " + String(localized: "Allow only extensions you trust."),
+            symbol: "terminal",
+            options: [
+                DialogAction(title: String(localized: "Always Allow")),
+                DialogAction(title: String(localized: "Allow Once")),
+                DialogAction(title: String(localized: "Don't Allow"), role: .cancel)
+            ],
+            defaultIndex: ProcessConsent.deny.rawValue, tone: .danger)
+        return ProcessConsent(rawValue: answer) ?? .deny
+    }
+
+    /// Names what the bundle reaches for, so the user decides before any of it runs.
+    func confirmInstall(title: String, capabilities: Set<ExtensionCapability>) async -> Bool {
+        NSApp.activate()
+        let found = ExtensionCapability.allCases.filter(capabilities.contains).map(\.summary)
+        return await core.confirm(
+            title: String(localized: "Install “\(title)”?"),
+            message: found.joined(separator: "\n"),
+            symbol: "puzzlepiece.extension", confirmTitle: String(localized: "Install"),
+            tone: .neutral, confirmRole: .standard)
+    }
+
+    /// Up to four apps and a cancel; nil when the user cancels.
+    func chooseApplication(_ candidates: [URL], toOpen target: URL) async -> URL? {
+        NSApp.activate()
+        let options =
+            candidates.map { DialogAction(title: $0.deletingPathExtension().lastPathComponent) }
+            + [DialogAction(title: String(localized: "Cancel"), role: .cancel)]
+        let answer = await core.choose(
+            title: String(localized: "Open With"), message: target.lastPathComponent,
+            symbol: "arrow.up.forward.app", options: options, defaultIndex: 0)
+        return candidates.indices.contains(answer) ? candidates[answer] : nil
     }
 }

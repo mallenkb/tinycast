@@ -42,6 +42,7 @@ value. `[]` removes every shortcut, and omitting the key leaves the current sele
 
 | File | Role |
 | --- | --- |
+| `Settings/Model/Preference.swift` | One `UserDefaults` key with its default and stored form, for `AppSettings` |
 | `Settings/Model/SettingsFileKey.swift` | Every key, in file order; the raw value is its `section.name` path |
 | `Settings/Model/SettingsFileJSON.swift` | An ordered JSON tree, so records print in a readable key order |
 | `Settings/Model/SettingsFileValue.swift` | Value conversions; `SettingsFileRawValue` and `SettingsFileToken` for enums |
@@ -172,8 +173,8 @@ for dark compact, `lightCompact`, `grayCompact`, `lightGrayCompact`, `lightCapsu
 Setting `dictation.useApple` to `true` selects Apple Dictation. The `dictation.model` value remembers
 the Parakeet or Qwen model to use when Apple Dictation is off.
 `dictation.releaseAfterMinutes` controls how long the local speech model stays loaded. The default
-`-1` releases it after each dictation. `0` keeps it loaded until you quit or switch models. Positive
-values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
+`1` releases it after a minute idle, and `-1` after each dictation. `0` keeps it loaded until you quit
+or switch models. Positive values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
 
 ```json
 "clipboard-history": { "shortcut": "cmd+shift+v", "alias": "ch", "showInLauncher": true }
@@ -204,7 +205,8 @@ values of 1, 2, 5, 10, 15, 20, 30, or 60 set the idle delay in minutes.
 ## Adding a setting
 
 1. Add the property to its store as usual, with its `AppSettingsKey` and its
-   `SettingsBackupCoverage` entry.
+   `SettingsBackupCoverage` entry. In `AppSettings` that is one `Stored` entry, a `Preference` naming
+   the key, the default and the stored form, loaded in `init` and stored in `didSet`.
 2. Add a `SettingsFileKey` case in pane order, its raw value the `section.name` path.
 3. Bind it in `SettingsFileSchema`; an enum conforms to `SettingsFileRawValue`, or to
    `SettingsFileToken` when its file spelling differs from its raw value.
@@ -215,7 +217,9 @@ A consent flag, content or machine state gets no key.
 `appearance.typography` accepts `system` or `interVariable`. The choice also travels in settings backups.
 
 Dictation writing preferences mirror `dictation.removesFillerWords`, `dictation.advancedCleanup`,
-`dictation.smartCleanup`, `dictation.cleanupEngine`, `dictation.autoTransform`, and
-`dictation.transformID`. Smart takes precedence when both cleanup flags are set.
+`dictation.smartCleanup`, `dictation.cleanupEngine`, `dictation.autoTransform`,
+`dictation.transformID`, and `dictation.appOverrides`. Smart takes precedence when both cleanup
+flags are set. `dictation.appOverrides` maps a bundle ID to an object with an optional `cleanup`
+(`off`, `basic`, `advanced` or `smart`) and an optional `transform` (`off` or a transform ID).
 Saved transform instructions and their content-specific shortcut bindings stay local, outside the
 settings file. Importing these preferences does not enable microphone capture or download a model.

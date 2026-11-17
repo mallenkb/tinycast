@@ -56,6 +56,7 @@ struct DictationWorkerTest {
             } catch {}
             await worker.stop()
         }
+        try await testSurvivingRequests(executable: executable)
         let root = FileManager.default.temporaryDirectory.appending(path: "dictation-\(UUID())")
         defer { try? FileManager.default.removeItem(at: root) }
         for model in DictationModel.allCases {
@@ -111,6 +112,48 @@ struct DictationWorkerTest {
         await store.stop()
         try await testDownload(root: root.appending(path: "downloads"))
         print("Dictation worker reuse, switching, removal, cancellation and broken pipes passed")
+    }
+
+    private static func testSurvivingRequests(executable: URL) async throws {
+        let samples = [Float](repeating: 0.25, count: 16_000)
+        func request() -> DictationWire.Request {
+            DictationWire.Request(
+                id: UUID(), model: .ultra, directory: URL(fileURLWithPath: "/tmp/models"),
+                sampleCount: samples.count, language: nil)
+        }
+        let slow = try DictationWorker(executable: executable, arguments: ["--fixture", "slow"])
+        for purpose in [DictationWorker.Purpose.preview, .segment] {
+            let ready = AsyncStream<Void>.makeStream()
+            let task = Task {
+                try await slow.transcribe(samples, request: request(), purpose: purpose) {
+                    ready.continuation.yield(())
+                }
+            }
+            var iterator = ready.stream.makeAsyncIterator()
+            _ = await iterator.next()
+            task.cancel()
+            do {
+                _ = try await task.value
+                fatalError("A cancelled preview delivered its result")
+            } catch is CancellationError {}
+            guard slow.isUsable else { fatalError("Cancelling a loaded preview stopped the helper") }
+        }
+        guard try await slow.transcribe(samples, request: request(), onReady: {}) == "ultra" else {
+            fatalError("The helper lost its exchange after a dropped preview")
+        }
+        await slow.stop()
+
+        for purpose in [DictationWorker.Purpose.segment, .final] {
+            let failing = try DictationWorker(executable: executable, arguments: ["--fixture", "fail"])
+            do {
+                _ = try await failing.transcribe(samples, request: request(), purpose: purpose, onReady: {})
+                fatalError("A failed recognition returned text")
+            } catch DictationWire.Failure.unavailable {}
+            guard failing.isUsable == (purpose != .final) else {
+                fatalError("A failed segment stopped the helper, or a failed final kept it")
+            }
+            await failing.stop()
+        }
     }
 
     private static func testDownload(root: URL) async throws {
@@ -228,6 +271,12 @@ struct DictationWorkerTest {
                 _ = try DictationWire.readExactly(1, from: .standardInput)
                 return
             }
+            if CommandLine.arguments.contains("fail") {
+                try DictationWire.write(
+                    DictationWire.Response(id: request.id, status: .failed), to: .standardOutput)
+                continue
+            }
+            if CommandLine.arguments.contains("slow") { usleep(200_000) }
             try DictationWire.write(
                 DictationWire.Response(
                     id: request.id, status: .result,

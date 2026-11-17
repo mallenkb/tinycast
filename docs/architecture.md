@@ -25,7 +25,7 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │ Uninstall{Target,SearchRoot,Rules,Protection,Plan} ·                       │
 │ Quicklink{,Destination,Store,Archive} · AppleShortcut · Notes/Model/* ·    │
 │ Snippets/Model/* ·                                                         │
-│ ShellCommandRunner · DoubleTap{Modifier,Detector} · ClipboardStore ·       │
+│ ShellCommandRunner · DoubleTap{Modifier,Detector} · ClipboardItem ·        │
 │ RaycastDecoder · Scrypt · AppSettingsKey · SettingsBackupCoverage          │
 │ SettingsFile{JSON,Key,Value,Format,Binding,Issue,Identity} ·               │
 │ HotKeySpelling · WindowManagementFileFormat ·                              │
@@ -41,7 +41,8 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │ AXWindowAccess · AXScreens · WindowInventory · WindowLayoutRunner ·        │
 │ RoomWindowSweep · RoomRunner ·                                             │
 │ IconCache · WindowMover · UninstallScanner · UninstallRunner ·             │
-│ SystemActionRunner · QuicklinkLauncher · TextInjector ·             │
+│ SystemActionRunner · QuicklinkLauncher · TextInjector ·                    │
+│ ClipboardDatabase ·                                                        │
 │ SnippetKeywordListener · NotesRepository · CurrencyRateStore · Paster ·    │
 │ HotKeyCenter · HyperKeyTap · KeyboardRemapper · ModifierTapMonitor ·       │
 │ SecureInputMonitor · RunningAppsMonitor ·                                  │
@@ -73,8 +74,8 @@ in whichever of the two owns it.
   lives here. This is the layer that **does** things.
 - **`UI/` and `Settings/` — views**, plus the feature's coordinator. Declarative, thin, holding no policy.
 
-The rule is checkable, which is the point: **a file under `Model/` may not import AppKit or SwiftUI**,
-because the harnesses compile the shipped sources rather than a copy. A harness that stops compiling is
+The rule is checkable, which is the point: **a file under `Model/` may not import AppKit or SwiftUI,
+or reach `AppCore` or a coordinator** (`Scripts/check-model-purity.sh`), because the harnesses compile the shipped sources rather than a copy. A harness that stops compiling is
 the signal that a decision leaked into the effect layer, or an effect into the decision layer.
 
 The boundary keeps effects out of decisions: `CalcEngine.evaluate` is handed a finished
@@ -115,7 +116,7 @@ launch. That is the one wiring point, and `start` reads as the app's whole boot 
 
 **Feature actions live on that feature's coordinator, and a view must never reach past a coordinator
 into a store to mutate it.** That is the rule; `AppCore` holds only the closure wiring that connects a
-hotkey to a coordinator. Views inject `AppCore` through `@Environment` and use it as the *locator* for
+hotkey to a coordinator: `start()` builds one `HotKeyRoutes` and hands it to `HotKeyManager.start`. Views inject `AppCore` through `@Environment` and use it as the *locator* for
 those coordinators — `core.quicklinkCoordinator.deleteQuicklink(…)` is the shape, and the alternative
 is injecting fifteen coordinators separately for no gain. Reading a store off `AppCore` to render it is
 fine too; deciding something with one is what the rule forbids. `showNotice`, `confirm`,
@@ -237,11 +238,12 @@ House idioms for the sharp edges:
 
 - Block-observer lifetimes go through the RAII `NotificationToken` (`Platform/NotificationToken.swift`)
   rather than removal in a `deinit`.
-- `ClipboardStore` uses `isolated deinit` for its SQLite teardown.
+- `ClipboardDatabase` uses `isolated deinit` for its SQLite teardown.
 - Raw Carbon and C pointers are decoded to plain values before crossing into actor code (see
   `hotKeyCarbonEventHandler`).
 - `HealthTicker` (`Platform/HealthTicker.swift`) is the one shared timer for periodic health checks, so
-  the event taps do not each own one.
+  the event taps do not each own one. It checks every second while a subscriber is waiting or has
+  just repaired a tap, and every five seconds once ten checks in a row come back clean.
 
 ## The tree
 
@@ -259,7 +261,8 @@ Tinycast/
                     Images/, Compression/
   Resources/        RaycastRuntime.generated.js, the embedded extension runtime
   Palette/          the palette shell: PalettePanel, PaletteWindowController, RootPaletteView,
-                    the PaletteScreen protocol, PaletteCoordinator, PaletteState, PaletteMode
+                    the PaletteScreen protocol, PaletteCoordinator, PaletteState, PaletteMode,
+                    PaletteMenuState, PaletteRouting
   Windows/          the non-palette AppKit surfaces: AppWindowController, Dialog/, HUD/, About/
   Assets.xcassets/  the app icon and the bundled image sets some catalog symbols resolve to
   Migrations/       one-shot repairs, each deleted after one stable release (migrations.md)

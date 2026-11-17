@@ -64,7 +64,8 @@ public final class CohereMelSpectrogram {
     public let config: Config
     public let nFFT: Int
     private let paddedWindow: [Float]
-    private let melFilter: [[Float]]
+    /// Row-major (nMels, nBins).
+    private let melFilter: [Float]
     private let fftSetup: vDSP.FFT<DSPSplitComplex>
 
     public init(config: Config = Config()) {
@@ -90,7 +91,8 @@ public final class CohereMelSpectrogram {
 
         self.melFilter = Self.slaneyMelFilter(
             sampleRate: config.sampleRate, nFFT: self.nFFT,
-            nMels: config.nMels, fMin: config.fMin, fMax: config.fMax)
+            nMels: config.nMels, fMin: config.fMin, fMax: config.fMax
+        ).flatMap { $0 }
 
         let log2n = vDSP_Length(Int(log2(Double(self.nFFT))))
         guard let setup = vDSP.FFT(log2n: log2n, radix: .radix2, ofType: DSPSplitComplex.self) else {
@@ -102,137 +104,107 @@ public final class CohereMelSpectrogram {
     public func validFrameCount(forSamples n: Int) -> Int { max(0, n) / config.hopLength }
 
     public struct Output {
-        public let mel: [[Float]]  // (nMels, nFrames)
+        /// Row-major (nMels, frames).
+        public let mel: [Float]
+        public let frames: Int
         public let validFrames: Int
     }
 
     public func compute(audio: [Float]) -> Output {
-        var samples = audio
-        let validFrames = validFrameCount(forSamples: samples.count)
-
-        if config.preemph != 0, samples.count > 1 {
-            var filtered = [Float](repeating: 0, count: samples.count)
-            filtered[0] = samples[0]
-            for i in 1..<samples.count {
-                filtered[i] = samples[i] - config.preemph * samples[i - 1]
-            }
-            samples = filtered
-        }
-
+        let validFrames = validFrameCount(forSamples: audio.count)
         let padSize = nFFT / 2
-        var padded = [Float](repeating: 0, count: samples.count + 2 * padSize)
-        for i in 0..<samples.count { padded[padSize + i] = samples[i] }
+        var padded = [Float](repeating: 0, count: audio.count + 2 * padSize)
+        audio.withUnsafeBufferPointer { audio in
+            padded.withUnsafeMutableBufferPointer { padded in
+                guard let source = audio.baseAddress else { return }
+                let target = padded.baseAddress! + padSize
+                target.update(from: source, count: audio.count)
+                guard config.preemph != 0, audio.count > 1 else { return }
+                var scale = -config.preemph
+                vDSP_vsma(source, 1, &scale, source + 1, 1, target + 1, 1, vDSP_Length(audio.count - 1))
+            }
+        }
 
         let nFrames = 1 + (padded.count - nFFT) / config.hopLength
         let nBins = nFFT / 2 + 1
-
-        var power = [Float](repeating: 0, count: nBins * nFrames)
-
         let halfN = nFFT / 2
+        var power = [Float](repeating: 0, count: nBins * nFrames)
         var realp = [Float](repeating: 0, count: halfN)
         var imagp = [Float](repeating: 0, count: halfN)
         var windowed = [Float](repeating: 0, count: nFFT)
+        let stride = vDSP_Stride(nFrames)
 
-        for frame in 0..<nFrames {
-            let start = frame * config.hopLength
-            padded.withUnsafeBufferPointer { source in
-                vDSP_vmul(
-                    source.baseAddress!.advanced(by: start), 1,
-                    paddedWindow, 1,
-                    &windowed, 1,
-                    vDSP_Length(nFFT))
-            }
-
-            windowed.withUnsafeBufferPointer { buf in
-                guard let base = buf.baseAddress else { return }
-                base.withMemoryRebound(to: DSPComplex.self, capacity: halfN) { cbuf in
-                    realp.withUnsafeMutableBufferPointer { rBuf in
-                        imagp.withUnsafeMutableBufferPointer { iBuf in
-                            var split = DSPSplitComplex(
-                                realp: rBuf.baseAddress!, imagp: iBuf.baseAddress!)
-                            vDSP_ctoz(cbuf, 2, &split, 1, vDSP_Length(halfN))
+        padded.withUnsafeBufferPointer { source in
+            power.withUnsafeMutableBufferPointer { power in
+                realp.withUnsafeMutableBufferPointer { real in
+                    imagp.withUnsafeMutableBufferPointer { imaginary in
+                        var split = DSPSplitComplex(realp: real.baseAddress!, imagp: imaginary.baseAddress!)
+                        for frame in 0..<nFrames {
+                            vDSP_vmul(
+                                source.baseAddress! + frame * config.hopLength, 1, paddedWindow, 1,
+                                &windowed, 1, vDSP_Length(nFFT))
+                            windowed.withUnsafeBufferPointer { buffer in
+                                buffer.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: halfN) {
+                                    vDSP_ctoz($0, 2, &split, 1, vDSP_Length(halfN))
+                                }
+                            }
+                            fftSetup.forward(input: split, output: &split)
+                            let column = power.baseAddress! + frame
+                            column[0] = real[0] * real[0]
+                            column[(nBins - 1) * nFrames] = imaginary[0] * imaginary[0]
+                            var bins = DSPSplitComplex(
+                                realp: real.baseAddress! + 1, imagp: imaginary.baseAddress! + 1)
+                            vDSP_zvmags(&bins, 1, column + nFrames, stride, vDSP_Length(halfN - 1))
                         }
                     }
                 }
             }
+        }
+        power.withUnsafeMutableBufferPointer { power in
+            let values = power.baseAddress!
+            var quarter: Float = 0.25
+            vDSP_vsmul(values, 1, &quarter, values, 1, vDSP_Length(power.count))
+            guard config.magPower != 2 else { return }
+            let exponent = [Float](repeating: config.magPower / 2, count: power.count)
+            var count = Int32(power.count)
+            vvpowf(values, exponent, values, &count)
+        }
 
-            realp.withUnsafeMutableBufferPointer { rBuf in
-                imagp.withUnsafeMutableBufferPointer { iBuf in
-                    var split = DSPSplitComplex(
-                        realp: rBuf.baseAddress!, imagp: iBuf.baseAddress!)
-                    fftSetup.forward(input: split, output: &split)
+        var mel = [Float](repeating: 0, count: config.nMels * nFrames)
+        mel.withUnsafeMutableBufferPointer { mel in
+            let values = mel.baseAddress!
+            vDSP_mmul(
+                melFilter, 1, power, 1, values, 1,
+                vDSP_Length(config.nMels), vDSP_Length(nFrames), vDSP_Length(nBins))
+            var zeroGuard = config.logZeroGuard
+            vDSP_vsadd(values, 1, &zeroGuard, values, 1, vDSP_Length(mel.count))
+            var count = Int32(mel.count)
+            vvlogf(values, values, &count)
+        }
+
+        mel.withUnsafeMutableBufferPointer { mel in
+            for band in 0..<config.nMels {
+                let row = mel.baseAddress! + band * nFrames
+                if validFrames > 1 {
+                    let count = vDSP_Length(validFrames)
+                    var mean: Float = 0
+                    vDSP_meanv(row, 1, &mean, count)
+                    var negativeMean = -mean
+                    vDSP_vsadd(row, 1, &negativeMean, row, 1, count)
+                    var squares: Float = 0
+                    vDSP_svesq(row, 1, &squares, count)
+                    var deviation = sqrt(squares / Float(validFrames - 1))
+                    if !deviation.isFinite { deviation = 0 }
+                    var denominator = deviation + config.cmvnEpsilon
+                    vDSP_vsdiv(row, 1, &denominator, row, 1, count)
+                }
+                if validFrames < nFrames {
+                    (row + validFrames).update(repeating: 0, count: nFrames - validFrames)
                 }
             }
-
-            let scale: Float = 0.5
-            let dcMag = abs(realp[0] * scale)
-            power[0 * nFrames + frame] = pow(dcMag, config.magPower)
-            let nyMag = abs(imagp[0] * scale)
-            power[(nBins - 1) * nFrames + frame] = pow(nyMag, config.magPower)
-            for k in 1..<halfN {
-                let r = realp[k] * scale
-                let im = imagp[k] * scale
-                let mag = sqrt(r * r + im * im)
-                power[k * nFrames + frame] = pow(mag, config.magPower)
-            }
         }
 
-        var mel = [[Float]](repeating: [Float](repeating: 0, count: nFrames), count: config.nMels)
-        for m in 0..<config.nMels {
-            let filt = melFilter[m]
-            for f in 0..<nFrames {
-                var sum: Float = 0
-                for k in 0..<nBins { sum += filt[k] * power[k * nFrames + f] }
-                mel[m][f] = sum
-            }
-        }
-
-        for m in 0..<config.nMels {
-            for f in 0..<nFrames {
-                mel[m][f] = log(mel[m][f] + config.logZeroGuard)
-            }
-        }
-
-        if validFrames > 1 {
-            for m in 0..<config.nMels {
-                var mean: Float = 0
-                for f in 0..<validFrames { mean += mel[m][f] }
-                mean /= Float(validFrames)
-                var ssq: Float = 0
-                for f in 0..<validFrames {
-                    let d = mel[m][f] - mean
-                    ssq += d * d
-                }
-                let variance = ssq / Float(validFrames - 1)
-                var std = sqrt(variance)
-                if !std.isFinite { std = 0.0 }
-                let denom = std + config.cmvnEpsilon
-                for f in 0..<validFrames { mel[m][f] = (mel[m][f] - mean) / denom }
-            }
-        }
-
-        if validFrames < nFrames {
-            for m in 0..<config.nMels {
-                for f in validFrames..<nFrames { mel[m][f] = 0 }
-            }
-        }
-
-        return Output(mel: mel, validFrames: validFrames)
-    }
-
-    public static func padOrTruncate(
-        mel: [[Float]], validFrames: Int, fixedFrames: Int = 3_500
-    ) -> (mel: [[Float]], featureLength: Int) {
-        let nMels = mel.count
-        guard nMels > 0 else { return (mel, 0) }
-        let cur = mel[0].count
-        if cur == fixedFrames { return (mel, min(validFrames, fixedFrames)) }
-        if cur > fixedFrames {
-            return (mel.map { Array($0.prefix(fixedFrames)) }, min(validFrames, fixedFrames))
-        }
-        let padLen = fixedFrames - cur
-        let padded: [[Float]] = mel.map { $0 + [Float](repeating: 0, count: padLen) }
-        return (padded, min(validFrames, fixedFrames))
+        return Output(mel: mel, frames: nFrames, validFrames: validFrames)
     }
 
     private static func nextPowerOfTwo(atLeast n: Int) -> Int {
@@ -506,20 +478,19 @@ public final class CoherePipeline {
         language: CohereAsrConfig.Language = .english,
         maxNewTokens: Int? = nil,
         repetitionPenalty: Float = 1.1,
-        noRepeatNgram: Int = 3
+        noRepeatNgram: Int = 6
     ) throws -> TranscriptionResult {
         let total0 = CFAbsoluteTimeGetCurrent()
 
-        let melOut = melExtractor.compute(audio: audio)
-        let (paddedMel, featureLength) = CohereMelSpectrogram.padOrTruncate(
-            mel: melOut.mel, validFrames: melOut.validFrames, fixedFrames: 3_500)
+        let mel = melExtractor.compute(audio: audio)
+        let featureLength = min(mel.validFrames, Self.encoderFrames)
         guard featureLength > 0 else {
             throw CohereAsrError.invalidInput("Audio too short to extract mel features")
         }
 
         let enc0 = CFAbsoluteTimeGetCurrent()
         let (encoderHidden, encoderValid) = try runEncoder(
-            paddedMel: paddedMel, featureLength: featureLength, encoder: models.encoder)
+            mel: mel, featureLength: featureLength, encoder: models.encoder)
         let encoderSecs = CFAbsoluteTimeGetCurrent() - enc0
 
         let dec0 = CFAbsoluteTimeGetCurrent()
@@ -557,7 +528,7 @@ public final class CoherePipeline {
         language: CohereAsrConfig.Language = .english,
         maxNewTokens: Int? = nil,
         repetitionPenalty: Float = 1.1,
-        noRepeatNgram: Int = 3
+        noRepeatNgram: Int = 6
     ) throws -> TranscriptionResult {
         let total0 = CFAbsoluteTimeGetCurrent()
 
@@ -768,18 +739,28 @@ public final class CoherePipeline {
         return Array(prefix.prefix(prefix.count - prefixDrop)) + Array(suffix.dropFirst(bestSEnd))
     }
 
+    private static let encoderFrames = 3_500
+
     private func runEncoder(
-        paddedMel: [[Float]], featureLength: Int, encoder: MLModel
+        mel spectrum: CohereMelSpectrogram.Output, featureLength: Int, encoder: MLModel
     ) throws -> (hidden: MLMultiArray, encoderValidFrames: Int) {
         let nMels = CohereAsrConfig.numMelBins
-        let nFrames = 3_500
+        let nFrames = Self.encoderFrames
+        guard spectrum.mel.count == nMels * spectrum.frames else {
+            throw CohereAsrError.encodingFailed("Mel features have an unexpected shape")
+        }
 
         let mel = try MLMultiArray(
             shape: [1, NSNumber(value: nMels), NSNumber(value: nFrames)], dataType: .float32)
-        let melPtr = mel.dataPointer.bindMemory(to: Float.self, capacity: nMels * nFrames)
-        for m in 0..<nMels {
-            let row = paddedMel[m]
-            for f in 0..<nFrames { melPtr[m * nFrames + f] = row[f] }
+        let copied = min(nFrames, spectrum.frames)
+        mel.withUnsafeMutableBufferPointer(ofType: Float.self) { target, strides in
+            target.update(repeating: 0)
+            spectrum.mel.withUnsafeBufferPointer { source in
+                for band in 0..<nMels {
+                    (target.baseAddress! + band * strides[1]).update(
+                        from: source.baseAddress! + band * spectrum.frames, count: copied)
+                }
+            }
         }
 
         let featLen = try MLMultiArray(shape: [1], dataType: .int32)
@@ -892,7 +873,8 @@ public final class CoherePipeline {
 
             var logitBuf = Self.copyLogitsFloat32(logits)
             Self.applyRepetitionPenalty(&logitBuf, history: allTokens, penalty: repetitionPenalty)
-            Self.applyNoRepeatNgram(&logitBuf, history: allTokens, n: noRepeatNgram)
+            // The prompt and repeated short phrases are legitimate; only longer loops are banned.
+            Self.applyNoRepeatNgram(&logitBuf, history: outputTokens, n: noRepeatNgram)
 
             let nextToken = Self.argmax(logitBuf)
             allTokens.append(currentToken)

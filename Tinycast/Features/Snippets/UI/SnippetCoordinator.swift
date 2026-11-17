@@ -72,7 +72,7 @@ final class SnippetCoordinator {
             return
         }
 
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         Task {
             guard
                 await core.confirm(
@@ -452,6 +452,10 @@ final class SnippetCoordinator {
             onDelivered: { [weak self] in
                 guard let self, let confirmation else { return }
                 self.showMessage(confirmation, .success)
+            },
+            onFailed: { [weak self] failure in
+                guard failure == .noTextTarget else { return }
+                self?.showMessage(String(localized: "Click into a text field first"), .neutral)
             })
     }
 }

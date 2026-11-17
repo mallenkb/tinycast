@@ -37,6 +37,8 @@ Version 0.1.25 adds dictation processing during pauses, defaults Smart cleanup t
 improves currency formatting, including Ghanaian cedis and pesewas.
 Version 0.1.26 keeps the live dictation preview visible near screen edges and adds clipboard color
 previews for hex values copied from supported design apps.
+Version 0.1.27 adds dictation retry and undo, improves correction learning, and asks before extensions
+run or stop processes.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);
@@ -92,13 +94,14 @@ Removing that line would reintroduce exactly those three problems. See
 ## GitHub Actions
 
 `Build` runs on pushes to main, pull requests and manual dispatch. It uses GitHub's `xcode-27` hosted
-runner, runs lint and focused dictionary, pronunciation, icon-cache, settings-file and backup harnesses, then builds
-an unsigned Apple silicon Debug build. Signed releases retain universal validation. The build log is retained for seven days. It does not run the focus-taking
-onboarding harness or the offscreen form-rendering checks.
+runner, runs lint and every harness except the `exclusive` ones that need desktop focus and the `device`
+ones that need on-device Vision (`TINYCAST_HOSTED_RUNNER=1`), then builds an unsigned Apple silicon Debug build. Signed releases
+retain universal validation. The build log is retained for seven days.
 
 `Release` is a manual workflow for this fork on main. Update project.yml's version first, push that
-commit, then choose Actions → Release → Run workflow and enter the same stable version. The job checks
-that the release does not already exist, validates sources, imports the existing signing identity,
+commit without `[skip ci]`, wait for Build to pass, then choose Actions → Release → Run workflow and
+enter the same stable version. The job refuses a commit whose Build check has not passed or whose
+message carries `[skip ci]`, checks that the release does not already exist, runs the same harnesses, validates sources, imports the existing signing identity,
 builds the universal DMG and updater ZIP, verifies all four executable architecture pairs and signatures,
 and publishes both archives with SHA256SUMS.txt. Release notes include generated changes and fork
 installation instructions. It does not update upstream taps or send announcements.

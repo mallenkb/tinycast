@@ -11,12 +11,12 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | --- | --- |
 | The harnesses | `./Scripts/run-tests.sh` |
 | Lint, settings search, translations and migrations | `./Scripts/lint.sh` |
-| Pure-layer purity | `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` |
+| Pure-layer purity | `Scripts/check-model-purity.sh` (also run by `lint.sh`): no AppKit, SwiftUI or Cocoa import, and no `AppCore` or coordinator, under `Features/*/Model/` |
 | A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
 
-GitHub Build runs lint, focused regression checks and an unsigned Debug build. The full suite and
-manual checks remain local responsibilities. Each is expanded below; the manual sweep at the end
+GitHub Build runs lint, every harness except the `exclusive` ones, and an unsigned Debug build.
+The exclusive harnesses and manual checks remain local responsibilities. Each is expanded below; the manual sweep at the end
 is judged by what you touched.
 
 ## The harnesses
@@ -82,10 +82,12 @@ A `run` line takes optional markers before the harness name. `-O` compiles that 
 which is worth it only where the run dominates the compile — `raycast-test` spends 47 seconds in
 scrypt at `-Onone` and one second at `-O`. `slow` dispatches it in the first wave, so the longest
 harnesses are not still running after everything else has finished. `exclusive` runs a harness alone
-after the parallel queue completes; use it when a harness needs exclusive desktop focus.
+after the parallel queue completes; use it when a harness needs exclusive desktop focus. `device`
+marks a harness that needs the Mac's on-device Vision models, which a hosted runner lacks.
 
-The script is the **only** place the full harness set is written down. CI runs a focused subset;
-run the full suite before publishing. Adding a harness means adding one `run` line.
+The script is the **only** place the full harness set is written down. CI runs all of it except
+`exclusive` and `device` harnesses (`TINYCAST_HOSTED_RUNNER=1`), and Release refuses a commit Build
+has not passed. Adding a harness means adding one `run` line.
 
 Each harness compiles the **shipped sources** it guards rather than a copy of them, which is what makes
 the pure-layer boundary real: a harness that stops *compiling* means AppKit or SwiftUI has leaked into a
@@ -123,7 +125,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `fuzz-test` | `Launcher/Model/LauncherMatch.swift`, `LauncherOrder.swift`, `LauncherSuggestions.swift`, `EntryNaming.swift`, `ScriptRomanization.swift`, `SearchRelevance.swift`, `LauncherRankingStore.swift` — **a new ranking complaint is a new case in its `denseIndex`** |
 | `description-search-test` | Local description grammar, calendar boundaries, scoped and live file matches, clipboard OCR and ordinary text, cancellation and interpreted search constraints |
 | `file-search-test` | `FileSearch/Model/`: folding, masks, scoring, ignore rules, priors, scopes |
-| `file-index-test` | `FileIndexCrawler`, `FileIndexSnapshot`, `FileIndex`: a real fixture crawled, written, mapped, searched and live-updated |
+| `file-index-test` | `FileIndexCrawler`, `FileIndexSnapshot`, `FileIndex`, `FileIndexLiveChanges`: a real fixture crawled, written, mapped, searched and live-updated |
 | `file-search-session-test` | serialized query execution, coalescing, cancellation and refresh |
 | `spotlight-content-test` | real Spotlight predicate shapes, bounded helper output, and child cleanup on completion, cancellation and timeout |
 | `menu-search-test` | `MenuSearch/Model/` decisions, `MenuSearch/Service/` session filtering, the shared `FuzzyMatch` scorer |
@@ -141,7 +143,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `clipboard-search-test` | Ordinary and OCR result ordering, opt-in lifecycle, cancellation, pins and type filters |
 | `clipboard-text-test` | Apple Vision/PDF extraction, scheduling, retry backoff and recovery |
 | `paste-sequence-test` | `Clipboard/Model/PasteSequence.swift` — the walk's order, its end, and what starts it over |
-| `clipboard-test` | `Clipboard/Model/ClipboardStore.swift`, `ClipboardFilter.swift`, `ClipboardFileKind.swift`, the colour trio |
+| `clipboard-test` | `Clipboard/Service/ClipboardStore.swift`, `ClipboardDatabase.swift`, `ClipboardItem.swift`, `ClipboardFilter.swift`, `ClipboardFileKind.swift`, the colour trio |
 | `clipboard-coordinator-test` | Edit Entry selection across query/type changes and pins, failed writes, deletion during editing and cancellation; isolated database and recorded clipboard effects |
 | `clipboard-thumbnail-test` | `Platform/Images/ImageThumbnail.swift` copies against the real store — a remove or clear mid-copy leaves none, same-named JPEG/PNG copies stay apart, a timeout or cancel frees the queue, and a failed or unreadable copy falls back to the original; a stand-in script plays the helper |
 | `pasteboard-test` | `Clipboard/Service/ClipboardManager.swift` capture and `Paster.write` — what a Finder copy reads as, and what a file or image entry writes back |
@@ -149,6 +151,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `emoji-search-test` | `Emoji/Service/EmojiIndex.swift`, `FrequentEmojiStore.swift`, `Scripts/gen-emoji.js`'s keyword format, multilingual search |
 | `command-escape-tap-test` | `Palette/CommandEscapeTap.swift` — dedicated run-loop dispatch while main is blocked, timeout recovery, stale actions, installation cancellation and teardown; private ports and unposted events only |
 | `palette-navigation-test` | `Palette/PaletteState.swift`'s screen motions — `prepare`, `replace`, `push`, `pop` — and hover arming, pointer drift, scroll disarming and highlight tokens |
+| `palette-coordinator-test` | `Palette/PaletteRouting.swift`'s query and mode routing, `PaletteState.resetScreenFilters`, and `Palette/PaletteMenuState.swift`'s open, close, move, activate and Escape |
 | `compact-bar-test` | Compact shortcut order, selection boundaries, zero-to-four slots, identifiers, isolated preferences and invalid settings-file rejection |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `interface-size-test` | `DesignSystem/InterfaceMetrics.swift`, `Features/Settings/InterfaceSize.swift`, `Extensions/Model/ExtensionFormMetrics.swift` |
@@ -162,6 +165,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `deeplink-test` | `DeepLinks/Model/`, `HotKeys/Model/HotKeyAction+EntryID.swift`, `Settings/SettingsTab.swift` — every bindable command, window command and system action round-trips through its link and its entry ID, stored rows by UUID, snippet paths through percent-encoding, case folding, the channel's scheme, the links that must not resolve (Raycast schemes, the `extensions` host), input decoding, encoding and its refusals (bytes, not characters), batches, field filling, consent classes and keys, the quicklink loop rule, note, chat and window-size links, and every Settings tab slug |
 | `dictation-key-test` | `HotKeys/Service/DictationKeyManager.swift` — shared and separate preference domains, ownership handoff through the real health ticker, and retry cancellation on unbind or termination; isolated preferences, lock files and simulated keyboards |
 | `dictation-test` | Model paths, text formatting, multi-edit correction inference, and correction session timing |
+| `dictation-correction-test` | Correction scenarios end to end through detection, the learning policy, session timing, insertion anchors and the store |
 | `dictation-field-test` | Composer rebinding and teardown, field-scoped cancellation, queued insertion, correction persistence, and the next dictation. Uses synthetic capture and real AppKit editors. |
 | `dictation-cue-test` | System dictation sound paths, stop-before-play ordering and missing resources, without playing audio |
 | `dictation-inference-test` | Dictation byte BPE, Fourier/mel features and non-overlapping audio chunks; no downloaded models |
@@ -201,12 +205,15 @@ If a change touches anything in the right column, the harness on the left is man
 | `ext-metadata-test` | `Extensions/Service/ExtensionCommandMetadataStore.swift` — round-trip, failure runs, uninstall |
 | `extension-output-tail-test` | Bounded installer output, split UTF-8, missing EOF and high-volume streaming against the shipped buffer |
 | `ext-test` | the extension runtime and native menu-bar lifecycle — boots shipped sources in JavaScriptCore; menu tests cover restoration, refresh serialization, actions and teardown; fetch tests cover HTTP connection cleanup, cancellation and request isolation |
+| `ext-host-bridge-test` | `Extensions/Service/ExtensionHostBridge.swift` against a fake context — background refusals of clipboard and selection reads, process consent and its Node shim gate, the capability scan and the grant store |
 | `ext-icon-test` | `Extensions/Service/ExtensionIconCache.swift` — artwork sizing and its fallback |
 | `ext-sign-in-test` | `Extensions/Service/ExtensionSignInSession.swift` — browser start failures, completion, cancellation without a callback, and late callbacks after teardown |
 | `icon-cache-test` | `Platform/Images/IconCache.swift` — row sizing at 1×/2×, warm reuse, stamp and style invalidation, bitmap release, fitted geometry across all 256 alpha values, and that a row icon draws identically to the 96px one |
 | `entry-icon-test` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `text-diff-test` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
+| `settings-preference-test` | `Settings/Model/Preference.swift` — defaults, absent versus stored values, unknown raw values, and the plist type each preference writes |
+| `settings-backup-roundtrip-test` | `Backup/Service/SettingsDataMapping.swift` against a stand-in `AppSettings` — every carried field gathers, encodes, decodes and applies back, and no capability flag is written or granted |
 | `settings-file-test` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |
 | `window-file-test` | `WindowManagement/Model/WindowManagementFileFormat.swift` — command shortcuts, custom sizes, layouts and rooms as settings.json spells them, hand edits and bad records |
 | `launcher-settings-file-test` | Launcher settings application — invalid records, partial edits, deferred bundles, shortcut moves and records outside search scopes; isolated preferences and in-memory scan/Carbon effects |
@@ -239,13 +246,14 @@ same commit with the reason in the message.
 
 ### Purity checks
 
-The layering rule reduces to one grep, and it must return nothing:
+The layering rule reduces to one script, which `lint.sh` also runs. It fails on an AppKit, SwiftUI or
+Cocoa import under `Features/*/Model/`, and on code there that names `AppCore` or a coordinator:
 
 ```sh
-grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/
+Scripts/check-model-purity.sh
 ```
 
-Beyond the imports, the injected-environment half is not mechanically checkable, so it is worth an eye
+Beyond that, the injected-environment half is not mechanically checkable, so it is worth an eye
 when touching a pure file:
 
 - `Calculator/Model/` still takes its clock via `now`/`calendar`, its rates via `rates` and its
@@ -319,6 +327,7 @@ swiftc -O -wmo -swift-version 6 Tinycast/Features/FileSearch/Model/*.swift \
     Tinycast/Features/SearchCalendarDate.swift Tinycast/Features/SearchFileQuery.swift \
     Tinycast/Features/FileSearch/Service/FileSearchMetadata.swift \
     Tinycast/Features/FileSearch/Service/FileIndex.swift \
+    Tinycast/Features/FileSearch/Service/FileIndexLiveChanges.swift \
     Tinycast/Features/FileSearch/Service/FileIndexSnapshot.swift \
     Tinycast/Features/FileSearch/Service/FileIndexCrawler.swift \
     Tests/file-search-performance.swift -o /tmp/file-search-performance

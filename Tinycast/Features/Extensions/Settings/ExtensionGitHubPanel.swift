@@ -109,7 +109,7 @@ struct ExtensionGitHubPanel: View {
         installTask = Task {
             defer { progress = nil }
             do {
-                let installed = try await core.extensions.install(
+                let installed = try await core.extensions.library.install(
                     source, packageManager: settings.extensionPackageManager,
                     additionalSearchPaths: settings.extensionCustomSearchPaths,
                     onProgress: { step in
@@ -117,6 +117,7 @@ struct ExtensionGitHubPanel: View {
                         Task { @MainActor in if progress != nil { progress = step } }
                     })
                 installedTitle = installed.title
+            } catch is CancellationError {
             } catch {
                 guard !Task.isCancelled else { return }
                 failure = error.localizedDescription
