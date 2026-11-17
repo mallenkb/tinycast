@@ -1,6 +1,5 @@
 import SwiftUI
 
-#if DEBUG
 struct WeatherLoadingCard: View {
     @Environment(\.metrics) private var metrics
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -83,4 +82,3 @@ struct WeatherLoadingCard: View {
             .frame(width: width.map { metrics.scaled($0) }, height: metrics.scaled(height))
     }
 }
-#endif

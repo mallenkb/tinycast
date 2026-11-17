@@ -1,6 +1,5 @@
 import SwiftUI
 
-#if DEBUG
 struct WeatherCard: View {
     let query: WeatherQuery
     let selected: Bool
@@ -835,4 +834,3 @@ struct WeatherCard: View {
                 numberFormatStyle: .number.precision(.fractionLength(0...fractionDigits))))
     }
 }
-#endif

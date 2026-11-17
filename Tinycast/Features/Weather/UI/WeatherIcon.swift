@@ -2,7 +2,6 @@ import AppKit
 import ImageIO
 import SwiftUI
 
-#if DEBUG
 struct WeatherIcon: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -179,4 +178,3 @@ struct WeatherSunsetIcon: View {
             .accessibilityHidden(true)
     }
 }
-#endif

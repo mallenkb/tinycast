@@ -112,15 +112,11 @@ enum SettingsSearchCatalog {
         + backup + about
 
     private static var weather: [SettingsSearchEntry] {
-        #if DEBUG
         [
             .init(pane: .weather, keywords: ["forecast", "Open-Meteo"]),
             .init(.weatherWeather, "Default city", keywords: ["forecast", "location"]),
             .init(.weatherWeather, "Use Mac location", keywords: ["current location", "local weather"])
         ]
-        #else
-        []
-        #endif
     }
 
     private static let general: [SettingsSearchEntry] = [

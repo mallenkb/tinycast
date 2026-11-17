@@ -48,13 +48,9 @@ struct LauncherResults {
             ? CalcMemo.evaluate(vm.query, rates: currencyRates, format: core.calcNumberFormat) : nil
         // After the calculator: `#FF5733` is never arithmetic, so the two can't both answer.
         let color = calc == nil && pinned == nil ? ColorValue.parse(vm.query) : nil
-        #if DEBUG
         let weatherQuery = pinned == nil && calc == nil && color == nil
             ? WeatherQuery(vm.query, defaultCity: core.settings.weatherDefaultCity,
                            useMacLocation: core.settings.weatherUseMacLocation) : nil
-        #else
-        let weatherQuery: WeatherQuery? = nil
-        #endif
         let files = pinned == nil ? core.fileSearchCoordinator.launcherFiles(for: vm.query) : []
         let fallbacks = core.fallbackCoordinator.entries(for: vm.query)
         let pinsFavorites = vm.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

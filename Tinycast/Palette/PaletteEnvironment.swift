@@ -42,10 +42,6 @@ extension View {
             .environment(core.calendarStore)
             .environment(core.meetingClock)
             .motionScope()
-        #if DEBUG
         return scope.environment(core.weatherCoordinator)
-        #else
-        return scope
-        #endif
     }
 }

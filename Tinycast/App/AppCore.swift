@@ -82,9 +82,7 @@ final class AppCore {
     let fallbacks = FallbackStore(defaults: AppPaths.preferences)
     let calcHistory = CalculatorHistoryStore()
     let currencyRates = CurrencyRateStore()
-    #if DEBUG
     @ObservationIgnored private(set) lazy var weatherCoordinator = WeatherCoordinator(core: self)
-    #endif
     let regionNumberFormat = RegionNumberFormatMonitor()
     let calendarStore = CalendarStore(defaults: AppPaths.preferences)
     let meetingClock = MeetingClock()

@@ -1,6 +1,5 @@
 import SwiftUI
 
-#if DEBUG
 struct WeatherSettingsView: View {
     @Environment(AppSettings.self) private var settings
     @State private var choosingCity = false
@@ -108,4 +107,3 @@ private struct WeatherCityPicker: View {
         }
     }
 }
-#endif

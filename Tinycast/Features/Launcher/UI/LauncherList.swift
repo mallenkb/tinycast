@@ -296,11 +296,7 @@ private struct LeadCardView: View {
         case .color(let color):
             ColorCard(color: color, selected: selected)
         case .weather(let query):
-            #if DEBUG
             WeatherCard(query: query, selected: selected)
-            #else
-            EmptyView()
-            #endif
         }
     }
 }

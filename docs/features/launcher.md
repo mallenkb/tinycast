@@ -83,7 +83,7 @@ Open-Meteo supplies up to 16 days of forecast data.
 Tinycast resolves city names on the Mac and sends coordinates to Open-Meteo for live forecasts.
 With **Use Mac location** on, it requests a location fix only when the forecast needs it and sends
 coordinates rounded to two decimal places. The card cancels the request and releases the forecast
-when it closes. The public endpoint is enabled in Debug builds for development.
+when it closes. Forecasts use the public Open-Meteo endpoint.
 See [Open-Meteo's API plans](https://open-meteo.com/en/pricing) for commercial use.
 
 ## Search scopes

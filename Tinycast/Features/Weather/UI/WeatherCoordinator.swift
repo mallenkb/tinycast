@@ -1,7 +1,6 @@
 import CoreLocation
 import Foundation
 
-#if DEBUG
 @Observable
 @MainActor
 final class WeatherCoordinator {
@@ -59,4 +58,3 @@ final class WeatherCoordinator {
         core.settingsCoordinator.showSettings(tab: .weather, revealing: .section(.weatherWeather))
     }
 }
-#endif

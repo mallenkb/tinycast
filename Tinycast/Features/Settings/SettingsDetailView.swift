@@ -26,9 +26,7 @@ struct SettingsDetailView: View {
             case .clipboard: ClipboardSettingsView()
             case .emoji: EmojiSettingsView()
             case .calendar: CalendarSettingsView()
-            #if DEBUG
             case .weather: WeatherSettingsView()
-            #endif
             case .extensions: ExtensionsSettingsView()
             case .permissions: PermissionsSettingsView()
             case .backup: BackupSettingsView()

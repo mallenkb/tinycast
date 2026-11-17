@@ -1,6 +1,5 @@
 import SwiftUI
 
-#if DEBUG
 struct WeatherTimeline<Identity: Hashable, Content: View>: View {
     let identity: Identity
     @ViewBuilder let content: () -> Content
@@ -57,4 +56,3 @@ struct WeatherTimeline<Identity: Hashable, Content: View>: View {
         .allowsHitTesting(available && hovered)
     }
 }
-#endif

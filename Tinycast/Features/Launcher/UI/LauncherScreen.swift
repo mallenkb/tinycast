@@ -230,9 +230,7 @@ struct LauncherScreen: PaletteScreen {
         case .fallback(let fallback, _):
             core.fallbackCoordinator.run(fallback, query: vm.query)
         case .weather(let query):
-            #if DEBUG
             if query.place == .setup { core.weatherCoordinator.showSettings() }
-            #endif
         case nil: break
         }
     }

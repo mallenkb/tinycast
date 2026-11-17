@@ -2,9 +2,7 @@ enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, appleShortcuts,
         fallbacks, clipboard, snippets, fileSearch, windowManagement, navigation, notes, calendar, emoji,
         dictation, ai, quickActions, extensions, permissions, backup, about
-    #if DEBUG
     case weather
-    #endif
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
@@ -31,9 +29,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .navigation: "navigation"
         case .notes: "notes"
         case .calendar: "calendar"
-        #if DEBUG
         case .weather: "weather"
-        #endif
         case .emoji: "emoji"
         case .dictation: "dictation"
         case .ai: "ai"
@@ -62,9 +58,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .navigation: "FeatureNavigation"
         case .notes: "FeatureNotes"
         case .calendar: "FeatureCalendar"
-        #if DEBUG
         case .weather: "FeatureWeather"
-        #endif
         case .emoji: "FeatureEmojiSymbols"
         case .dictation: "FeatureDictation"
         case .ai: "FeatureAI"
@@ -97,9 +91,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .clipboard: return String(localized: "Clipboard")
         case .emoji: return String(localized: "Emoji & Symbols")
         case .calendar: return String(localized: "Calendar")
-        #if DEBUG
         case .weather: return String(localized: "Weather")
-        #endif
         case .extensions: return String(localized: "Extensions")
         case .permissions: return String(localized: "Permissions")
         case .backup: return String(localized: "Backup")
@@ -128,9 +120,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
         case .calendar: return "calendar"
-        #if DEBUG
         case .weather: return "cloud.sun"
-        #endif
         case .extensions: return "puzzlepiece.extension"
         case .permissions: return "lock.shield"
         case .backup: return "arrow.up.arrow.down.circle"
@@ -159,11 +149,7 @@ enum SettingsSection: CaseIterable, Identifiable {
         case .appSettings: [.general, .permissions, .backup, .about]
         case .searchLaunch: [.applications, .fileSearch, .quicklinks, .fallbacks]
         case .everydayTools:
-            #if DEBUG
             [.clipboard, .snippets, .notes, .calendar, .weather, .emoji, .dictation]
-            #else
-            [.clipboard, .snippets, .notes, .calendar, .emoji, .dictation]
-            #endif
         case .automationAI: [.commands, .appleShortcuts, .quickActions, .ai, .extensions]
         case .macControls: [.windowManagement, .navigation, .systemSettings, .systemActions]
         }
