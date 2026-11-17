@@ -141,7 +141,7 @@ struct DictationWorkerTest {
             } catch is CancellationError {}
             guard slow.isUsable else { fatalError("Cancelling a loaded preview stopped the helper") }
         }
-        guard try await slow.transcribe(samples, request: request(), onReady: {}) == "ultra" else {
+        guard try await slow.transcribe(samples, request: request(), onReady: {}).text == "ultra" else {
             fatalError("The helper lost its exchange after a dropped preview")
         }
         await slow.stop()
