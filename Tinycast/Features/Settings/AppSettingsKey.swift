@@ -81,6 +81,8 @@ enum AppSettingsKey: String, CaseIterable {
     case extensionCustomSearchPaths = "extensionCustomSearchPaths"
     case calendarEnabled = "calendarEnabled"
     case calendarShowInLauncher = "calendarShowInLauncher"
+    case weatherUseMacLocation = "weatherUseMacLocation"
+    case weatherDefaultCity = "weatherDefaultCity"
     case calendarLauncherLimit = "calendarLauncherLimit"
     case calendarSpan = "calendarSpan"
     case joinWindowMinutes = "joinWindowMinutes"

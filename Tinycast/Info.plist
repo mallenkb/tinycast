@@ -84,6 +84,8 @@
 	<string>Tinycast lets extensions you run read and edit your reminders.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Tinycast uses Bluetooth access only when you run the Toggle Bluetooth action.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Tinycast uses your approximate location to show your local forecast when you search for weather.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Tinycast</string>
 </dict>

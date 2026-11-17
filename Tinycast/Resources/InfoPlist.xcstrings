@@ -1,6 +1,65 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "NSLocationUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast verwendet deinen ungefähren Standort, um bei einer Wettersuche die lokale Vorhersage anzuzeigen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast uses your approximate location to show your local forecast when you search for weather."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast usa tu ubicación aproximada para mostrarte el pronóstico local cuando buscas el tiempo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast utilise votre position approximative pour afficher la météo locale lorsque vous la recherchez."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycastは、天気を検索したときにおおよその現在地の予報を表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast는 날씨를 검색할 때 대략적인 위치를 사용해 현지 예보를 표시합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Tinycast usa sua localização aproximada para mostrar a previsão local quando você pesquisa o tempo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tinycast использует вашу примерную геопозицию, чтобы показать местный прогноз при поиске погоды."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当你搜索天气时，Tinycast 会使用你的大致位置显示当地天气预报。"
+          }
+        }
+      }
+    },
     "NSAppleEventsUsageDescription" : {
       "extractionState" : "manual",
       "localizations" : {

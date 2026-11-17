@@ -235,6 +235,11 @@ language is one line there. Pass a directory to keep the downloads between runs:
 `gen-countries.js` joins IANA's `zone.tab` with CLDR's `en` territory names on the ISO 3166 code. Re-run
 it when IANA adds or moves a country's zone; see [calculator.md](features/calculator.md#time-zones).
 
+To refresh the offline weather city index, download `cities1000.zip`, `countryInfo.txt` and
+`admin1CodesASCII.txt` from the [GeoNames dump](https://download.geonames.org/export/dump/) into a
+single folder. Run `python3 Scripts/gen-weather-places.py <folder> Tinycast/Resources/WeatherPlaces.sqlite`
+and commit the generated index. Tinycast reads that copy until the next app update.
+
 `gen-currencies.js` joins three sources on the ISO code: the **fiat rate feed**'s own quote list — the
 same feed `CurrencyRateStore` fetches rates from, so the table and the rate source cannot drift apart
 — **Unicode CLDR**'s `en` currency data, which supplies display names, signs and the singular/plural

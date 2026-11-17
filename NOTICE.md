@@ -18,6 +18,19 @@ https://www.flaticon.com/
 These third-party assets remain subject to their respective source licenses. The app's AGPL license
 does not grant a separate license to redistribute the original icon libraries as standalone assets.
 
+## Weather
+
+Weather data from [Open-Meteo](https://open-meteo.com/) is presented as local temperatures,
+forecasts and rainfall and wind charts. Open-Meteo data is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Tinycast's offline city index uses [GeoNames](https://www.geonames.org/export/) data under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Tinycast selects and indexes place names
+and their coordinates for local search.
+
+Tinycast uses [weather icons by amCharts](https://www.amcharts.com/free-animated-svg-weather-icons/),
+licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Tinycast rasterizes
+the SVG artwork and animation for native display and plays the motion on hover.
+
 ## Dictation text formatting
 
 Basic and Advanced cleanup bundle the rule-based formatter from

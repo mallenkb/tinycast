@@ -34,6 +34,10 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
 
 ## Layout
 
+`weather.defaultCity` supplies the city for a bare `weather` query in Tinycast Dev when
+**Use Mac location** is off. An empty string clears the default. The location switch stays on this
+Mac and is excluded from the settings file.
+
 `appearance.compactBarCommands` is an ordered array of zero to four unique command identifiers.
 For example, `["command:clipboard-history", "command:search-emoji", "command:ai-chat"]` shows
 Clipboard History, Emoji & Symbols and Quick AI in that order. Only the eight commands offered by

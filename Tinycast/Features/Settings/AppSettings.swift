@@ -510,6 +510,14 @@ final class AppSettings {
         didSet { Stored.calendarShowInLauncher.store(calendarShowInLauncher, in: defaults) }
     }
 
+    var weatherUseMacLocation: Bool {
+        didSet { defaults.set(weatherUseMacLocation, forKey: Key.weatherUseMacLocation.rawValue) }
+    }
+
+    var weatherDefaultCity: String {
+        didSet { defaults.set(weatherDefaultCity, forKey: Key.weatherDefaultCity.rawValue) }
+    }
+
     var calendarLauncherLimit: CalendarLauncherLimit {
         didSet { Stored.calendarLauncherLimit.store(calendarLauncherLimit, in: defaults) }
     }
@@ -754,6 +762,8 @@ final class AppSettings {
         extensionCustomSearchPaths = Stored.extensionCustomSearchPaths.load(from: defaults)
         calendarEnabled = Stored.calendarEnabled.load(from: defaults)
         calendarShowInLauncher = Stored.calendarShowInLauncher.load(from: defaults)
+        weatherUseMacLocation = defaults.bool(forKey: Key.weatherUseMacLocation.rawValue)
+        weatherDefaultCity = defaults.string(forKey: Key.weatherDefaultCity.rawValue) ?? ""
         calendarLauncherLimit = Stored.calendarLauncherLimit.load(from: defaults)
         calendarSpan = Stored.calendarSpan.load(from: defaults)
         joinWindowMinutes = Stored.joinWindowMinutes.load(from: defaults)

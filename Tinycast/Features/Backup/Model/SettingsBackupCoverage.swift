@@ -151,6 +151,10 @@ enum SettingsBackupCoverage {
             "Names a keyboard input source installed on this Mac; another Mac may not have it.",
         AppSettingsKey.meetingBrowser.rawValue:
             "Names a browser installed on this Mac; another Mac may not have it.",
+        AppSettingsKey.weatherUseMacLocation.rawValue:
+            "An import must not enable access to this Mac’s location.",
+        AppSettingsKey.weatherDefaultCity.rawValue:
+            "A default weather city can be carried in the settings file.",
         AppSettingsKey.calendarEnabled.rawValue:
             "Doubles as consent to read your calendar; an import must not grant calendar access.",
         AppSettingsKey.autoJoinMeetings.rawValue:

@@ -47,12 +47,14 @@ struct LauncherList: View {
         case calc(CalcResult)
         case meeting(MeetingEvent, now: Date)
         case color(ColorValue)
+        case weather(WeatherQuery)
 
         var sectionTitle: String {
             switch self {
             case .calc: return String(localized: "Calculator")
             case .meeting: return String(localized: "Meeting")
             case .color: return String(localized: "Color")
+            case .weather: return String(localized: "Weather")
             }
         }
 
@@ -61,6 +63,7 @@ struct LauncherList: View {
             case .calc: return "calc-card"
             case .meeting: return "meeting-card"
             case .color: return "color-card"
+            case .weather: return "weather-card"
             }
         }
     }
@@ -87,6 +90,18 @@ struct LauncherList: View {
         }
     }
 
+    @ViewBuilder
+    private func cardRow(_ card: LeadCard) -> some View {
+        if case .weather = card {
+            LeadCardView(card: card, selected: cardSelected)
+        } else {
+            LeadCardView(card: card, selected: cardSelected)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onActivateCard)
+                .onRightClick(perform: onCardActions)
+        }
+    }
+
     private var firstRowSelected: Bool {
         if card != nil { return cardSelected }
         let firstID = favorites.first?.id ?? results.first?.id
@@ -109,7 +124,10 @@ struct LauncherList: View {
 
     private var rows: [Row] {
         var rows: [Row] = []
-        if let card { rows = [.header(card.sectionTitle), .card(card)] }
+        if let card {
+            if case .weather = card { rows = [.card(card)] }
+            else { rows = [.header(card.sectionTitle), .card(card)] }
+        }
         let meetings = results.prefix(meetingCount)
         let suggestions = results.dropFirst(meetingCount).prefix(suggestionCount)
         let pinnedCount = meetingCount + suggestionCount
@@ -174,10 +192,7 @@ struct LauncherList: View {
                                         configure: fallbacks?.onConfigure,
                                         configureHelp: String(localized: "Configure Fallbacks…"))
                                 case .card(let card):
-                                    LeadCardView(card: card, selected: cardSelected)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture(perform: onActivateCard)
-                                        .onRightClick(perform: onCardActions)
+                                    cardRow(card)
                                         .padding(.bottom, metrics.spacing.xs)
                                         .selectionFrame(cardSelected)
                                 case .app(let app):
@@ -280,6 +295,12 @@ private struct LeadCardView: View {
             MeetingCard(meeting: meeting, now: now, selected: selected)
         case .color(let color):
             ColorCard(color: color, selected: selected)
+        case .weather(let query):
+            #if DEBUG
+            WeatherCard(query: query, selected: selected)
+            #else
+            EmptyView()
+            #endif
         }
     }
 }

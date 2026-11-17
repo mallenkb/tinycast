@@ -55,6 +55,7 @@ struct LauncherScreen: PaletteScreen {
         case calc(CalcResult)
         case meeting(MeetingEvent)
         case color(ColorValue)
+        case weather(WeatherQuery)
         case entry(AppEntry)
         /// Prefixed, because an application's entry id is the same bundle path a file hit carries.
         case file(FileSearchResult)
@@ -82,6 +83,7 @@ struct LauncherScreen: PaletteScreen {
             case .calc: return "calc-card"
             case .meeting: return "meeting-card"
             case .color: return "color-card"
+            case .weather: return "weather-card"
             case .entry(let app): return app.id
             case .file(let result): return "file-" + result.id
             case .fallback(let fallback, _): return "fallback-" + fallback.id
@@ -99,6 +101,7 @@ struct LauncherScreen: PaletteScreen {
         switch row(at: clampedSelection) {
         case .calc: return String(localized: "Copy Answer")
         case .color: return String(localized: "Copy Color")
+        case .weather: return String(localized: "Open Settings")
         case .meeting(let meeting):
             return meeting.link == nil
                 ? String(localized: "Open in Calendar") : String(localized: "Join Meeting")
@@ -162,7 +165,7 @@ struct LauncherScreen: PaletteScreen {
 
     private func isCardSelected(_ selection: Int) -> Bool {
         switch row(at: selection) {
-        case .calc, .meeting, .color: return true
+        case .calc, .meeting, .color, .weather: return true
         case .entry, .file, .fallback, nil: return false
         }
     }
@@ -170,13 +173,17 @@ struct LauncherScreen: PaletteScreen {
     private var leadCard: LauncherList.LeadCard? {
         if let calc { return .calc(calc) }
         if let color { return .color(color) }
+        if let weatherQuery { return .weather(weatherQuery) }
         return meeting.map { .meeting($0, now: now) }
     }
 
     /// An error card is selectable but has no action: it must drive neither the pill nor ⌘K.
     func hasPrimaryAction(at selection: Int) -> Bool {
-        guard case .calc(let result) = row(at: selection) else { return true }
-        return result.isActionable
+        switch row(at: selection) {
+        case .calc(let result): return result.isActionable
+        case .weather(let query): return query.place == .setup
+        default: return true
+        }
     }
 
     func actions(at selection: Int) -> PopoverMenuContent? {
@@ -204,7 +211,7 @@ struct LauncherScreen: PaletteScreen {
         case .fallback(let fallback, let app):
             return FallbackActionsMenu.content(
                 fallback: fallback, entry: app, query: vm.query, core: core)
-        case nil:
+        case .weather, nil:
             return nil
         }
     }
@@ -222,6 +229,10 @@ struct LauncherScreen: PaletteScreen {
         case .file(let result): core.fileSearchCoordinator.open(result)
         case .fallback(let fallback, _):
             core.fallbackCoordinator.run(fallback, query: vm.query)
+        case .weather(let query):
+            #if DEBUG
+            if query.place == .setup { core.weatherCoordinator.showSettings() }
+            #endif
         case nil: break
         }
     }

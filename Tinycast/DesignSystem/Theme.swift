@@ -2,6 +2,32 @@ import SwiftUI
 
 /// Central design tokens; every dark colour is the literal the forced-dark build shipped.
 enum Theme {
+    enum Weather {
+        static let inset: CGFloat = 20
+        static let cornerRadius: CGFloat = 16
+        static let titleSize: CGFloat = 16
+        static let detailSize: CGFloat = 12
+        static let conditionSize: CGFloat = 15
+        static let dayArtworkHeight: CGFloat = 32
+        static let dayArtworkSize: CGFloat = 30
+        static let dayStripInset: CGFloat = 8
+        static let loadingHeight: CGFloat = 180
+        static let loadingLineHeight: CGFloat = 12
+        static let loadingTitleHeight: CGFloat = 16
+        static let loadingDayHeight: CGFloat = 76
+        static let shimmerDuration: TimeInterval = 1.8
+        static let overviewWidth: CGFloat = 188
+        static let temperatureSize: CGFloat = 52
+        static let readingHeight: CGFloat = 62
+        static let overviewIllustration: CGFloat = 58
+        static let hourWidth: CGFloat = 76
+        static let hourlyIllustration: CGFloat = 40
+        static let illustrationHeight: CGFloat = 46
+        static let timelineHeight: CGFloat = 108
+        static let metricWidth: CGFloat = 38
+        static let metricHeight: CGFloat = 28
+    }
+
     enum Opacity {
         static let paletteBorder: Double = 0.8
     }
@@ -524,6 +550,18 @@ enum Theme {
         static let sheen = ramp(dark: 0.04, light: 0.04)
         /// The Settings card: a faint surface whose border doubles as the row divider.
         static let cardFill = ramp(dark: 0.05, light: 0.04)
+        static let leadCardFill = ramp(dark: 0.05, light: 0.02)
+        static let weatherCardFill = adaptive(
+            dark: .srgbInk(1, alpha: 0.05),
+            light: NSColor(srgbRed: 242.0 / 255, green: 243.0 / 255, blue: 245.0 / 255, alpha: 1))
+        static let weatherControlSelection = adaptive(
+            dark: .srgbInk(1, alpha: 0.24), light: .white)
+        static let weatherControlTrack = ramp(dark: 0.10, light: 0.035)
+        static let weatherSkeleton = ramp(dark: 0.08, light: 0.06)
+        static let weatherShimmer = adaptive(
+            dark: .srgbInk(1, alpha: 0.12), light: .srgbInk(1, alpha: 0.65))
+        static let leadCardSelection = ramp(dark: 0.08, light: 0.035)
+        static let leadCardHover = ramp(dark: 0.03, light: 0.02)
         static let cardStroke = ramp(dark: 0.10, light: 0.10)
         /// A window on the preview's plate. White in both, since the plate is always dark.
         static let layoutPreviewWindow = adaptive(
