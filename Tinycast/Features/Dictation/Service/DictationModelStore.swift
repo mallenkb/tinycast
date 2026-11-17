@@ -174,7 +174,7 @@ final class DictationModelStore {
 
     func transcribe(
         _ samples: [Float], model: DictationModel, language: String? = nil
-    ) async throws -> String {
+    ) async throws -> DictationRecognition {
         try Task.checkCancellation()
         guard !transcribing, removing != model else { throw Failure.busy }
         guard isInstalled(model) else { throw Failure.notInstalled }
@@ -192,11 +192,12 @@ final class DictationModelStore {
             let request = DictationWire.Request(
                 id: UUID(), model: model, directory: directory(for: model),
                 sampleCount: samples.count, language: model.isQwen || model.isCohere ? language : nil)
-            let text = try await worker.transcribe(samples, request: request) { [weak self] in
+            var recognition = try await worker.transcribe(samples, request: request) { [weak self] in
                 guard let self, self.worker === worker, self.transcribing else { return }
                 self.loadedModel = model
             }
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+            recognition.text = recognition.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return recognition
         } catch {
             await stopWorker()
             throw error
@@ -261,7 +262,7 @@ final class DictationModelStore {
         }
     }
 
-    private func directory(for model: DictationModel) -> URL {
+    func directory(for model: DictationModel) -> URL {
         root.appendingPathComponent(model.folderName)
     }
 }

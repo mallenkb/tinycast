@@ -31,11 +31,22 @@ struct DictationAdvancedTest {
             let start = clock.now
             let actual = DictationTextFormatter.advancedCleanup(fixture.input, now: { fixed })
             if elapsed.count < fixtures.count { elapsed.append(start.duration(to: clock.now)) }
+            let arranged = DictationLayout.arrange(
+                DictationTextFormatter.advancedCleanup(fixture.input, automaticParagraphs: false, now: { fixed }),
+                source: nil, paragraphs: .automatic, keepsBreaks: true)
             if actual != fixture.expected {
                 if failures < 16 {
                     print("[\(fixture.family)] \(fixture.input.debugDescription)")
                     print("  Expected \(fixture.expected.debugDescription)")
                     print("  Received \(actual.debugDescription)")
+                }
+                failures += 1
+            }
+            if arranged != actual {
+                if failures < 16 {
+                    print("[\(fixture.family), shared layout] \(fixture.input.debugDescription)")
+                    print("  Advanced \(actual.debugDescription)")
+                    print("  Layout   \(arranged.debugDescription)")
                 }
                 failures += 1
             }
@@ -374,7 +385,7 @@ struct DictationAdvancedTest {
         Fixture(family: "Invalid date", input: "Ship on the twenty-ninth of February, 2027.",
                 expected: "Ship on the twenty-ninth of February, 2027."),
         Fixture(family: "Code", input: "Print \u{60}at nine AM\u{60}.", expected: "Print \u{60}at nine AM\u{60}."),
-        Fixture(family: "URL", input: "See example.com at nine AM.", expected: "See example.com at nine AM."),
+        Fixture(family: "URL", input: "See example.com at nine AM.", expected: "See example.com at 9:00 AM."),
         Fixture(family: "Contraction", input: "Let's meet at nine thirty in the morning.", expected: "Let's meet at 9:30 AM."),
         Fixture(family: "Dotted time in prose", input: "Call at 8 a.m. tomorrow.", expected: "Call at 8:00 AM tomorrow.")
     ]

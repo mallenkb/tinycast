@@ -56,6 +56,11 @@ After at least two sentences and 35 words, Advanced can start a paragraph at a c
 result, or direct question if at least 15 words remain. Short continuations stay together. These
 rules use sentence cues rather than interpreting the topic, and preserve the transition words.
 
+Automatic paragraph breaks come from the shared layout step, which Smart cleanup uses too. With
+Parakeet it also starts a paragraph where the speaker paused for 1.5 seconds or more, once the
+current paragraph has two sentences or 15 words, and it prefers a pause when wrapping a long block.
+The Paragraphs setting can limit breaks to spoken commands or turn them off.
+
 The currency rule covers dollars, euros, pounds sterling, Ghanaian cedis, yen, and explicitly
 named Indian rupees. It accepts spoken whole amounts up to 999, larger amounts that speech
 recognition already wrote as digits, and supported decimals or minor units. A bare “pounds”
@@ -78,11 +83,21 @@ between entries, and “exit list” before returning to prose.
 After “insert,” punctuation commands include comma, period, full stop, question mark, exclamation
 mark, colon, semicolon, and ellipsis. They work in the comma-delimited form shown above.
 
-The rules skip transcripts with quotation or code markers and skip lines that look like links,
-email addresses, or paths. They leave out-of-scope values such as unsupported spoken scales and invalid
-dates in the transcript. Phone formatting requires an explicit cue and ten spoken digits.
-Websites need a spoken “www” prefix and emails need a spoken “at” and “dot” with a supported
-domain ending. The formatter has a 16 KB input limit and a 30 ms time budget. If either limit
+The rules skip transcripts with quotation or code markers. Words that already look like links,
+email addresses, paths or abbreviations are hidden behind private-use marks while the rest of the
+line is cleaned, then put back unchanged. They leave out-of-scope values such as unsupported spoken
+scales and invalid dates in the transcript.
+
+Spoken addresses are written as typed. “ana dot ruiz at acme dot com” becomes ana.ruiz@acme.com,
+with “underscore” and “dash” allowed in the name. “tinycast dot app slash docs” becomes
+tinycast.app/docs, and “https colon slash slash” and “www dot” prefixes are kept. The address must
+end in a supported domain such as .com, .org, .io, .ai, .app, .dev or .co.uk. A pronoun or common
+verb before “at” is not an address name, so “meet me at acme dot com” becomes “meet me at
+acme.com”. Seven to fifteen digits read one at a time become a phone number without any cue.
+Spoken groups separated by commas are kept, as in 555-123-4567. Ten or seven ungrouped digits are
+grouped as 3-3-4 or 3-4, and “plus” starts an international number such as +44 20 7946 0958.
+Counting such as “one, two, three” stays as words because each group has one digit. The bundled
+formatter still handles “phone number is” with ten digits and “www” sites. The formatter has a 16 KB input limit and a 30 ms time budget. If either limit
 is exceeded, Basic keeps its filler removal and Advanced keeps the original text.
 
 **Off** skips cleanup. **Basic** removes common fillers and formats spoken values.

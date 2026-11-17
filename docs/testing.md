@@ -34,6 +34,9 @@ Run the compiled harness with `--list` to export the 5,000 pairs as JSON Lines:
 "${TMPDIR:-/tmp}/tinycast-harness/dictation-advanced-test" --list
 ```
 
+`dictation-layout-test` checks the Smart output check, paragraph layout and app styles without a
+model. Its corpus lists sample dictations with the number of paragraph breaks each should get.
+
 `apple-intelligence-test` runs deterministic checks by default. Its real model generation is opt-in:
 
 ```sh

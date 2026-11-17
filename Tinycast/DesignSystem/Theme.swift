@@ -211,7 +211,11 @@ enum Theme {
         static let settingsPageWidth: CGFloat = 740
         static let settingsRowIcon: CGFloat = 20
         static let settingsRowButton: CGFloat = 24
-        static let dictationModelFilterIcon: CGFloat = 14
+        static let dictationModelStat: CGFloat = 72
+        static let dictationModelErrors: CGFloat = 112
+        static let dictationModelLive: CGFloat = 32
+        static let dictationCleanupProgress: CGFloat = 96
+        static let dictationModelAction: CGFloat = 96
         static let settingsSidebarIcon: CGFloat = 28
         /// Inside its tinted tile, whose inset brings it to the row icon's size.
         static let settingsSidebarGlyph: CGFloat = 14
@@ -312,6 +316,7 @@ enum Theme {
         static let dictationOutlineWidth: CGFloat = 1
         static let dictationLabelWaveBarCount = 5
         static let dictationSpinnerDiameter: CGFloat = 14
+        static let dictationCountdownWidth: CGFloat = 32
         /// Read-only volume bar geometry used by the HUD.
         static let volumeTrackHeight: CGFloat = 6
         /// Fixed slot for the level readout, sized to the widest string it ever holds.
@@ -336,6 +341,8 @@ enum Theme {
         static let dictationRevealLimit: TimeInterval = 0.34
         static let dictationRevealLineDelay: TimeInterval = 0.12
         static let dictationIndicatorMorph: TimeInterval = 0.24
+        static let dictationCountdownFade: TimeInterval = 0.65
+        static let dictationCountdownDigit: TimeInterval = 0.46
         static let dictationProcessingWord: TimeInterval = 2
         static let dictationTranscribingShimmer: TimeInterval = 1.8
         static let dictationSpinnerRotation: TimeInterval = 1
@@ -415,6 +422,7 @@ enum Theme {
         static let panelTitle = Font.headline
         static let dictationTranscriptSize: CGFloat = 14
         static let dictationTranscript = Font.system(size: dictationTranscriptSize)
+        static let dictationCountdown = Font.system(size: 13, weight: .medium).monospacedDigit()
         static let calcResult = Font.title
         static let keyCap = Font.caption
         /// Pair with the matching `Size` for `KeyCapChip.Scale`.
@@ -481,9 +489,9 @@ enum Theme {
         static let dictationDarkBackground = Color(white: 0.10)
         static let dictationOutline = Color(white: 0.6).opacity(0.15)
         /// Selection fill, shared by every list so they look identical.
-        static let modelFilterSelected = adaptive(dark: .white, light: .black)
-        static let modelFilterSelectedInk = adaptive(dark: .black, light: .white)
         static let modelBadgeBackground = Color.accentColor.opacity(0.15)
+        static let dictationEditAdded = Color.green.opacity(0.22)
+        static let dictationEditRemoved = Color.red.opacity(0.85)
         static let selection = ramp(dark: 0.08, light: 0.09)
         static let rowHover = ramp(dark: 0.03, light: 0.045)
         static let emojiCell = ramp(dark: 0.045, light: 0.04)

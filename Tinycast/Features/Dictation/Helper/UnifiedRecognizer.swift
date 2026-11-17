@@ -2,7 +2,7 @@ import CoreML
 import Foundation
 
 // The RNNT state and model interface follow FluidAudio's Unified decoder, licensed under Apache-2.0.
-final class UnifiedRecognizer: DictationRecognizer {
+final class UnifiedRecognizer {
     private static let windowSamples = 240_000
     private static let blank = 1024
     private let preprocessor: MLModel

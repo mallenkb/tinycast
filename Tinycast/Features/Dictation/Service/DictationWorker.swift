@@ -44,13 +44,13 @@ final class DictationWorker: Sendable {
     func transcribe(
         _ samples: [Float], request: DictationWire.Request,
         onReady: @escaping @MainActor @Sendable () -> Void
-    ) async throws -> String {
+    ) async throws -> DictationRecognition {
         guard (1...DictationWire.maximumSamples).contains(samples.count),
-            let text = try await exchange(samples, request: request, onReady: onReady)
+            let recognition = try await exchange(samples, request: request, onReady: onReady)
         else {
             throw DictationWire.Failure.unavailable
         }
-        return text
+        return recognition
     }
 
     func prepare(_ request: DictationWire.Request) async throws {
@@ -59,7 +59,7 @@ final class DictationWorker: Sendable {
 
     private func exchange(
         _ samples: [Float], request: DictationWire.Request, onReady: (@MainActor @Sendable () -> Void)?
-    ) async throws -> String? {
+    ) async throws -> DictationRecognition? {
         try Task.checkCancellation()
         guard samples.count == request.sampleCount else { throw DictationWire.Failure.unavailable }
         let timeout = 60 + samples.count / DictationWire.sampleRate * 2
@@ -101,7 +101,7 @@ final class DictationWorker: Sendable {
                     }
                 }
             }
-            var text: String?
+            var recognition: DictationRecognition?
             for try await response in responses {
                 if response.status == .ready {
                     if hasExtendedLoadTimeout, !request.isPreparation {
@@ -110,10 +110,12 @@ final class DictationWorker: Sendable {
                     }
                     await onReady?()
                 }
-                if response.status == .result { text = response.text }
+                if response.status == .result {
+                    recognition = DictationRecognition(text: response.text, pauses: response.pauses)
+                }
             }
             try Task.checkCancellation()
-            return text
+            return recognition
         } onCancel: {
             self.terminate()
         }

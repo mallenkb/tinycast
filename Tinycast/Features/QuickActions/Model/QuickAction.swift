@@ -23,11 +23,6 @@ enum QuickAction: Hashable, Identifiable, Sendable {
         return action
     }
 
-    var customAction: CustomQuickAction? {
-        guard case .custom(let action) = self else { return nil }
-        return action
-    }
-
     var title: String {
         switch self {
         case .builtIn(let action): return action.title

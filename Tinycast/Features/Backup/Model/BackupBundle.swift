@@ -135,14 +135,19 @@ struct BackupBundle: Sendable {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
-    func documents(in directory: URL, extension ext: String) -> [(name: String, contents: String)] {
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+    func documentURLs(in directory: URL, extension ext: String) throws -> [URL] {
+        let names = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         return names.sorted().compactMap { name in
-            guard Self.isSafeName(name), (name as NSString).pathExtension == ext,
-                let contents = try? String(
-                    contentsOf: directory.appendingPathComponent(name), encoding: .utf8)
-            else { return nil }
-            return (name, contents)
+            guard Self.isSafeName(name), (name as NSString).pathExtension == ext else { return nil }
+            return directory.appendingPathComponent(name)
+        }
+    }
+
+    func documents(in directory: URL, extension ext: String) -> [(name: String, contents: String)] {
+        let urls = (try? documentURLs(in: directory, extension: ext)) ?? []
+        return urls.compactMap { url in
+            guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            return (url.lastPathComponent, contents)
         }
     }
 

@@ -4,17 +4,18 @@ Dictation is off by default. Either assigned global shortcut records from the ch
 transcribes locally and sends the result through `TextInjector`. Parakeet V3, Ultra and Redux
 support 25 languages. Parakeet V2, Unified and Phonon-2 support English. Phonon-2 is a smaller model
 retrained from V3 for English. Qwen3-ASR 0.6B and 1.7B support 30 languages and 22 Chinese dialects.
-Settings marks Parakeet Ultra as Recommended and selects it by default. The speech recognition page
-shows selectable rows and filters for accuracy, speed, multilingual support, compact size and live
-preview. Accuracy and speed are curated shortlists, compact means at most 650 MB on disk, and live
-includes Apple Dictation and Parakeet Unified. Unified uses rolling batch preview, not streaming.
-Rows show language coverage and approximate disk size; published
-benchmark figures are external measurements, with their sources in the row help. Hovering over language coverage shows the supported languages.
-Choose an installed model, download one from its row, or remove it after selecting another. Cohere Q8
+Parakeet Ultra is the default. The Speech recognition page lists models under On this Mac and
+Available to download, with size, speed, errors per 100 words and live preview in aligned columns.
+The Live column marks every model except Cohere Q8, which shows text only after you stop. Any language or
+English only filters the list, and Sort orders it by Recommended, Fewest errors, Fastest or Smallest,
+with unmeasured models last. Benchmark figures are external measurements, with their sources in the
+row help, and hovering over a description shows the supported languages. Parakeet V2 and Qwen 1.7B
+stay behind Show more until one is downloaded or in use. Click a downloaded row, or Apple Dictation,
+to use it. Each downloaded row's ··· menu has Show in Finder and Remove…, which asks in the list
+before deleting and stays disabled for the model in use. Unified uses rolling batch preview, not streaming. Cohere Q8
 uses a separate Core ML encoder-decoder pipeline and 14 selectable languages, with English as its default.
-Its fixed 35-second batch encoder does not provide live preview. Cohere Q4 requires a separate GGUF
-speech runtime and remains unavailable.
-Qwen models remain available. Apple Dictation uses speech assets managed by macOS.
+Its fixed 35-second batch encoder does not provide live preview. Apple Dictation uses speech assets
+managed by macOS.
 After microphone access is granted, enabling Dictation offers the missing recommended downloads for
 the selected engines. On the defaults, Ultra transcribes speech and S1-mini is optional for Smart
 cleanup and transforms. The setup lets you download both, download Ultra alone, or decide later.
@@ -141,16 +142,18 @@ models use CPU/Neural Engine.
   immediately.
   While the live preview is active, the local cleanup pass can work on a stable transcript
   snapshot off the main actor. It never writes back to the preview. The result is reused if the
-  final recognition matches its source exactly. Smart rewriting and automatic transforms still
-  use the complete transcript after recording so they have the full context.
+  final recognition matches its source exactly. Smart rewriting and automatic transforms run after
+  recording. Smart cleanup splits long input at sentence or word boundaries to fit the engine,
+  and custom transforms still receive the complete transcript.
   Each indicator fits the current state. Settings previews both listening and processing for the
-  selected style.
+  selected style, with the processing words cycling as they do during dictation.
   The waveform blends neighboring
   frequency peaks so the bars rise together. Capture samples 21 bands at most 20 times per
   second through a reused 512-point Accelerate transform. The logarithmic bands span 32–5000 Hz.
   The bars grow around a fixed centerline and ease between readings when Reduce Motion is off.
   A spinning ring replaces the bars during final transcription and cleanup. Labeled styles cycle
   through the same shuffled list of ten processing words every two seconds across both stages.
+  The spinner and current word stay centered together as the visible pill changes width.
   The ring and the text shimmer pause when Reduce Motion is on.
   Closing the panel releases its hosting view.
 - Recording leaves the system output volume alone.
@@ -181,9 +184,11 @@ models use CPU/Neural Engine.
   stops its helper before deleting the directory and blocks new requests for that model meanwhile.
   Cancelling an in-flight load or transcription, failed inference and normal quit stop the helper.
   Late results cannot paste.
-- Audio stays in memory, bounded to five minutes of mono 16 kHz Float32 samples. Pipes carry
+- Audio stays in memory, bounded to ten minutes of mono 16 kHz Float32 samples. Pipes carry
   bounded JSON control messages and binary audio; recordings are never written to disk or sent
   over the network. Long recordings split near a quiet passage without overlapping samples.
+  During the final minute, the indicator shows a countdown based on captured audio. At the limit,
+  recording stops and the existing processing indicator replaces the countdown.
 - Tinycast transcribes the complete recording after the user stops, then inserts the finished
   text in the target app.
 - Model files download through a feature-private ephemeral session without a disk URL cache.
@@ -217,6 +222,11 @@ models use CPU/Neural Engine.
 `dictation-field-test` checks composer switching and teardown, scoped cancellation, delayed insertion
 and cue timing with synthetic capture and real AppKit editors, without recording audio or touching
 the shared clipboard.
+`dictation-layout-test` checks the Smart output check (including spoken phone numbers and emails),
+pause-based paragraphs, spoken breaks, app kinds, browser and terminal detection rules, the three
+formats, spoken addresses and phone numbers, cleanup beside literal words, and a small corpus with
+known paragraph counts. `dictation-advanced-test` also confirms the
+shared layout step reproduces every Advanced paragraph decision.
 `dictation-test` checks formatting, model options, multi-edit alignment, confidence checks, source
 attribution, undo, debounce, input bounds and repeated inference. Hidden-editor checks in
 `dictation-field-test` also cover learning across dictations, persistence, candidate corroboration,
@@ -254,7 +264,8 @@ This tool uses installed models and runs outside the deterministic suite and app
 ## Text cleanup and transforms
 
 Smart cleanup is opt-in. Its engine defaults to S1-mini by Superwhisper, with Apple Intelligence
-and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
+and S1-ASR-Cleanup available as alternatives. The engine picker lists downloaded models first.
+S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
 S1-mini by Superwhisper for dictation with paragraph breaks. Each Q4_K_M download has its own
 file in the shared caches, pinned to a repository revision and checked against its SHA-256 digest. The app
 bundles a pinned, statically linked llama.cpp server under `Contents/Helpers/TinycastCleanup`.
@@ -282,7 +293,13 @@ modes. Local models receive the transform instructions directly. Apple Intellige
 availability and route switch. Auto-apply is off by default. Automatic processing occurs before
 insertion, with the original recording token checked again after processing. Smart cleanup failures
 use Advanced cleanup and report the underlying error alongside the fallback notice. The app also
-logs the error for diagnosis. If only an automatic transform was requested and it fails, Tinycast keeps
+logs the error for diagnosis. `DictationEditCheck` compares each Smart result with its input word by
+word. A changed number, an added or dropped negation, a changed name, or too many rewritten words
+sends the transcript through Advanced instead, and the notice names the reason. Fillers, stutters,
+spoken commands and the words before a spoken correction may be dropped. Three or more digits read
+one at a time count as one digit string, so the result may group them as 555-123-4567 but must keep
+every digit in order. Automatic transforms are
+not checked, because they rewrite on purpose. If only an automatic transform was requested and it fails, Tinycast keeps
 the transcript it received. Cleanup and transforms run locally.
 
 History preserves original recognition text when the inserted text was processed. Its actions
@@ -294,10 +311,14 @@ existing text. This preserves the words and punctuation and keeps the work out o
 A transform shortcut processes the latest History entry and opens History for review; it never
 replaces arbitrary text in another app. Manual operations check cancellation, entry identity, and
 unchanged input before updating History. Restoring an original cancels a pending manual operation.
-The Text cleanup cards show fixed examples of the same dictation at each level. Below the cards,
-the preview sits beside the editable sample and updates when the sample or mode changes.
-The Examples menu fills the sample with currency, a date, a time, or a spoken paragraph command.
-Smart cleanup waits briefly for typing to pause. The transform editor has its own sample preview.
+The Text cleanup page opens with a four-step level picker (Off, Basic, Advanced, Smart) and one line
+describing the selected level. Below it, choose one of six apps on the left. The pasted preview appears
+in the selected app's style above "You said". It runs the real cleanup through
+`DictationWritingCoordinator.preview` with that kind's format, so every setting on the page changes it.
+Show edits strikes through the words cleanup dropped and highlights the words it added. When Smart's
+rewrite passes the edit check, a line lists the names and values it kept. The example menu offers a team
+update, requirements, contact details, a correction, or your own text. Smart waits briefly for typing
+to pause. The transform editor has its own sample preview.
 
 Prompt Engineer uses a structured output template, preserves quoted examples, and leaves missing
 requirements as placeholders. It generates a prompt instead of executing the dictated task.
@@ -321,11 +342,35 @@ fractions, and certain contact details. Both use local rules and load the bundle
 formatter when a supported phrase needs it. Advanced also handles repeated pronouns and contractions,
 other supported stutters, clear weekday
 corrections, and spoken punctuation. It can format lists from explicit commands, ordered cues,
-headings, or a matching item count. It can add paragraph breaks at clear topic changes and recaps,
-or at transitions and questions after a substantial passage. See the
+headings, or a matching item count. See the
 [formatting reference](dictation-formatting.md) for examples and limits. If the 30 ms formatting
 budget expires, Basic keeps its filler removal and Advanced keeps the original text. Smart runs the
-selected engine. The After dictation switch
+selected engine. Advanced and Smart results then go through `DictationLayout`, the one step that
+places paragraph breaks for every engine. Paragraphs offers Automatic, When I say “new paragraph”,
+and Never, and is dimmed for Off and Basic. Automatic starts a paragraph at a clear topic change or recap, at a pause of 1.5
+seconds or more, or at a transition or question after a substantial passage, and wraps blocks past
+about 90 words. Parakeet reports the silence before each word; other engines report none, so their
+breaks rely on the text alone. A break that Smart's engine placed counts only after two sentences,
+and only where the speaker paused when pauses are known.
+
+Format for each app, on by default, sorts the target into a `DictationAppKind` by bundle identifier:
+Personal chat, Work chat (Slack, Teams, Discord), Email, AI prompt (Claude, ChatGPT, Codex, Cursor,
+Windsurf), Code editor (editors and terminals) and Everything else. `DictationAppDetector` looks further
+when its switches allow. In a browser it reads the tab's address from the focused web area, so Gmail,
+Slack, ChatGPT and similar sites get their own kind. In a terminal it reads the window title, so a
+title naming `claude`, `codex`, `gemini`, `aider` or `opencode` counts as an AI prompt. Each read has
+a 250 ms Accessibility timeout. Each kind uses one `DictationFormat`, set in the section under the
+preview for the selected app's kind, with Use suggested to undo a change:
+Full keeps paragraphs and lists, Compact joins prose into one block with list items on their own
+lines and no bullets, and Plain uses Basic cleanup with no Smart cleanup, layout or automatic
+transform. The suggestions are Compact for Personal chat, Plain for Code editor and Full for the rest.
+`DictationAppFormats` stores only the kinds changed from the suggestion. AI prompts write bullets as
+Markdown `-`, Personal chat drops a lone final period, and Email puts the greeting on its own line.
+With Format for each app off, under More options, every app gets Full. Paragraphs shows only when the
+format is Full. The Smart model card shows only while Smart cleanup or After dictation is on. It names
+the engine, says whether it is downloaded and how large it is, and offers Download or a progress bar
+with Cancel. Change opens a menu of S1-mini, S1-ASR-Cleanup and Apple Intelligence, with Remove for a
+downloaded engine. The After dictation switch
 pauses automatic transforms without clearing the Default transform selection. Transform instructions,
 shortcuts and sample preview appear while editing that transform. Smart cleanup and transforms
 share the engine selected in Text cleanup. The Text cleanup page also manages its model downloads.

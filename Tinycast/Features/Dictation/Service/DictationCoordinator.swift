@@ -21,7 +21,7 @@ final class DictationCoordinator {
     private let setupModels: () async -> Void
     var onRecordingStarted: (() -> Void)?
     var onRecordingEnded: (() -> Void)?
-    var processTranscript: ((String, Bool?) async -> String)?
+    var processTranscript: ((String, DictationRecognition, DictationAppKind, DictationFormat, Bool?) async -> String)?
     private let recordTranscript: (String, String?, NSRunningApplication?) -> Void
     @ObservationIgnored private var phase: Phase = .idle
     @ObservationIgnored private var token = UUID()
@@ -30,10 +30,11 @@ final class DictationCoordinator {
     @ObservationIgnored private var startTask: Task<Void, Never>?
     @ObservationIgnored private var transcriptionTask: Task<Void, Never>?
     @ObservationIgnored private var previewTask: Task<Void, Never>?
+    @ObservationIgnored private var previewGeneration = UUID()
     @ObservationIgnored private var previewDelay: Task<Void, Error>?
     @ObservationIgnored private var previewCleanupTask: Task<Void, Never>?
     @ObservationIgnored private var previousPreview = ""
-    @ObservationIgnored private var preparedCleanup: (source: String, result: String)?
+    @ObservationIgnored private var preparedCleanup: (source: String, mode: DictationCleanupMode, result: String)?
     @ObservationIgnored private var terminating = false
     @ObservationIgnored private var correctionTask: Task<Void, Never>?
     @ObservationIgnored private var correctionSession: DictationCorrectionSession?
@@ -80,6 +81,10 @@ final class DictationCoordinator {
             guard let self else { return }
             panel.state.levels = $0
             if pendingStartCue == token { playStartCue() }
+        }
+        capture.onCountdown = { [weak self] seconds in
+            guard let self, phase == .listening else { return }
+            panel.showCountdown(seconds)
         }
         capture.onLimit = { [weak self] in self?.accept() }
     }
@@ -280,41 +285,50 @@ final class DictationCoordinator {
                 return
             }
             do {
-                let transcript: String
+                let recognition: DictationRecognition
                 if let appleStreaming {
                     do {
                         let final = try await appleStreaming.value
                         guard !final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                             throw DictationWire.Failure.unavailable
                         }
-                        transcript = final
+                        recognition = DictationRecognition(text: final)
                     } catch {
                         try Task.checkCancellation()
                         let vocabulary = Array(Set(corrections.entries.filter { $0.context == nil }.map(\.spelling)))
                         let session = try await AppleDictationSession.prepare(vocabulary: vocabulary)
-                        transcript = try await session.transcribe(samples)
+                        recognition = DictationRecognition(text: try await session.transcribe(samples))
                     }
                 } else if let applePreparation {
                     let session = try await applePreparation.value
                     try Task.checkCancellation()
-                    transcript = try await session.transcribe(samples)
+                    recognition = DictationRecognition(text: try await session.transcribe(samples))
                 } else {
-                    transcript = try await models.transcribe(samples, model: model, language: language)
+                    recognition = try await models.transcribe(samples, model: model, language: language)
                 }
+                let transcript = recognition.text
                 guard token == current else { return }
                 samples.removeAll(keepingCapacity: false)
                 models.endRecording()
                 let isEnglish = englishOverride(model: applePreparation == nil ? model : nil, language: language)
+                let followsFocus = shortcutMode != nil
+                let kind = settings.dictationFormatsByApp
+                    ? DictationAppDetector.kind(
+                        of: (followsFocus ? focusedTarget() : target)?.externalApp,
+                        webApps: settings.dictationDetectsWebApps,
+                        terminalAgents: settings.dictationDetectsTerminalAgents)
+                    : .document
+                let format = settings.dictationFormatsByApp ? settings.dictationAppFormats[kind] : .full
+                let mode: DictationCleanupMode = format == .plain && cleanupMode != .off ? .basic : cleanupMode
                 let cleaned: String
-                if let preparedCleanup, preparedCleanup.source == transcript {
+                if let preparedCleanup, preparedCleanup.source == transcript, preparedCleanup.mode == mode {
                     cleaned = preparedCleanup.result
                 } else {
-                    cleaned = await DictationLocalCleanup.clean(transcript, mode: cleanupMode, isEnglish: isEnglish)
+                    cleaned = await DictationLocalCleanup.clean(transcript, mode: mode, isEnglish: isEnglish)
                 }
                 guard token == current, !Task.isCancelled else { return }
-                let processed = await processTranscript?(cleaned, isEnglish) ?? cleaned
+                let processed = await processTranscript?(cleaned, recognition, kind, format, isEnglish) ?? cleaned
                 guard token == current, !Task.isCancelled else { return }
-                let followsFocus = shortcutMode != nil
                 if followsFocus, injector.isDelivering {
                     await injector.drain()
                     guard token == current, !Task.isCancelled else { return }
@@ -506,6 +520,7 @@ final class DictationCoordinator {
     private func reset(cancelTranscription: Bool = true, showIdleIndicator: Bool = true) {
         token = UUID()
         previewTask?.cancel()
+        previewGeneration = UUID()
         previewTask = nil
         previewDelay?.cancel()
         previewDelay = nil
@@ -542,36 +557,58 @@ final class DictationCoordinator {
         }
     }
 
+    func applyLivePreview() {
+        guard phase == .listening else { return }
+        if !settings.dictationLivePreview {
+            previewGeneration = UUID()
+            previewDelay?.cancel()
+            previewTask?.cancel()
+            panel.hidePreview()
+        } else if !settings.dictationUsesApple, previewTask?.isCancelled != false {
+            startPreview()
+        }
+    }
+
     private func startPreview() {
         guard settings.dictationLivePreview, !settings.dictationModel.isCohere else { return }
         let current = token
+        let previous = previewTask
+        let generation = UUID()
+        previewGeneration = generation
         let model = settings.dictationModel
         let language = settings.dictationLanguage
         let isEnglish = englishOverride(model: model, language: language)
         let cadence = Duration.milliseconds(model.isQwen ? 500 : 350)
         previewTask = Task { [weak self] in
             guard let self else { return }
+            await previous?.value
+            guard !Task.isCancelled, token == current, previewGeneration == generation else { return }
             defer {
-                if token == current, phase == .listening, !settings.dictationLivePreview {
-                    panel.hidePreview()
+                if previewGeneration == generation {
+                    previewTask = nil
+                    if token == current, phase == .listening, !settings.dictationLivePreview {
+                        panel.hidePreview()
+                    }
                 }
             }
             var failures = 0
             var nextRequest = ContinuousClock.now + .milliseconds(350)
-            while token == current, phase == .listening, settings.dictationLivePreview {
+            while token == current, previewGeneration == generation, phase == .listening, settings.dictationLivePreview {
                 do {
                     let deadline = nextRequest
                     let delay = Task { try await Task.sleep(until: deadline, clock: .continuous) }
                     previewDelay = delay
                     try await delay.value
                     previewDelay = nil
-                    guard token == current, phase == .listening, settings.dictationLivePreview else { return }
+                    guard token == current, previewGeneration == generation,
+                          phase == .listening, settings.dictationLivePreview else { return }
                     nextRequest = .now + cadence
                     let samples = await capture.recentSamples(seconds: 5)
-                    guard token == current, phase == .listening else { return }
+                    guard token == current, previewGeneration == generation, phase == .listening else { return }
                     guard samples.count >= DictationWire.sampleRate / 4 else { continue }
-                    let text = try await models.transcribe(samples, model: model, language: language)
-                    guard token == current, phase == .listening, settings.dictationLivePreview, !Task.isCancelled
+                    let text = try await models.transcribe(samples, model: model, language: language).text
+                    guard token == current, previewGeneration == generation,
+                          phase == .listening, settings.dictationLivePreview, !Task.isCancelled
                     else { return }
                     failures = 0
                     receivePreview(text, cumulative: false, isEnglish: isEnglish)
@@ -604,7 +641,7 @@ final class DictationCoordinator {
         previewCleanupTask = Task(priority: .utility) { [weak self] in
             let cleaned = await DictationLocalCleanup.clean(stable, mode: mode, isEnglish: isEnglish)
             guard let self, token == current, !Task.isCancelled else { return }
-            preparedCleanup = (stable, cleaned)
+            preparedCleanup = (stable, mode, cleaned)
             previewCleanupTask = nil
         }
     }

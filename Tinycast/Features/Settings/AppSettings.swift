@@ -495,6 +495,26 @@ final class AppSettings {
         }
     }
 
+    var dictationParagraphs: DictationParagraphs {
+        didSet { defaults.set(dictationParagraphs.rawValue, forKey: Key.dictationParagraphs.rawValue) }
+    }
+
+    var dictationFormatsByApp: Bool {
+        didSet { defaults.set(dictationFormatsByApp, forKey: Key.dictationFormatsByApp.rawValue) }
+    }
+
+    var dictationAppFormats: DictationAppFormats {
+        didSet { defaults.set(dictationAppFormats.storage, forKey: Key.dictationAppFormats.rawValue) }
+    }
+
+    var dictationDetectsWebApps: Bool {
+        didSet { defaults.set(dictationDetectsWebApps, forKey: Key.dictationDetectsWebApps.rawValue) }
+    }
+
+    var dictationDetectsTerminalAgents: Bool {
+        didSet { defaults.set(dictationDetectsTerminalAgents, forKey: Key.dictationDetectsTerminalAgents.rawValue) }
+    }
+
     var dictationHistoryRetention: ClipboardRetention {
         didSet {
             defaults.set(dictationHistoryRetention.rawValue, forKey: Key.dictationHistoryRetention.rawValue)
@@ -959,6 +979,14 @@ final class AppSettings {
         dictationAdaptsCapitalization =
             defaults.object(forKey: Key.dictationAdaptsCapitalization.rawValue) == nil
             || defaults.bool(forKey: Key.dictationAdaptsCapitalization.rawValue)
+        dictationParagraphs =
+            defaults.string(forKey: Key.dictationParagraphs.rawValue).flatMap(DictationParagraphs.init) ?? .automatic
+        dictationFormatsByApp = defaults.object(forKey: Key.dictationFormatsByApp.rawValue) as? Bool ?? true
+        dictationAppFormats = DictationAppFormats(
+            storage: defaults.dictionary(forKey: Key.dictationAppFormats.rawValue) as? [String: String] ?? [:])
+        dictationDetectsWebApps = defaults.object(forKey: Key.dictationDetectsWebApps.rawValue) as? Bool ?? true
+        dictationDetectsTerminalAgents =
+            defaults.object(forKey: Key.dictationDetectsTerminalAgents.rawValue) as? Bool ?? true
         dictationHistoryRetention =
             ClipboardRetention(rawValue: defaults.integer(forKey: Key.dictationHistoryRetention.rawValue))
             ?? .threeMonths

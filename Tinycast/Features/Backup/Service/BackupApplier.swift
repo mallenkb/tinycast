@@ -15,13 +15,14 @@ enum BackupApplier {
     }
 
     static func apply(
-        _ categories: Set<BackupCategory>, from bundle: BackupBundle, to core: AppCore
+        _ categories: Set<BackupCategory>, from bundle: BackupBundle, settings: SettingsBackup?, to core: AppCore
     ) async -> Summary {
         var summary = Summary()
-        if categories.contains(.configuration), let data = try? Data(contentsOf: bundle.settingsURL),
-            let backup = try? SettingsBackup(json: data)
-        {
-            summary.settings = backup.apply(to: core)
+        if let settings {
+            summary.settings = settings.apply(to: core)
+        } else if categories.contains(.configuration) {
+            summary.problems.append(
+                String(localized: "Couldn't read \(BackupCategory.configuration.descriptor.label)."))
         }
         if categories.contains(.clipboard) {
             summary.clipboard = await importClipboard(bundle, into: core.clipboardStore)
@@ -29,7 +30,7 @@ enum BackupApplier {
         }
         if categories.contains(.snippets) {
             do {
-                summary.snippets = try await applySnippets(bundle, to: core)
+                try await applySnippets(bundle, to: core, summary: &summary)
                 summary.snippetsNeedEnabling =
                     summary.snippets > 0 && !core.settings.snippetsEnabled
             } catch {
@@ -86,21 +87,35 @@ enum BackupApplier {
         }
     }
 
-    private static func applySnippets(_ bundle: BackupBundle, to core: AppCore) async throws -> Int {
-        let documents = bundle.documents(in: bundle.snippetsDirectory, extension: "md")
-        guard !documents.isEmpty else { return 0 }
-        // Started first, so imported snippets reach the launcher at once rather than on relaunch.
+    private static func applySnippets(
+        _ bundle: BackupBundle, to core: AppCore, summary: inout Summary
+    ) async throws {
         if core.settings.snippetsEnabled { await core.snippetsStore.start() }
-        let existing = Set(core.snippetsStore.snippets.map { Pair($0.snippet.name, $0.snippet.text) })
-        let incoming = documents.compactMap { document in
-            try? SnippetMarkdownSerializer.parse(
-                content: document.contents,
-                fileURL: bundle.snippetsDirectory.appendingPathComponent(document.name))
+        let existing = Set(core.snippetsStore.snippets.lazy.map { Pair($0.snippet.name, $0.snippet.text) })
+        let (fresh, skipped) = try await readSnippets(bundle, excluding: existing)
+        if skipped > 0 {
+            summary.problems.append(String(localized: "\(skipped) snippet files couldn’t be loaded"))
         }
-        // Deduped, so importing the same backup twice doesn't leave a second copy of everything.
-        let fresh = incoming.filter { !existing.contains(Pair($0.name, $0.text)) }
-        guard !fresh.isEmpty else { return 0 }
-        return try await core.snippetsStore.importSnippets(fresh).count
+        summary.snippets = try await core.snippetsStore.importSnippets(fresh).count
+    }
+
+    @concurrent private static func readSnippets(
+        _ bundle: BackupBundle, excluding existing: Set<Pair>
+    ) async throws -> ([Snippet], Int) {
+        var fresh: [Snippet] = []
+        var skipped = 0
+        for url in try bundle.documentURLs(in: bundle.snippetsDirectory, extension: "md") {
+            do {
+                let snippet = try autoreleasepool {
+                    let source = try String(contentsOf: url, encoding: .utf8)
+                    return try SnippetMarkdownSerializer.parse(content: source, fileURL: url)
+                }
+                if !existing.contains(Pair(snippet.name, snippet.text)) { fresh.append(snippet) }
+            } catch {
+                skipped += 1
+            }
+        }
+        return (fresh, skipped)
     }
 
     private static func applyNotes(_ bundle: BackupBundle, to core: AppCore) async -> Int {

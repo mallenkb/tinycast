@@ -48,12 +48,6 @@ enum ImageThumbnail {
         }.value.image
     }
 
-    static func load(_ url: URL, maxPixel: CGFloat) -> NSImage? {
-        let generation = cache.generation
-        if let cached = cached(url, maxPixel: maxPixel) { return cached }
-        return decode(url, cachingAs: url, maxPixel: maxPixel, generation: generation)
-    }
-
     private static func decode(
         _ file: URL, cachingAs url: URL, maxPixel: CGFloat, generation: ThumbnailCache.Generation
     ) -> NSImage? {

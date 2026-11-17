@@ -25,10 +25,6 @@ final class RoomStore {
         rooms.first { $0.id == id }
     }
 
-    func room(entryID: String) -> Room? {
-        Room.id(fromEntryID: entryID).flatMap(room)
-    }
-
     func room(named name: String) -> Room? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return rooms.first { $0.name.compare(trimmed, options: .caseInsensitive) == .orderedSame }

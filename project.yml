@@ -215,6 +215,7 @@ targets:
       - Tinycast/Features/Dictation/Model/DictationModel.swift
       - Tinycast/Features/Dictation/Model/DictationAudioChunks.swift
       - Tinycast/Features/Dictation/Model/DictationLanguage.swift
+      - Tinycast/Features/Dictation/Model/DictationRecognition.swift
       - Tinycast/Features/Dictation/Service/DictationWire.swift
     settings:
       base:

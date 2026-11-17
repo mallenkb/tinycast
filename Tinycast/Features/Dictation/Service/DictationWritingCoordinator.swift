@@ -89,64 +89,145 @@ final class DictationWritingCoordinator {
         cleanup.endRecording()
     }
 
-    func process(_ original: String, isEnglish: Bool? = nil) async -> String {
+    func process(
+        _ cleaned: String, recognition: DictationRecognition, kind: DictationAppKind, format: DictationFormat,
+        isEnglish: Bool? = nil
+    ) async -> String {
         defer { endRecording() }
-        let smart = settings.dictationSmartCleanup
+        let mode = format == .plain && settings.dictationCleanupMode != .off ? .basic : settings.dictationCleanupMode
         let engine = settings.dictationCleanupEngine
-        let model = selectedLocalModel
-        let usesAppleIntelligence = engine == "appleIntelligence"
-        let transform = automaticTransform
+        let transform = format == .plain ? nil : automaticTransform
         let prepared = prewarmedApple
         prewarmedApple = nil
-        guard smart || transform != nil else { return original }
+        let paragraphs = format == .full ? settings.dictationParagraphs : .never
+        guard mode == .smart || transform != nil else {
+            return await Self.arrange(
+                cleaned, recognition: recognition, mode: mode, kind: kind, format: format, paragraphs: paragraphs,
+                keepsBreaks: true)
+        }
         do {
-            var result = original
-            if smart, let model {
-                result = try await cleanup.clean(original, using: model)
-                try Task.checkCancellation()
+            let result = try await rewrite(cleaned, smart: mode == .smart, transform: transform, prepared: prepared)
+            guard settings.dictationCleanupEngine == engine else { return cleaned }
+            if transform != nil { return result }
+            let verdict = await Self.verdict(source: cleaned, edited: result)
+            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return cleaned }
+            if verdict == .accepted {
+                return await Self.arrange(
+                    result, recognition: recognition, mode: mode, kind: kind, format: format, paragraphs: paragraphs,
+                    keepsBreaks: false)
             }
-            if transform != nil || (smart && usesAppleIntelligence) {
-                let prompt = instructions(smart: smart && usesAppleIntelligence, transform: transform)
-                result = try await generate(
-                    result, model: model, instructions: prompt,
-                    prewarmedSession: prepared?.instructions == prompt ? prepared?.session : nil)
-            }
-            return settings.dictationCleanupEngine == engine ? result : original
+            logger.notice("Smart cleanup rejected: \(String(describing: verdict), privacy: .public)")
+            report(Self.fallbackMessage(for: verdict), .neutral)
         } catch {
-            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
+            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return cleaned }
             logger.error("Text cleanup failed: \(error.localizedDescription, privacy: .public)")
-            if smart {
-                let fallback = await DictationLocalCleanup.clean(original, mode: .advanced, isEnglish: isEnglish)
-                guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
-                report(
-                    String(localized: "Smart cleanup failed. Used Advanced cleanup.") + "\n" + error.localizedDescription,
-                    .neutral)
-                return fallback
+            guard mode == .smart else {
+                report(String(localized: "Text cleanup failed. Using the original transcript."), .neutral)
+                return cleaned
             }
-            report(String(localized: "Text cleanup failed. Using the original transcript."), .neutral)
-            return original
+            report(
+                String(localized: "Smart cleanup failed. Used Advanced cleanup.") + "\n" + error.localizedDescription,
+                .neutral)
+        }
+        let fallback = await DictationLocalCleanup.clean(cleaned, mode: .advanced, isEnglish: isEnglish)
+        guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return cleaned }
+        return await Self.arrange(
+            fallback, recognition: recognition, mode: .advanced, kind: kind, format: format, paragraphs: paragraphs,
+            keepsBreaks: true)
+    }
+
+    /// `checked` is true only when Smart's rewrite passed the edit check and was used as is.
+    struct Preview: Equatable, Sendable {
+        var text: String
+        var checked = false
+    }
+
+    func preview(
+        _ text: String, transform: DictationTransform?, kind: DictationAppKind = .document,
+        format: DictationFormat = .full
+    ) async throws -> Preview {
+        let setting = settings.dictationCleanupMode
+        let mode = format == .plain && setting != .off ? .basic : setting
+        let paragraphs = format == .full ? settings.dictationParagraphs : .never
+        let recognition = DictationRecognition(text: text)
+        let cleaned = await DictationLocalCleanup.clean(text, mode: mode)
+        try Task.checkCancellation()
+        guard mode == .smart || transform != nil else {
+            return Preview(text: await Self.arrange(
+                cleaned, recognition: recognition, mode: mode, kind: kind, format: format, paragraphs: paragraphs,
+                keepsBreaks: true))
+        }
+        do {
+            let result = try await rewrite(cleaned, smart: mode == .smart, transform: transform, prepared: nil)
+            if transform != nil { return Preview(text: result) }
+            if await Self.verdict(source: cleaned, edited: result) == .accepted {
+                return Preview(text: await Self.arrange(
+                    result, recognition: recognition, mode: mode, kind: kind, format: format, paragraphs: paragraphs,
+                    keepsBreaks: false), checked: true)
+            }
+        } catch {
+            guard transform == nil, !Task.isCancelled else { throw error }
+        }
+        return Preview(text: await Self.arrange(
+            DictationLocalCleanup.clean(text, mode: .advanced), recognition: recognition, mode: .advanced,
+            kind: kind, format: format, paragraphs: paragraphs, keepsBreaks: true))
+    }
+
+    private func rewrite(
+        _ text: String, smart: Bool, transform: DictationTransform?,
+        prepared: (instructions: String, session: LanguageModelSession)?
+    ) async throws -> String {
+        let model = selectedLocalModel
+        let usesAppleIntelligence = settings.dictationCleanupEngine == "appleIntelligence"
+        var result = text
+        if smart, let model {
+            result = try await cleanInChunks(text) { chunk, _ in
+                try await cleanup.clean(chunk, using: model)
+            }
+            try Task.checkCancellation()
+        }
+        if smart, usesAppleIntelligence, transform == nil {
+            let prompt = instructions(smart: true, transform: nil)
+            result = try await cleanInChunks(result) { chunk, first in
+                try await generate(
+                    chunk, model: nil, instructions: prompt,
+                    prewarmedSession: first && prepared?.instructions == prompt ? prepared?.session : nil)
+            }
+        } else if transform != nil {
+            let prompt = instructions(smart: smart && usesAppleIntelligence, transform: transform)
+            result = try await generate(
+                result, model: model, instructions: prompt,
+                prewarmedSession: prepared?.instructions == prompt ? prepared?.session : nil)
+        }
+        return result
+    }
+
+    @concurrent private static func verdict(source: String, edited: String) async -> DictationEditCheck.Verdict {
+        let reference = await DictationLocalCleanup.clean(source, mode: .basic, isEnglish: true)
+        return DictationEditCheck.verdict(source: source, edited: edited, reference: reference)
+    }
+
+    @concurrent private static func arrange(
+        _ text: String, recognition: DictationRecognition, mode: DictationCleanupMode, kind: DictationAppKind,
+        format: DictationFormat, paragraphs: DictationParagraphs, keepsBreaks: Bool
+    ) async -> String {
+        switch mode {
+        case .off: return text
+        case .basic: return DictationLayout.finishing(text, kind: kind, format: format)
+        case .advanced, .smart:
+            guard format != .plain else { return text }
+            let arranged = DictationLayout.arrange(
+                text, source: recognition, paragraphs: paragraphs, keepsBreaks: keepsBreaks)
+            return DictationLayout.finishing(arranged, kind: kind, format: format)
         }
     }
 
-    func preview(_ text: String, transform: DictationTransform?) async throws -> String {
-        let smart = settings.dictationSmartCleanup
-        let model = selectedLocalModel
-        let usesAppleIntelligence = settings.dictationCleanupEngine == "appleIntelligence"
-        var result = await DictationLocalCleanup.clean(text, mode: settings.dictationCleanupMode)
-        try Task.checkCancellation()
-        do {
-            if smart, let model {
-                result = try await cleanup.clean(result, using: model)
-                try Task.checkCancellation()
-            }
-            if transform != nil || (smart && usesAppleIntelligence) {
-                result = try await generate(result, model: model, instructions: instructions(
-                    smart: smart && usesAppleIntelligence, transform: transform))
-            }
-            return result
-        } catch {
-            guard smart, transform == nil, !Task.isCancelled else { throw error }
-            return await DictationLocalCleanup.clean(text, mode: .advanced)
+    private static func fallbackMessage(for verdict: DictationEditCheck.Verdict) -> String {
+        switch verdict {
+        case .changedNumber: String(localized: "Smart cleanup changed a number. Used Advanced cleanup.")
+        case .changedNegation: String(localized: "Smart cleanup changed the meaning. Used Advanced cleanup.")
+        case .changedName: String(localized: "Smart cleanup changed a name. Used Advanced cleanup.")
+        case .changedWords, .accepted: String(localized: "Smart cleanup changed your words. Used Advanced cleanup.")
         }
     }
 
@@ -230,6 +311,48 @@ final class DictationWritingCoordinator {
             start = boundary
         }
         return formatted + text[start...]
+    }
+
+    private func cleanInChunks(
+        _ text: String, clean: (String, Bool) async throws -> String
+    ) async throws -> String {
+        let byteLimit = 1_800
+        guard text.utf8.count > byteLimit else { return try await clean(text, true) }
+        var output = ""
+        var start = text.startIndex
+        var first = true
+        while start < text.endIndex {
+            try Task.checkCancellation()
+            var end = start
+            var bytes = 0
+            var sentenceBreak: String.Index?
+            var wordBreak: String.Index?
+            while end < text.endIndex {
+                let character = text[end]
+                let next = text.index(after: end)
+                bytes += text[end..<next].utf8.count
+                if bytes > byteLimit, end != start { break }
+                if bytes >= byteLimit / 2 {
+                    if character.isWhitespace { wordBreak = end }
+                    if character.isNewline || ".!?。！？".contains(character) { sentenceBreak = next }
+                }
+                end = next
+            }
+            if end < text.endIndex { end = sentenceBreak ?? wordBreak ?? end }
+            var boundary = end
+            while boundary < text.endIndex, text[boundary].isWhitespace { text.formIndex(after: &boundary) }
+            var contentEnd = end
+            while contentEnd > start, text[text.index(before: contentEnd)].isWhitespace {
+                text.formIndex(before: &contentEnd)
+            }
+            if contentEnd > start {
+                output += try await clean(String(text[start..<contentEnd]), first)
+                first = false
+            }
+            output += text[contentEnd..<boundary]
+            start = boundary
+        }
+        return output
     }
 
     private func generate(

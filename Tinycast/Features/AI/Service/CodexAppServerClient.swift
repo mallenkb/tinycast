@@ -147,7 +147,7 @@ final class CodexAppServerClient {
         let inherited = settings.inherited(for: .codex)
         try checkNotStopped(since: generation)
         // The list is only readable at launch, so the old process cannot be talked into it.
-        if isRunning {
+        if self.process != nil {
             onRelaunch?()
             stop(error: ClientError.processExited(String(localized: "Codex stopped.")))
         }
@@ -221,17 +221,23 @@ final class CodexAppServerClient {
         process.standardInput = stdin
         process.standardOutput = stdout
         process.standardError = stderr
+        let launchID = UUID()
         stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            Task { @MainActor in self?.consumeOutput(data) }
+            Task { @MainActor in
+                guard let self, self.processID == launchID else { return }
+                self.consumeOutput(data)
+            }
         }
         stderr.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            Task { @MainActor in self?.consumeStderr(data) }
+            Task { @MainActor in
+                guard let self, self.processID == launchID else { return }
+                self.consumeStderr(data)
+            }
         }
-        let launchID = UUID()
         process.terminationHandler = { [weak self] process in
             let status = process.terminationStatus
             Task { @MainActor in self?.didExit(launchID, status: status) }
@@ -382,11 +388,13 @@ final class CodexAppServerClient {
                 declineServerRequest(id: id, method: method)
                 return
             }
+            let launchID = processID
             let task = Task { [weak self] in
                 let action: CodexElicitation.Action =
                     await onElicitation(elicitation) ? .accept : .decline
                 // `persist` is never answered: only Settings may change a standing decision.
-                _ = try? self?.send(
+                guard let self, let launchID, processID == launchID else { return }
+                _ = try? send(
                     CodexAppServerProtocol.response(id: id, result: ["action": action.rawValue]))
             }
             elicitations.append((elicitation.threadID, task))

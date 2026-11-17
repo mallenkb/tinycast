@@ -156,6 +156,11 @@ enum SettingsFileSchema {
         case .dictationRemovesFillerWords: return bind(settings, \.dictationRemovesFillerWords)
         case .dictationMicrophone: return bind(settings, \.dictationMicrophone)
         case .dictationAdaptsCapitalization: return bind(settings, \.dictationAdaptsCapitalization)
+        case .dictationParagraphs: return bind(settings, \.dictationParagraphs)
+        case .dictationFormatsByApp: return bind(settings, \.dictationFormatsByApp)
+        case .dictationAppFormats: return bind(settings, \.dictationAppFormats)
+        case .dictationDetectsWebApps: return bind(settings, \.dictationDetectsWebApps)
+        case .dictationDetectsTerminalAgents: return bind(settings, \.dictationDetectsTerminalAgents)
         case .dictationHistoryRetention: return bind(settings, \.dictationHistoryRetention)
         case .dictationIdleRelease: return bind(settings, \.dictationIdleRelease)
         case .dictationLanguage:
@@ -239,7 +244,27 @@ extension EmojiSkinTone: SettingsFileRawValue {}
 extension EmojiGridColumns: SettingsFileRawValue {}
 extension DictationModel: SettingsFileRawValue {}
 extension DictationIndicatorStyle: SettingsFileRawValue {}
+extension DictationParagraphs: SettingsFileRawValue {}
 extension DictationIdleRelease: SettingsFileRawValue {}
+
+/// Written in full so the file lists every app kind; reading accepts any subset.
+extension DictationAppFormats: SettingsFileValue {
+    init?(settingsJSON: SettingsFileJSON) {
+        guard let members = settingsJSON.members else { return nil }
+        var formats = DictationAppFormats()
+        for member in members {
+            guard let kind = DictationAppKind(rawValue: member.key),
+                  let format = member.value.string.flatMap(DictationFormat.init(rawValue:))
+            else { return nil }
+            formats[kind] = format
+        }
+        self = formats
+    }
+
+    var settingsJSON: SettingsFileJSON {
+        .object(DictationAppKind.allCases.map { .init(key: $0.rawValue, value: .string(self[$0].rawValue)) })
+    }
+}
 extension JoinWindow: SettingsFileRawValue {}
 
 extension ClipboardRetention: SettingsFileToken {

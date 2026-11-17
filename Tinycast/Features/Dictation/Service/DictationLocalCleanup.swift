@@ -12,7 +12,9 @@ enum DictationLocalCleanup {
         switch mode {
         case .off: return text
         case .basic: return DictationTextFormatter.basicCleanup(text, normalize: normalizeValues, now: { .now })
-        case .advanced: return DictationTextFormatter.advancedCleanup(text, normalize: normalizeValues, now: { .now })
+        case .advanced:
+            return DictationTextFormatter.advancedCleanup(
+                text, normalize: normalizeValues, automaticParagraphs: false, now: { .now })
         case .smart: return DictationTextFormatter.removingFillerWords(text)
         }
     }

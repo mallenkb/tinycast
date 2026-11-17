@@ -45,14 +45,19 @@ enum DictationTextFormatter {
     ) -> String {
         let cleaned = removingFillerWords(transcript)
         return cleanLines(cleaned, now: now) { line in
-            preservesLiteral(line) ? String(line) : formatSpokenValues(String(line), normalize: normalize)
+            protectingLiterals(line) { formatSpokenValues(String($0), normalize: normalize) }
         }
     }
 
     static func advancedCleanup(
-        _ transcript: String, normalize: (String) -> String = { $0 }, now: () -> ContinuousClock.Instant
+        _ transcript: String, normalize: (String) -> String = { $0 }, automaticParagraphs: Bool = true,
+        now: () -> ContinuousClock.Instant
     ) -> String {
-        cleanLines(transcript, now: now) { cleanAdvancedLine($0, normalize: normalize) }
+        cleanLines(transcript, now: now) { line in
+            protectingLiterals(line) {
+                cleanAdvancedLine($0, normalize: normalize, automaticParagraphs: automaticParagraphs)
+            }
+        }
     }
 
     private static func cleanLines(
@@ -70,13 +75,112 @@ enum DictationTextFormatter {
         return now() < deadline ? result : transcript
     }
 
-    private static func preservesLiteral(_ line: Substring) -> Bool {
-        let literalCheck = line.replacing(/(?i:\b[ap]\.m\b)/, with: "")
+    private static func preservesLiteral(_ word: Substring) -> Bool {
+        let literalCheck = word.replacing(/(?i:\b[ap]\.m\b)/, with: "")
         return literalCheck.firstMatch(of: /[@\/\\<>]|(?i:\b(?:https?:|www\.))|(?:\w\.\p{L}|\p{L}\.\w)/) != nil
     }
 
-    private static func cleanAdvancedLine(_ line: Substring, normalize: (String) -> String) -> String {
-        guard !preservesLiteral(line) else { return String(line) }
+    /// Hides addresses, paths and abbreviations behind private-use marks, so cleanup can't reshape them.
+    private static func protectingLiterals(_ line: Substring, _ clean: (Substring) -> String) -> String {
+        var literals: [String] = []
+        let word = /(?<lead>[(\["'“‘]*)(?<core>\S*?)(?<trail>[.,!?;:)\]"'’”]*)(?=\s|$)/
+        let masked = line.replacing(word) { match in
+            let core = match.core
+            guard !core.isEmpty, literals.count < 256, preservesLiteral(core) else { return String(match.output.0) }
+            literals.append(String(core))
+            return match.lead + literalMark(literals.count - 1) + match.trail
+        }
+        guard !literals.isEmpty else { return clean(line) }
+        var result = clean(Substring(masked))
+        for (index, literal) in literals.enumerated() {
+            result = result.replacing(literalMark(index), with: literal)
+        }
+        return result
+    }
+
+    private static func literalMark(_ index: Int) -> String {
+        "\u{E000}" + String(Character(UnicodeScalar(0xE100 + index)!))
+    }
+
+    /// "ana dot ruiz at acme dot com" and "tinycast dot app slash docs" as they would be typed.
+    static func formatSpokenAddresses(_ text: String) -> String {
+        func written(_ spoken: Substring) -> String {
+            spoken.lowercased()
+                .replacing(/[\x20\t]+colon[\x20\t]+slash[\x20\t]+slash[\x20\t]+/, with: "://")
+                .replacing(/[\x20\t]+dot[\x20\t]+/, with: ".")
+                .replacing(/[\x20\t]+underscore[\x20\t]+/, with: "_")
+                .replacing(/[\x20\t]+dash[\x20\t]+/, with: "-")
+                .replacing(/[\x20\t]+slash[\x20\t]+/, with: "/")
+                .replacing(/[\x20\t]+at[\x20\t]+/, with: "@")
+        }
+        let emails = text.replacing(
+            #/
+            (?ix: (^|[^\p{L}\p{N}'’])
+                (?<local>[a-z0-9](?:[a-z0-9-]*[a-z0-9])?
+                    (?:[\x20\t]+(?:dot|underscore|dash)[\x20\t]+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)
+                [\x20\t]+at[\x20\t]+
+                (?<domain>[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:[\x20\t]+dot[\x20\t]+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*
+                    [\x20\t]+dot[\x20\t]+
+                    (?:com|org|net|edu|gov|io|ai|app|dev|co|uk|ca|de|fr|me|xyz|info|biz|tech|site|blog|email))\b
+                (?![\x20\t]+(?:dot|slash)\b))
+            /#
+        ) { match in
+            guard !spokenAddressFalseStarts.contains(match.local.lowercased()) else { return String(match.output.0) }
+            return String(match.output.1) + written(match.output.0.dropFirst(match.output.1.count))
+        }
+        return emails.replacing(
+            #/
+            (?ix: (^|[^\p{L}\p{N}@.'’])
+                ((?:https?[\x20\t]+colon[\x20\t]+slash[\x20\t]+slash[\x20\t]+)?
+                    (?:www[\x20\t]+dot[\x20\t]+)?
+                    [a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:[\x20\t]+dot[\x20\t]+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*
+                    [\x20\t]+dot[\x20\t]+
+                    (?:com|org|net|edu|gov|io|ai|app|dev|co|uk|ca|de|fr|me|xyz|info|biz|tech|site|blog|email)
+                    (?:[\x20\t]+slash[\x20\t]+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)\b
+                (?![\x20\t]+(?:dot|slash)\b))
+            /#
+        ) { String($0.output.1) + written($0.output.2) }
+    }
+
+    /// "Meet me at acme dot com" names a site, not the address me@acme.com.
+    private static let spokenAddressFalseStarts: Set<String> = [
+        "me", "us", "you", "him", "her", "them", "it", "i", "we", "they", "m", "s", "re", "be", "is", "are",
+        "was", "look", "here", "there", "this", "that", "home", "work", "stay", "meet", "find", "see"
+    ]
+
+    /// Seven or more digits read one at a time become a phone number, keeping the spoken groups.
+    static func formatSpokenPhoneNumbers(_ text: String) -> String {
+        text.replacing(
+            #/
+            (?ix: \b (?<plus>plus[\x20\t]+)?
+                (?<digits>(?:zero|one|two|three|four|five|six|seven|eight|nine)
+                    (?:,?[\x20\t]+(?:zero|oh|one|two|three|four|five|six|seven|eight|nine))+) \b)
+            /#
+        ) { match in
+            let values = ["zero": "0", "oh": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                          "six": "6", "seven": "7", "eight": "8", "nine": "9"]
+            var groups = match.digits.split(separator: ",").map { group in
+                group.split(whereSeparator: \.isWhitespace).compactMap { values[$0.lowercased()] }.joined()
+            }
+            let digits = groups.joined()
+            guard (7...15).contains(digits.count), groups.count <= 5, groups.allSatisfy({ $0.count >= 2 })
+            else { return String(match.output.0) }
+            if match.plus != nil { return "+" + groups.joined(separator: " ") }
+            if groups.count == 1 {
+                switch digits.count {
+                case 10:
+                    groups = [String(digits.prefix(3)), String(digits.dropFirst(3).prefix(3)), String(digits.suffix(4))]
+                case 7: groups = [String(digits.prefix(3)), String(digits.suffix(4))]
+                default: return String(match.output.0)
+                }
+            }
+            return groups.joined(separator: "-")
+        }
+    }
+
+    private static func cleanAdvancedLine(
+        _ line: Substring, normalize: (String) -> String, automaticParagraphs: Bool
+    ) -> String {
         guard let first = line.firstIndex(where: { !$0.isWhitespace }),
               let last = line.lastIndex(where: { !$0.isWhitespace })
         else { return String(line) }
@@ -119,11 +223,11 @@ enum DictationTextFormatter {
         text = text.replacing(/(?i:,[ \t]+new line,[ \t]+)/, with: "\n")
         text = insertSpokenPunctuation(text)
         text = formatSpokenValues(text, normalize: normalize)
-        return leading + formatSpokenStructure(text) + trailing
+        return leading + formatSpokenStructure(text, automaticParagraphs: automaticParagraphs) + trailing
     }
 
     private static func formatSpokenValues(_ input: String, normalize: (String) -> String) -> String {
-        var text = input
+        var text = formatSpokenPhoneNumbers(formatSpokenAddresses(input))
         text = normalizeSpokenQuantities(text)
         text = normalizeSpokenCurrency(text)
         text = normalizeSpokenDates(text)
@@ -475,7 +579,7 @@ enum DictationTextFormatter {
         return (prefix.isEmpty ? list : prefix + "\n" + list) + closing
     }
 
-    private static func sentenceBoundaries(in text: Substring) -> [Range<String.Index>] {
+    static func sentenceBoundaries(in text: Substring) -> [Range<String.Index>] {
         text.matches(of: /[.!?][ \t]+(?=\p{L})/).compactMap { match in
             if text[match.range.lowerBound] == "." {
                 let lastWord = text[..<match.range.lowerBound].suffix(16).split(whereSeparator: \.isWhitespace).last ?? ""
@@ -495,19 +599,7 @@ enum DictationTextFormatter {
         for boundary in sentenceBoundaries(in: text) {
             sentenceCount += 1
             let remainder = text[boundary.upperBound...]
-            let explicitTransition = remainder.firstMatch(of: #/
-                (?ix: ^
-                    (?: (?:on[\x20\t]+(?:another|a[\x20\t]+(?:separate|different))[\x20\t]+note|
-                          changing[\x20\t]+(?:topics|subjects)|switching[\x20\t]+gears|
-                          in[\x20\t]+(?:summary|conclusion)|to[\x20\t]+(?:sum[\x20\t]+up|recap|wrap[\x20\t]+up)|
-                          next[\x20\t]+topic|one[\x20\t]+last[\x20\t]+thing)
-                          [,:\x20\t]
-                        | (?:moving[\x20\t]+on[\x20\t]+to|let['’]s[\x20\t]+move[\x20\t]+on[\x20\t]+to|
-                            turning[\x20\t]+(?:now[\x20\t]+)?to|
-                            as[\x20\t]+for|that[\x20\t]+brings[\x20\t]+(?:me|us)[\x20\t]+to)[\x20\t]+\p{L}
-                    )
-                )
-                /#) != nil
+            let explicitTransition = startsTopic(remainder)
             let end = text.index(after: boundary.lowerBound)
             let developedPassage = sentenceCount >= 2
                 && text[start..<end].split(maxSplits: 34, whereSeparator: \.isWhitespace).count == 35
@@ -525,7 +617,23 @@ enum DictationTextFormatter {
         return paragraphs.joined(separator: "\n\n")
     }
 
-    private static func startsParagraphTransition(_ text: Substring) -> Bool {
+    static func startsTopic(_ text: Substring) -> Bool {
+        text.firstMatch(of: #/
+            (?ix: ^
+                (?: (?:on[\x20\t]+(?:another|a[\x20\t]+(?:separate|different))[\x20\t]+note|
+                      changing[\x20\t]+(?:topics|subjects)|switching[\x20\t]+gears|
+                      in[\x20\t]+(?:summary|conclusion)|to[\x20\t]+(?:sum[\x20\t]+up|recap|wrap[\x20\t]+up)|
+                      next[\x20\t]+topic|one[\x20\t]+last[\x20\t]+thing)
+                      [,:\x20\t]
+                    | (?:moving[\x20\t]+on[\x20\t]+to|let['’]s[\x20\t]+move[\x20\t]+on[\x20\t]+to|
+                        turning[\x20\t]+(?:now[\x20\t]+)?to|
+                        as[\x20\t]+for|that[\x20\t]+brings[\x20\t]+(?:me|us)[\x20\t]+to)[\x20\t]+\p{L}
+                )
+            )
+            /#) != nil
+    }
+
+    static func startsParagraphTransition(_ text: Substring) -> Bool {
         if text.firstMatch(of: #/
             (?ix: ^(?:however|nevertheless|meanwhile|instead|but|yet)\b[,:\x20\t]
                 | ^(?:for[\x20\t]+(?:example|instance)|on[\x20\t]+the[\x20\t]+other[\x20\t]+hand|
@@ -536,7 +644,7 @@ enum DictationTextFormatter {
             /#) != nil
     }
 
-    private static func formatSpokenStructure(_ text: String) -> String {
+    private static func formatSpokenStructure(_ text: String, automaticParagraphs: Bool) -> String {
         let separated = formatCorrespondence(text)
             .replacing(
                 #/
@@ -550,12 +658,13 @@ enum DictationTextFormatter {
                 /#,
                 with: "?\n\n")
         return separated.split(separator: "\n", omittingEmptySubsequences: false)
-            .map(separateTopicParagraphs).joined(separator: "\n")
+            .map { automaticParagraphs ? separateTopicParagraphs($0) : String($0) }.joined(separator: "\n")
             .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { formatSpokenList($0) ?? wrapLongParagraph($0) }.joined(separator: "\n")
+            .map { formatSpokenList($0) ?? (automaticParagraphs ? wrapLongParagraph($0) : String($0)) }
+            .joined(separator: "\n")
     }
 
-    private static func formatCorrespondence(_ text: String) -> String {
+    static func formatCorrespondence(_ text: String) -> String {
         guard let closing = text.firstMatch(of: #/
             [.!?][\x20\t]+
             ((?i:(?:(?:best|kind|warm)[\x20\t]+)?regards|sincerely|yours[\x20\t]+truly|best[\x20\t]+wishes),)

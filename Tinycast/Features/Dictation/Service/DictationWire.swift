@@ -13,7 +13,7 @@ nonisolated enum DictationWire {
     }
 
     static let sampleRate = 16_000
-    static let maximumSamples = sampleRate * 60 * 5
+    static let maximumSamples = sampleRate * 60 * 10
     static let maximumMessageBytes = 64_000
 
     struct Request: Codable, Sendable {
@@ -31,6 +31,7 @@ nonisolated enum DictationWire {
         let id: UUID
         let status: Status
         var text = ""
+        var pauses: [DictationPause] = []
     }
 
     static func read<Value: Decodable>(_ type: Value.Type, from handle: FileHandle) throws -> Value? {

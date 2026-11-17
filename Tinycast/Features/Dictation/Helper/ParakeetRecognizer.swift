@@ -36,19 +36,52 @@ final class ParakeetRecognizer {
         blank = configuration.blankToken
     }
 
-    func transcribe(_ samples: [Float]) throws -> String {
+    func transcribe(_ samples: [Float]) throws -> DictationRecognition {
         guard !samples.isEmpty, samples.count <= DictationWire.maximumSamples else {
             throw DictationInferenceError.invalidAudio
         }
-        return try DictationAudioChunks.ranges(in: samples, maximum: Self.windowSamples).map { range in
-            try autoreleasepool {
-                try decode(samples[range]).joined().replacingOccurrences(of: "▁", with: " ")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+        var words: [String] = []
+        var pauses: [DictationPause] = []
+        var previousEnd: Int?
+        for range in DictationAudioChunks.ranges(in: samples, maximum: Self.windowSamples) {
+            let offset = range.lowerBound * 1_000 / DictationWire.sampleRate
+            let chunk = try autoreleasepool { try decode(samples[range]) }
+            for word in Self.timedWords(chunk) {
+                let start = offset + word.start * Self.frameMilliseconds
+                if let previousEnd, start - previousEnd >= 250 {
+                    pauses.append(DictationPause(word: words.count, milliseconds: start - previousEnd))
+                }
+                words.append(word.text)
+                previousEnd = offset + (word.end + 1) * Self.frameMilliseconds
             }
-        }.joined(separator: " ")
+        }
+        return DictationRecognition(text: words.joined(separator: " "), pauses: pauses)
     }
 
-    private func decode(_ samples: ArraySlice<Float>) throws -> [String] {
+    private static let frameMilliseconds = 80
+
+    /// Splits decoded pieces into whitespace-separated words with the frames that emitted them.
+    private static func timedWords(_ pieces: [(text: String, frame: Int)]) -> [(text: String, start: Int, end: Int)] {
+        var words: [(text: String, start: Int, end: Int)] = []
+        var current: (text: String, start: Int, end: Int)?
+        for piece in pieces {
+            for character in piece.text.replacingOccurrences(of: "▁", with: " ") {
+                if character.isWhitespace {
+                    if let finished = current { words.append(finished) }
+                    current = nil
+                } else if current == nil {
+                    current = (String(character), piece.frame, piece.frame)
+                } else {
+                    current?.text.append(character)
+                    current?.end = piece.frame
+                }
+            }
+        }
+        if let current { words.append(current) }
+        return words
+    }
+
+    private func decode(_ samples: ArraySlice<Float>) throws -> [(text: String, frame: Int)] {
         let audio = try DictationTensor.zeros([1, Self.windowSamples])
         audio.withUnsafeMutableBufferPointer(ofType: Float.self) { buffer, _ in
             for (index, sample) in samples.enumerated() { buffer[index] = sample }
@@ -90,7 +123,7 @@ final class ParakeetRecognizer {
         let frame = try DictationTensor.zeros([1, 1024, 1])
         var time = 0
         var emissions = 0
-        var pieces = [String]()
+        var pieces: [(text: String, frame: Int)] = []
         while time < length {
             vectors.withUnsafeShapedBufferPointer { source, _, strides in
                 frame.withUnsafeMutableBufferPointer(ofType: Float.self) { target, _ in
@@ -107,7 +140,7 @@ final class ParakeetRecognizer {
                 throw DictationInferenceError.incompatibleModel
             }
             if token != blank {
-                if let piece = vocabulary[token], !piece.hasPrefix("<|") { pieces.append(piece) }
+                if let piece = vocabulary[token], !piece.hasPrefix("<|") { pieces.append((piece, time)) }
                 projection = try advance(token)
                 emissions += 1
             }
