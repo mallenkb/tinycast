@@ -40,8 +40,8 @@ jobs:
           set -euo pipefail
           xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO -jobs 2 \
-            build > "$RUNNER_TEMP/build.log" 2>&1
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO -jobs "$(sysctl -n hw.ncpu)" \
+            build 2>&1 | tee "$RUNNER_TEMP/build.log"
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v7

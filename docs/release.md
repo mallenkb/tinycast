@@ -98,7 +98,7 @@ Removing that line would reintroduce exactly those three problems. See
 `Build` runs on pushes to main, pull requests and manual dispatch. It uses GitHub's `xcode-27` hosted
 runner, runs lint and every harness except the `exclusive` ones that need desktop focus and the `device`
 ones that need on-device Vision (`TINYCAST_HOSTED_RUNNER=1`), then builds an unsigned Apple silicon Debug build. Signed releases
-retain universal validation. The build log is retained for seven days.
+retain universal validation. Compiler output streams into the Actions log and is retained as an artifact for seven days.
 
 `Release` is a manual workflow for this fork on main. Update project.yml's version first, push that
 commit without `[skip ci]`, wait for Build to pass, then choose Actions → Release → Run workflow and
