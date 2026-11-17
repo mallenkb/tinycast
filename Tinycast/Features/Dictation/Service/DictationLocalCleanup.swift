@@ -62,7 +62,8 @@ enum DictationLocalCleanup {
         case .basic:
             return DictationTextFormatter.basicCleanup(text, normalize: normalize, preparedLine: preparedLine, now: now)
         case .advanced:
-            return DictationTextFormatter.advancedCleanup(text, normalize: normalize, preparedLine: preparedLine, now: now)
+            return DictationTextFormatter.advancedCleanup(
+                text, normalize: normalize, automaticParagraphs: false, now: now)
         case .smart: return DictationTextFormatter.removingFillerWords(text)
         }
     }

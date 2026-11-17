@@ -185,6 +185,108 @@ final class DictationWritingCoordinator {
         return nil
     }
 
+    func process(
+        _ cleaned: String, recognition: DictationRecognition, kind: DictationAppKind, format: DictationFormat,
+        isEnglish: Bool? = nil
+    ) async -> String {
+        let mode = format == .plain && settings.dictationCleanupMode != .off ? .basic : settings.dictationCleanupMode
+        let paragraphs = format == .full ? settings.dictationParagraphs : .never
+        let transforms = automaticTransform != nil && format != .plain
+        let engine = settings.dictationCleanupEngine
+        let smart = usesSmartCleanup && format != .plain
+        let result: String
+        if format == .plain {
+            endRecording()
+            result = cleaned
+        } else {
+            result = await process(cleaned, isEnglish: isEnglish)
+        }
+        guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return cleaned }
+        if transforms { return result }
+        var text = result
+        var keepsBreaks = true
+        if smart, result != cleaned {
+            let verdict = await Self.verdict(source: cleaned, edited: result)
+            guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return cleaned }
+            if verdict == .accepted {
+                keepsBreaks = false
+            } else {
+                text = await DictationLocalCleanup.clean(cleaned, mode: .advanced, isEnglish: isEnglish)
+                guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return cleaned }
+                report(Self.fallbackMessage(for: verdict), .neutral)
+            }
+        }
+        return await Self.arrange(
+            text, recognition: recognition, mode: mode, kind: kind, format: format,
+            paragraphs: paragraphs, keepsBreaks: keepsBreaks)
+    }
+
+    /// `checked` is true only when Smart's rewrite passed the edit check and was used as is.
+    struct Preview: Equatable, Sendable {
+        var text: String
+        var checked = false
+    }
+
+    func preview(
+        _ text: String, transform: DictationTransform?, kind: DictationAppKind,
+        format: DictationFormat
+    ) async throws -> Preview {
+        let setting = settings.dictationCleanupMode
+        let mode = format == .plain && setting != .off ? .basic : setting
+        let paragraphs = format == .full ? settings.dictationParagraphs : .never
+        let recognition = DictationRecognition(text: text)
+        let cleaned = await DictationLocalCleanup.clean(text, mode: mode)
+        try Task.checkCancellation()
+        guard mode == .smart || transform != nil else {
+            return Preview(text: await Self.arrange(
+                cleaned, recognition: recognition, mode: mode, kind: kind, format: format, paragraphs: paragraphs,
+                keepsBreaks: true))
+        }
+        do {
+            let result = try await preview(text, transform: transform)
+            if transform != nil { return Preview(text: result) }
+            if await Self.verdict(source: cleaned, edited: result) == .accepted {
+                return Preview(text: await Self.arrange(
+                    result, recognition: recognition, mode: mode, kind: kind, format: format, paragraphs: paragraphs,
+                    keepsBreaks: false), checked: true)
+            }
+        } catch {
+            guard transform == nil, !Task.isCancelled else { throw error }
+        }
+        return Preview(text: await Self.arrange(
+            DictationLocalCleanup.clean(text, mode: .advanced), recognition: recognition, mode: .advanced,
+            kind: kind, format: format, paragraphs: paragraphs, keepsBreaks: true))
+    }
+
+    @concurrent private static func verdict(source: String, edited: String) async -> DictationEditCheck.Verdict {
+        let reference = await DictationLocalCleanup.clean(source, mode: .basic, isEnglish: true)
+        return DictationEditCheck.verdict(source: source, edited: edited, reference: reference)
+    }
+
+    @concurrent private static func arrange(
+        _ text: String, recognition: DictationRecognition, mode: DictationCleanupMode, kind: DictationAppKind,
+        format: DictationFormat, paragraphs: DictationParagraphs, keepsBreaks: Bool
+    ) async -> String {
+        switch mode {
+        case .off: return text
+        case .basic: return DictationLayout.finishing(text, kind: kind, format: format)
+        case .advanced, .smart:
+            guard format != .plain else { return text }
+            let arranged = DictationLayout.arrange(
+                text, source: recognition, paragraphs: paragraphs, keepsBreaks: keepsBreaks)
+            return DictationLayout.finishing(arranged, kind: kind, format: format)
+        }
+    }
+
+    private static func fallbackMessage(for verdict: DictationEditCheck.Verdict) -> String {
+        switch verdict {
+        case .changedNumber: String(localized: "Smart cleanup changed a number. Used Advanced cleanup.")
+        case .changedNegation: String(localized: "Smart cleanup changed the meaning. Used Advanced cleanup.")
+        case .changedName: String(localized: "Smart cleanup changed a name. Used Advanced cleanup.")
+        case .changedWords, .accepted: String(localized: "Smart cleanup changed your words. Used Advanced cleanup.")
+        }
+    }
+
     func process(_ original: String, isEnglish: Bool? = nil) async -> String {
         defer { endRecording() }
         acceptingSections = false

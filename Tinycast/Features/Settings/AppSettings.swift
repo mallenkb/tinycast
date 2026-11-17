@@ -356,6 +356,26 @@ final class AppSettings {
         didSet { Stored.dictationAdaptsCapitalization.store(dictationAdaptsCapitalization, in: defaults) }
     }
 
+    var dictationParagraphs: DictationParagraphs {
+        didSet { defaults.set(dictationParagraphs.rawValue, forKey: Key.dictationParagraphs.rawValue) }
+    }
+
+    var dictationFormatsByApp: Bool {
+        didSet { defaults.set(dictationFormatsByApp, forKey: Key.dictationFormatsByApp.rawValue) }
+    }
+
+    var dictationAppFormats: DictationAppFormats {
+        didSet { defaults.set(dictationAppFormats.storage, forKey: Key.dictationAppFormats.rawValue) }
+    }
+
+    var dictationDetectsWebApps: Bool {
+        didSet { defaults.set(dictationDetectsWebApps, forKey: Key.dictationDetectsWebApps.rawValue) }
+    }
+
+    var dictationDetectsTerminalAgents: Bool {
+        didSet { defaults.set(dictationDetectsTerminalAgents, forKey: Key.dictationDetectsTerminalAgents.rawValue) }
+    }
+
     var dictationHistoryRetention: ClipboardRetention {
         didSet { Stored.dictationHistoryRetention.store(dictationHistoryRetention, in: defaults) }
     }
@@ -693,6 +713,14 @@ final class AppSettings {
         dictationAutoTransform = Stored.dictationAutoTransform.load(from: defaults)
         dictationTransformID = Stored.dictationTransformID.load(from: defaults)
         dictationAppOverrides = Stored.dictationAppOverrides.load(from: defaults)
+        dictationParagraphs =
+            defaults.string(forKey: Key.dictationParagraphs.rawValue).flatMap(DictationParagraphs.init) ?? .automatic
+        dictationFormatsByApp = defaults.object(forKey: Key.dictationFormatsByApp.rawValue) as? Bool ?? true
+        dictationAppFormats = DictationAppFormats(
+            storage: defaults.dictionary(forKey: Key.dictationAppFormats.rawValue) as? [String: String] ?? [:])
+        dictationDetectsWebApps = defaults.object(forKey: Key.dictationDetectsWebApps.rawValue) as? Bool ?? true
+        dictationDetectsTerminalAgents =
+            defaults.object(forKey: Key.dictationDetectsTerminalAgents.rawValue) as? Bool ?? true
         dictationMicrophone = Stored.dictationMicrophone.load(from: defaults)
         dictationAdaptsCapitalization = Stored.dictationAdaptsCapitalization.load(from: defaults)
         dictationHistoryRetention = Stored.dictationHistoryRetention.load(from: defaults)

@@ -37,6 +37,7 @@ nonisolated enum DictationWire {
         let id: UUID
         let status: Status
         var text = ""
+        var pauses: [DictationPause] = []
     }
 
     static func read<Value: Decodable>(_ type: Value.Type, from handle: FileHandle) throws -> Value? {

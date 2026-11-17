@@ -6,8 +6,6 @@ public enum CohereAsrConfig {
 
     public static let maxAudioSeconds: Float = 35.0
 
-    public static let maxSamples: Int = 560_000
-
     public static let chunkOverlapSeconds: Float = 5.0
 
     public static var chunkHopSeconds: Float { maxAudioSeconds - chunkOverlapSeconds }
@@ -18,37 +16,15 @@ public enum CohereAsrConfig {
 
     public static let pauseEnergyWindowSamples: Int = 1_600
 
-    public static let vocabSize: Int = 16_384
-
-    public static let encoderHiddenSize: Int = 1280
-
-    public static let decoderHiddenSize: Int = 1024
-
-    public static let numEncoderLayers: Int = 48
-
     public static let numDecoderLayers: Int = 8
 
     public static let numDecoderHeads: Int = 8
 
     public static let headDim: Int = 128
 
-    public static let maxSeqLen: Int = 108
-
     public static let numMelBins: Int = 128
 
-    public enum MelSpec {
-        public static let nFFT: Int = 512
-        public static let hopLength: Int = 160
-        public static let nMels: Int = 128
-        public static let fMin: Float = 0.0
-        public static let fMax: Float = 8000.0
-        public static let preemphasis: Float = 0.97
-    }
-
     public enum SpecialTokens {
-        public static let unkToken: Int = 0
-        public static let noSpeechToken: Int = 1
-        public static let padToken: Int = 2
         public static let eosToken: Int = 3
         public static let startToken: Int = 4
         public static let startOfContext: Int = 7

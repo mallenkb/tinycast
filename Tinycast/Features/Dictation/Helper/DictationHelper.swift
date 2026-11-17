@@ -1,12 +1,29 @@
 import Foundation
 
 protocol DictationRecognizer {
-    func transcribe(_ samples: [Float], language: String?) throws -> String
+    func recognize(_ samples: [Float], language: String?) throws -> DictationRecognition
 }
 
-extension QwenRecognizer: DictationRecognizer {}
+extension QwenRecognizer: DictationRecognizer {
+    func recognize(_ samples: [Float], language: String?) throws -> DictationRecognition {
+        DictationRecognition(text: try transcribe(samples, language: language))
+    }
+}
+
+extension CohereRecognizer: DictationRecognizer {
+    func recognize(_ samples: [Float], language: String?) throws -> DictationRecognition {
+        DictationRecognition(text: try transcribe(samples, language: language))
+    }
+}
+
+extension UnifiedRecognizer: DictationRecognizer {
+    func recognize(_ samples: [Float], language: String?) throws -> DictationRecognition {
+        DictationRecognition(text: try transcribe(samples, language: language))
+    }
+}
+
 extension ParakeetRecognizer: DictationRecognizer {
-    func transcribe(_ samples: [Float], language: String?) throws -> String {
+    func recognize(_ samples: [Float], language: String?) throws -> DictationRecognition {
         try transcribe(samples)
     }
 }
@@ -60,9 +77,11 @@ enum DictationHelper {
                         throw DictationInferenceError.invalidAudio
                     }
                     do {
-                        let text = try recognizer.transcribe(samples, language: request.language)
+                        let recognition = try recognizer.recognize(samples, language: request.language)
                         try DictationWire.write(
-                            DictationWire.Response(id: request.id, status: .result, text: text), to: output)
+                            DictationWire.Response(
+                                id: request.id, status: .result, text: recognition.text, pauses: recognition.pauses),
+                            to: output)
                     } catch {
                         try DictationWire.write(
                             DictationWire.Response(id: request.id, status: .failed), to: output)

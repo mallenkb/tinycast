@@ -58,7 +58,7 @@ final class DictationWorker: Sendable {
     func transcribe(
         _ samples: [Float], request: DictationWire.Request, purpose: Purpose = .final,
         onReady: @escaping @MainActor @Sendable () -> Void
-    ) async throws -> String {
+    ) async throws -> DictationRecognition {
         guard (1...DictationWire.maximumSamples).contains(samples.count) else {
             throw DictationWire.Failure.unavailable
         }
@@ -88,7 +88,7 @@ final class DictationWorker: Sendable {
     private func exchange(
         _ samples: [Float], request: DictationWire.Request, purpose: Purpose,
         onReady: (@MainActor @Sendable () -> Void)?
-    ) async throws -> String? {
+    ) async throws -> DictationRecognition? {
         try Task.checkCancellation()
         guard samples.count == request.sampleCount else { throw DictationWire.Failure.unavailable }
         let progress = ExchangeProgress()
@@ -109,7 +109,7 @@ final class DictationWorker: Sendable {
     private func run(
         _ samples: [Float], request: DictationWire.Request, purpose: Purpose,
         progress: ExchangeProgress, onReady: (@MainActor @Sendable () -> Void)?
-    ) async throws -> String? {
+    ) async throws -> DictationRecognition? {
         let timeout = 60 + samples.count / DictationWire.sampleRate * 2
         var deadline = terminationDeadline(after: Self.loadTimeoutSeconds)
         defer { deadline.cancel() }
@@ -153,7 +153,7 @@ final class DictationWorker: Sendable {
                 }
             }
         }
-        var text: String?
+        var recognition: DictationRecognition?
         for try await response in responses {
             if response.status == .ready {
                 if !request.isPreparation {
@@ -162,9 +162,11 @@ final class DictationWorker: Sendable {
                 }
                 await onReady?()
             }
-            if response.status == .result { text = response.text }
+            if response.status == .result {
+                recognition = DictationRecognition(text: response.text, pauses: response.pauses)
+            }
         }
-        return text
+        return recognition
     }
 
     private func terminationDeadline(after seconds: Int) -> Task<Void, Never> {

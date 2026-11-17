@@ -52,6 +52,38 @@ enum AccessibilityText {
         return text
     }
 
+    /// The address of the page around `element`, read from the browser's enclosing web area.
+    static func pageURL(containing element: AXUIElement, timeout: Float = defaultTimeout) -> URL? {
+        var current = element
+        for _ in 0..<40 {
+            if attribute(current, kAXRoleAttribute) as? String == "AXWebArea" {
+                return attribute(current, kAXURLAttribute).flatMap { $0 as? URL }
+            }
+            guard let parent = elementAttribute(current, kAXParentAttribute) else { return nil }
+            current = parent
+            AXUIElementSetMessagingTimeout(current, timeout)
+        }
+        return nil
+    }
+
+    static func focusedWindowTitle(in app: NSRunningApplication, timeout: Float = defaultTimeout) -> String? {
+        let application = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(application, timeout)
+        guard let window = elementAttribute(application, kAXFocusedWindowAttribute) else { return nil }
+        AXUIElementSetMessagingTimeout(window, timeout)
+        return attribute(window, kAXTitleAttribute) as? String
+    }
+
+    private static func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
+        var value: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success ? value : nil
+    }
+
+    private static func elementAttribute(_ element: AXUIElement, _ name: String) -> AXUIElement? {
+        guard let value = attribute(element, name), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return unsafeDowncast(value, to: AXUIElement.self)
+    }
+
     /// Chromium builds its tree only once asked, so Chrome and Electron answer nothing until this.
     private static func activateManualAccessibility(of application: AXUIElement) {
         AXUIElementSetAttributeValue(

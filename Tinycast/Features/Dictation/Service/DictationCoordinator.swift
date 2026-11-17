@@ -57,7 +57,7 @@ final class DictationCoordinator {
     var onRecordingStarted: ((_ targetBundleID: String?) -> Void)?
     var onRecordingEnded: (() -> Void)?
     var onStableTranscript: ((String, Bool?) -> Void)?
-    var processTranscript: ((String, Bool?) async -> String)?
+    var processTranscript: ((String, DictationRecognition, DictationAppKind, DictationFormat, Bool?) async -> String)?
     private let recordTranscript: (String, String?, NSRunningApplication?) -> Void
     @ObservationIgnored private var phase: Phase = .idle
     @ObservationIgnored private var token = UUID()
@@ -395,11 +395,11 @@ final class DictationCoordinator {
             return
         }
         capturedRecording = recording
-        let transcript: String
+        let recognition: DictationRecognition
         let usedApple: Bool
         let fellBack: Bool
         do {
-            (transcript, usedApple, fellBack) = try await recognize(
+            (recognition, usedApple, fellBack) = try await recognize(
                 recording, prefix: prefix, applePreparation: applePreparation, appleStreaming: appleStreaming)
         } catch {
             guard token == current else { return }
@@ -418,6 +418,7 @@ final class DictationCoordinator {
         if fellBack {
             showMessage(String(localized: "The speech model failed, so Apple Dictation transcribed this"), .neutral)
         }
+        let transcript = recognition.text
         guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             reset(cancelTranscription: false)
             showMessage(String(localized: "No speech detected"), .neutral)
@@ -425,11 +426,21 @@ final class DictationCoordinator {
         }
         let isEnglish = englishOverride(
             model: usedApple ? nil : recording.source.model, language: recording.source.language)
-        let cleaned = await cleanTranscript(transcript, isEnglish: isEnglish)
-        guard token == current, !Task.isCancelled else { return }
-        let processed = await processTranscript?(cleaned, isEnglish) ?? cleaned
-        guard token == current, !Task.isCancelled else { return }
         let followsFocus = shortcutMode != nil
+        let kind = settings.dictationFormatsByApp
+            ? DictationAppDetector.kind(
+                of: (followsFocus ? focusedTarget() : target)?.externalApp,
+                webApps: settings.dictationDetectsWebApps, terminalAgents: settings.dictationDetectsTerminalAgents)
+            : .document
+        let format = settings.dictationFormatsByApp ? settings.dictationAppFormats[kind] : .full
+        let cleaned = if format == .plain && cleanupMode != .off {
+            await DictationLocalCleanup.clean(transcript, mode: .basic, isEnglish: isEnglish)
+        } else {
+            await cleanTranscript(transcript, isEnglish: isEnglish)
+        }
+        guard token == current, !Task.isCancelled else { return }
+        let processed = await processTranscript?(cleaned, recognition, kind, format, isEnglish) ?? cleaned
+        guard token == current, !Task.isCancelled else { return }
         if followsFocus, injector.isDelivering {
             await injector.drain()
             guard token == current, !Task.isCancelled else { return }
@@ -486,7 +497,7 @@ final class DictationCoordinator {
     private func recognize(
         _ recording: Recording, prefix: RecognizedPrefix?,
         applePreparation: Task<AppleDictationSession, Error>?, appleStreaming: Task<String, Error>?
-    ) async throws -> (text: String, usedApple: Bool, fellBack: Bool) {
+    ) async throws -> (recognition: DictationRecognition, usedApple: Bool, fellBack: Bool) {
         let samples = recording.samples
         if let appleStreaming {
             do {
@@ -494,18 +505,18 @@ final class DictationCoordinator {
                 guard !final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     throw DictationWire.Failure.unavailable
                 }
-                return (final, true, false)
+                return (DictationRecognition(text: final), true, false)
             } catch {
                 try Task.checkCancellation()
-                return (try await appleTranscription(samples), true, false)
+                return (DictationRecognition(text: try await appleTranscription(samples)), true, false)
             }
         }
         if let applePreparation {
             let session = try await applePreparation.value
             try Task.checkCancellation()
-            return (try await session.transcribe(samples), true, false)
+            return (DictationRecognition(text: try await session.transcribe(samples)), true, false)
         }
-        if recording.source.usesApple { return (try await appleTranscription(samples), true, false) }
+        if recording.source.usesApple { return (DictationRecognition(text: try await appleTranscription(samples)), true, false) }
         do {
             let text = try await transcribe(
                 samples, prefix: prefix, model: recording.source.model, language: recording.source.language)
@@ -514,7 +525,7 @@ final class DictationCoordinator {
             try Task.checkCancellation()
             Logger(subsystem: "com.tinycast.app", category: "Dictation")
                 .error("Speech model failed: \(error.localizedDescription, privacy: .public)")
-            return (try await appleTranscription(samples), true, true)
+            return (DictationRecognition(text: try await appleTranscription(samples)), true, true)
         }
     }
 
@@ -899,7 +910,7 @@ final class DictationCoordinator {
                     let text: String
                     do {
                         text = try await models.transcribe(
-                            segment.samples, model: model, language: language, purpose: .segment)
+                            segment.samples, model: model, language: language, purpose: .segment).text
                         guard !text.isEmpty else { throw DictationWire.Failure.unavailable }
                     } catch {
                         guard token == current, !Task.isCancelled else { return nil }
@@ -929,7 +940,7 @@ final class DictationCoordinator {
                     guard samples.count >= DictationWire.sampleRate / 4 else { continue }
                     guard preview.shouldRequest(samples, at: .now) else { continue }
                     let text = try await models.transcribe(
-                        samples, model: model, language: language, purpose: .preview)
+                        samples, model: model, language: language, purpose: .preview).text
                     guard token == current, phase == .listening, !Task.isCancelled else { break }
                     guard settings.dictationLivePreview else { continue }
                     failures = 0
@@ -952,14 +963,17 @@ final class DictationCoordinator {
 
     private func transcribe(
         _ samples: [Float], prefix: RecognizedPrefix?, model: DictationModel, language: String?
-    ) async throws -> String {
+    ) async throws -> DictationRecognition {
         if let prefix, prefix.model == model, prefix.language == language,
             (DictationWire.sampleRate / 4...DictationCapture.maximumSegmentSamples).contains(samples.count - prefix.end)
         {
             do {
                 let tail = try await models.transcribe(Array(samples[prefix.end...]), model: model, language: language)
-                if !tail.isEmpty, !Self.continuesAmount(tail, after: prefix.text) {
-                    return prefix.text + " " + tail
+                if !tail.text.isEmpty, !Self.continuesAmount(tail.text, after: prefix.text) {
+                    let words = prefix.text.split(whereSeparator: \.isWhitespace).count
+                    return DictationRecognition(
+                        text: prefix.text + " " + tail.text,
+                        pauses: tail.pauses.map { DictationPause(word: words + $0.word, milliseconds: $0.milliseconds) })
                 }
             } catch {
                 try Task.checkCancellation()

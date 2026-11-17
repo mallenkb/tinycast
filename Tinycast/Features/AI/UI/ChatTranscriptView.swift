@@ -352,7 +352,7 @@ private struct ChatSourcesView: View {
             Text("Sources")
                 .font(metrics.typography.rowTrailing.weight(.semibold))
                 .foregroundStyle(Theme.Colors.textTertiary)
-            ChatFlowLayout(spacing: metrics.spacing.sm) {
+            WrappingLayout(spacing: metrics.spacing.sm) {
                 ForEach(Array(references.enumerated()), id: \.element) { index, reference in
                     ChatSourceChip(index: index + 1, reference: reference)
                 }

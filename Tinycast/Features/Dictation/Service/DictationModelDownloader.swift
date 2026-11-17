@@ -18,12 +18,51 @@ enum DictationModelDownloader {
         protocolClasses: [AnyClass]? = nil,
         onProgress: @escaping @Sendable (Int64, Int64) -> Void = { _, _ in }
     ) async throws {
+        let session = makeSession(protocolClasses: protocolClasses)
+        defer { session.invalidateAndCancel() }
+        try await install(destination: destination, using: session, onProgress: onProgress) {
+            var files = try await manifest(
+                repository: model.repository, revision: model.revision,
+                components: model.components, baseURL: baseURL, using: session)
+            if model.isQwen {
+                files += try await manifest(
+                    repository: "Qwen/Qwen3-ASR-0.6B",
+                    revision: "5eb144179a02acc5e5ba31e748d22b0cf3e303b0",
+                    components: ["vocab.json", "merges.txt"],
+                    baseURL: baseURL, using: session)
+            }
+            return files
+        }
+    }
+
+    /// Lists each component on its own, so a repository larger than one listing page still works.
+    static func download(
+        repository: String, revision: String, components: Set<String>, destination: URL,
+        baseURL: URL = URL(string: "https://huggingface.co/")!,
+        protocolClasses: [AnyClass]? = nil,
+        onProgress: @escaping @Sendable (Int64, Int64) -> Void = { _, _ in }
+    ) async throws {
+        let session = makeSession(protocolClasses: protocolClasses)
+        defer { session.invalidateAndCancel() }
+        try await install(destination: destination, using: session, onProgress: onProgress) {
+            try await scopedManifest(
+                repository: repository, revision: revision, components: components,
+                baseURL: baseURL, using: session)
+        }
+    }
+
+    private static func makeSession(protocolClasses: [AnyClass]?) -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.protocolClasses = protocolClasses
-        let session = URLSession(configuration: configuration)
-        defer { session.invalidateAndCancel() }
+        return URLSession(configuration: configuration)
+    }
 
+    private static func install(
+        destination: URL, using session: URLSession,
+        onProgress: @escaping @Sendable (Int64, Int64) -> Void,
+        files listFiles: () async throws -> [(File, URL)]
+    ) async throws {
         let fileManager = FileManager.default
         let root = destination.deletingLastPathComponent()
         try fileManager.createDirectory(
@@ -52,16 +91,7 @@ enum DictationModelDownloader {
         let staging = root.appendingPathComponent(".\(UUID().uuidString)")
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? fileManager.removeItem(at: staging) }
-        var files = try await manifest(
-            repository: model.repository, revision: model.revision,
-            components: model.components, baseURL: baseURL, using: session)
-        if model.isQwen {
-            files += try await manifest(
-                repository: "Qwen/Qwen3-ASR-0.6B",
-                revision: "5eb144179a02acc5e5ba31e748d22b0cf3e303b0",
-                components: ["vocab.json", "merges.txt"],
-                baseURL: baseURL, using: session)
-        }
+        let files = try await listFiles()
         var total: Int64 = 0
         for (file, _) in files {
             let sum = total.addingReportingOverflow(file.size)
@@ -111,15 +141,83 @@ enum DictationModelDownloader {
             })
         else { throw URLError(.cannotParseResponse) }
 
-        return try files.map { file in
-            let path = file.path.split(separator: "/")
-            guard file.size >= 0, !path.isEmpty, file.path == path.joined(separator: "/"),
-                path.allSatisfy({ $0 != "." && $0 != ".." })
-            else {
+        return try files.map { try resolved($0, repository: repository, revision: revision, baseURL: baseURL) }
+    }
+
+    private static func scopedManifest(
+        repository: String, revision: String, components: Set<String>, baseURL: URL, using session: URLSession
+    ) async throws -> [(File, URL)] {
+        var files: [File] = []
+        var listed: [String: [File]] = [:]
+        for component in components.sorted() {
+            let parent = component.split(separator: "/").dropLast().joined(separator: "/")
+            if listed[parent] == nil {
+                listed[parent] = try await listing(
+                    repository: repository, revision: revision, path: parent, recursive: false,
+                    baseURL: baseURL, using: session)
+            }
+            guard let entry = listed[parent]?.first(where: { $0.path == component }) else {
                 throw URLError(.cannotParseResponse)
             }
-            return (file, baseURL.appending(path: "\(repository)/resolve/\(revision)/\(file.path)"))
+            if entry.type == "file" {
+                files.append(entry)
+                continue
+            }
+            let contents = try await listing(
+                repository: repository, revision: revision, path: component, recursive: true,
+                baseURL: baseURL, using: session
+            ).filter { $0.type == "file" }
+            guard !contents.isEmpty else { throw URLError(.cannotParseResponse) }
+            files += contents
         }
+        return try files.map { file in try resolved(file, repository: repository, revision: revision, baseURL: baseURL) }
+    }
+
+    private static let listingPageLimit = 50
+
+    /// Follows the `Link: rel="next"` cursor; Hugging Face pages long listings.
+    private static func listing(
+        repository: String, revision: String, path: String, recursive: Bool, baseURL: URL,
+        using session: URLSession
+    ) async throws -> [File] {
+        var tree = baseURL.appending(path: "api/models/\(repository)/tree/\(revision)")
+        if !path.isEmpty { tree = tree.appending(path: path) }
+        var next: URL? = tree.appending(queryItems: [
+            URLQueryItem(name: "recursive", value: recursive ? "true" : "false"),
+            URLQueryItem(name: "limit", value: "1000")
+        ])
+        var files: [File] = []
+        var pages = 0
+        while let url = next {
+            pages += 1
+            guard pages <= listingPageLimit else { throw URLError(.cannotParseResponse) }
+            let (data, response) = try await session.data(from: url)
+            try validate(response)
+            files += try JSONDecoder().decode([File].self, from: data)
+            next = (response as? HTTPURLResponse).flatMap(nextPage)
+            if let next, next.host != baseURL.host { throw URLError(.badServerResponse) }
+        }
+        return files
+    }
+
+    private static func nextPage(_ response: HTTPURLResponse) -> URL? {
+        guard let header = response.value(forHTTPHeaderField: "Link") else { return nil }
+        for link in header.split(separator: ",") where link.contains("rel=\"next\"") {
+            guard let start = link.firstIndex(of: "<"), let end = link.firstIndex(of: ">"), start < end
+            else { continue }
+            return URL(string: String(link[link.index(after: start)..<end]))
+        }
+        return nil
+    }
+
+    private static func resolved(_ file: File, repository: String, revision: String, baseURL: URL) throws -> (File, URL) {
+        let path = file.path.split(separator: "/")
+        guard file.size >= 0, !path.isEmpty, file.path == path.joined(separator: "/"),
+            path.allSatisfy({ $0 != "." && $0 != ".." })
+        else {
+            throw URLError(.cannotParseResponse)
+        }
+        return (file, baseURL.appending(path: "\(repository)/resolve/\(revision)/\(file.path)"))
     }
 
     static func downloadFile(

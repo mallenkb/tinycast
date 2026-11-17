@@ -1,6 +1,6 @@
 import Foundation
 
-final class CohereRecognizer: DictationRecognizer {
+final class CohereRecognizer {
     private let pipeline = CoherePipeline()
     private let models: CoherePipeline.LoadedModels
 

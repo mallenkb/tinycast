@@ -27,8 +27,11 @@ struct DictationWorkerTest {
                 id: UUID(), model: model,
                 directory: URL(fileURLWithPath: "/tmp/models"), sampleCount: samples.count,
                 language: nil)
-            let text = try await worker.transcribe(samples, request: request) { readiness.count += 1 }
-            guard text == model.rawValue else { fatalError("Model response did not match its request") }
+            let recognition = try await worker.transcribe(samples, request: request) { readiness.count += 1 }
+            guard recognition.text == model.rawValue else { fatalError("Model response did not match its request") }
+            guard recognition.pauses == [DictationPause(word: 0, milliseconds: 900)] else {
+                fatalError("Pause timing did not survive the helper pipe")
+            }
         }
         guard readiness.count == DictationModel.allCases.count else { fatalError("Missing readiness event") }
         await worker.stop()
@@ -95,7 +98,7 @@ struct DictationWorkerTest {
             fatalError("Recording did not prepare the model before any audio was sent")
         }
         for model in [DictationModel.redux, .redux, .ultra] {
-            let text = try await store.transcribe([0], model: model)
+            let text = try await store.transcribe([0], model: model).text
             guard text == model.rawValue, store.loadedModel == model, !store.transcribing else {
                 fatalError("Model store failed to finish a request")
             }
@@ -280,7 +283,8 @@ struct DictationWorkerTest {
             try DictationWire.write(
                 DictationWire.Response(
                     id: request.id, status: .result,
-                    text: request.model.rawValue), to: .standardOutput)
+                    text: request.model.rawValue, pauses: [DictationPause(word: 0, milliseconds: 900)]),
+                to: .standardOutput)
         }
     }
 }

@@ -4,13 +4,15 @@ Dictation is off by default. Either assigned global shortcut records from the ch
 transcribes locally and sends the result through `TextInjector`. Parakeet V3, Ultra and Redux
 support 25 languages. Parakeet V2, Unified and Phonon-2 support English. Phonon-2 is a smaller model
 retrained from V3 for English. Qwen3-ASR 0.6B and 1.7B support 30 languages and 22 Chinese dialects.
-Settings marks Parakeet Ultra as Recommended and selects it by default. The speech recognition page
-shows selectable rows and filters for accuracy, speed, multilingual support, compact size and live
-preview. Accuracy and speed are curated shortlists, compact means at most 650 MB on disk, and live
-includes Apple Dictation and Parakeet Unified. Unified uses rolling batch preview, not streaming.
-Rows show language coverage and approximate disk size; published
-benchmark figures are external measurements, with their sources in the row help. Hovering over language coverage shows the supported languages.
-Choose an installed model, download one from its row, or remove it after selecting another. Cohere Q8
+Parakeet Ultra is the default. The Speech recognition page lists models under On this Mac and
+Available to download, with size, speed, errors per 100 words and live preview in aligned columns.
+The Live column marks every model except Cohere Q8, which shows text only after you stop. Any language or
+English only filters the list, and Sort orders it by Recommended, Fewest errors, Fastest or Smallest,
+with unmeasured models last. Benchmark figures are external measurements, with their sources in the
+row help, and hovering over a description shows the supported languages. Parakeet V2 and Qwen 1.7B
+stay behind Show more until one is downloaded or in use. Click a downloaded row, or Apple Dictation,
+to use it. Each downloaded row's ··· menu has Show in Finder and Remove…, which asks in the list
+before deleting and stays disabled for the model in use. Unified uses rolling batch preview, not streaming. Cohere Q8
 uses a separate Core ML encoder-decoder pipeline and 14 selectable languages, with English as its default.
 Its fixed 35-second batch encoder does not provide live preview. A window that fills the decoder's
 cache keeps the text it produced. Its six-token repetition ban covers only generated text. Cohere Q4 requires a separate GGUF
@@ -203,7 +205,7 @@ models use CPU/Neural Engine.
   reuses the prepared sections only while they match the final source text exactly. The final
   tail goes through cleanup in order. Automatic transforms still use the complete transcript.
   Each indicator fits the current state. Settings previews both listening and processing for the
-  selected style.
+  selected style, with the processing words cycling as they do during dictation.
   The waveform blends neighboring
   frequency peaks so the bars rise together. Capture samples 21 bands at most 20 times per
   second through a reused 512-point Accelerate transform. The logarithmic bands span 32–5000 Hz.
@@ -293,6 +295,11 @@ models use CPU/Neural Engine.
 `dictation-field-test` checks composer switching and teardown, scoped cancellation, delayed insertion
 and cue timing with synthetic capture and real AppKit editors, without recording audio or touching
 the shared clipboard.
+`dictation-layout-test` checks the Smart output check (including spoken phone numbers and emails),
+pause-based paragraphs, spoken breaks, app kinds, browser and terminal detection rules, the three
+formats, spoken addresses and phone numbers, cleanup beside literal words, and a small corpus with
+known paragraph counts. `dictation-advanced-test` also confirms the
+shared layout step reproduces every Advanced paragraph decision.
 `dictation-test` checks formatting, model options, multi-edit alignment, confidence checks, source
 attribution, undo, debounce, input bounds and repeated inference. `dictation-correction-test` runs a
 table of realistic correction scenarios (misheard words and names, rewrites, deletions, casing,
@@ -401,11 +408,14 @@ existing text. This preserves the words and punctuation and keeps the work out o
 A transform shortcut processes the latest History entry and opens History for review; it never
 replaces arbitrary text in another app. Manual operations check cancellation, entry identity, and
 unchanged input before updating History. Restoring an original cancels a pending manual operation.
-The Text cleanup cards show fixed examples of the same dictation at each level. Below the cards,
-choose the destination app on the left. The pasted preview appears in that app's style above
-"You said". The example picker fills the transcript or lets you enter your own. Show edits marks
-what cleanup removed and added. Smart cleanup waits briefly for typing to pause. The transform
-editor has its own sample preview.
+The Text cleanup page opens with a four-step level picker (Off, Basic, Advanced, Smart) and one line
+describing the selected level. Below it, choose one of six apps on the left. The pasted preview appears
+in the selected app's style above "You said". It runs the real cleanup through
+`DictationWritingCoordinator.preview` with that kind's format, so every setting on the page changes it.
+Show edits strikes through the words cleanup dropped and highlights the words it added. When Smart's
+rewrite passes the edit check, a line lists the names and values it kept. The example menu offers a team
+update, requirements, contact details, a correction, or your own text. Smart waits briefly for typing
+to pause. The transform editor has its own sample preview.
 
 Prompt Engineer uses a structured output template, preserves quoted examples, and leaves missing
 requirements as placeholders. It generates a prompt instead of executing the dictated task.

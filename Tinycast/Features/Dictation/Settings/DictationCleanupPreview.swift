@@ -6,6 +6,17 @@ enum DictationPreviewApp: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
+    var kind: DictationAppKind {
+        switch self {
+        case .slack: .work
+        case .messages: .personal
+        case .mail: .email
+        case .claude: .prompt
+        case .xcode: .code
+        case .notes: .document
+        }
+    }
+
     var name: String {
         switch self {
         case .slack: "Slack"
@@ -67,14 +78,83 @@ struct DictationPreviewAppIcon: View {
     }
 }
 
+struct DictationCleanupLevelPicker: View {
+    @Binding var mode: DictationCleanupMode
+
+    private static let levels: [DictationCleanupMode] = [.off, .basic, .advanced, .smart]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack(spacing: Theme.Spacing.xxs) {
+                ForEach(Self.levels, id: \.self) { level in
+                    option(level)
+                }
+            }
+            .padding(Theme.Spacing.xxs)
+            .frame(maxWidth: .infinity)
+            .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card).strokeBorder(Theme.Colors.cardStroke))
+            Text(Self.summary(mode)).foregroundStyle(.secondary)
+        }
+    }
+
+    private func option(_ level: DictationCleanupMode) -> some View {
+        let selected = mode == level
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.menu)
+        return Button {
+            mode = level
+        } label: {
+            VStack(spacing: Theme.Spacing.xxs) {
+                Text(Self.title(level)).fontWeight(.semibold)
+                Text(Self.subtitle(level)).font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.vertical, Theme.Spacing.sm)
+            .frame(maxWidth: .infinity)
+            .background(selected ? Theme.Colors.controlSurface : Color.clear, in: shape)
+            .overlay(shape.strokeBorder(selected ? Theme.Colors.cardStroke : Color.clear))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    static func title(_ level: DictationCleanupMode) -> LocalizedStringKey {
+        switch level {
+        case .off: "Off"
+        case .basic: "Basic"
+        case .advanced: "Advanced"
+        case .smart: "Smart"
+        }
+    }
+
+    private static func subtitle(_ level: DictationCleanupMode) -> LocalizedStringKey {
+        switch level {
+        case .off: "As spoken"
+        case .basic: "Tidy"
+        case .advanced: "Clean"
+        case .smart: "Polished"
+        }
+    }
+
+    private static func summary(_ level: DictationCleanupMode) -> LocalizedStringKey {
+        switch level {
+        case .off: "Exactly what you said."
+        case .basic: "Removes fillers and formats numbers."
+        case .advanced: "Also applies corrections, lists and paragraphs."
+        case .smart: "Rewrites for clarity. Never changes names or numbers."
+        }
+    }
+}
+
+/// What you said beside what gets pasted into the chosen app, using the live cleanup settings.
 struct DictationCleanupStage: View {
-    @State private var app = DictationPreviewApp.slack
+    @Binding var app: DictationPreviewApp
     @Environment(AppSettings.self) private var settings
     @Environment(DictationWritingCoordinator.self) private var writing
     @State private var example = Example.update
     @State private var custom = ""
     @State private var showsEdits = true
-    @State private var preview: (input: Input, result: Result<String, Error>)?
+    @State private var preview: (input: Input, result: Result<DictationWritingCoordinator.Preview, Error>)?
 
     enum Example: CaseIterable {
         case update, requirements, contact, booking, currency, date, time, paragraphs, custom
@@ -125,22 +205,24 @@ struct DictationCleanupStage: View {
         let transcript: String
         let mode: DictationCleanupMode
         let engine: String?
-        let removingFillers: Bool
+        let kind: DictationAppKind
+        let format: DictationFormat
+        let paragraphs: DictationParagraphs
         let ready: Bool
     }
 
     private var transcript: String { example == .custom ? custom : example.transcript }
 
     var body: some View {
+        let format = settings.dictationFormatsByApp ? settings.dictationAppFormats[app.kind] : .full
         let smart = settings.dictationCleanupMode == .smart
-        let model = smart ? writing.selectedLocalModel : nil
         let input = Input(
             transcript: transcript, mode: settings.dictationCleanupMode,
-            engine: smart ? settings.dictationCleanupEngine : nil,
-            removingFillers: settings.dictationRemovesFillerWords,
-            ready: model.map { writing.cleanup.downloading != $0 } ?? true)
+            engine: smart ? settings.dictationCleanupEngine : nil, kind: app.kind, format: format,
+            paragraphs: settings.dictationParagraphs,
+            ready: !smart || writing.selectedLocalModel.map { writing.cleanup.isInstalled($0) } ?? true)
         let result = preview?.input == input ? preview?.result : nil
-        let output = try? result?.get()
+        let output = (try? result?.get())?.text
         let edits = output.map { DictationEditHighlights($0, said: transcript) }
         HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -162,6 +244,14 @@ struct DictationCleanupStage: View {
                     .fixedSize()
                 }
                 pastedWindow(result: result, edits: edits)
+                if case .success(let value) = result, value.checked {
+                    let kept = DictationEditHighlights.kept(in: value.text)
+                    if !kept.isEmpty {
+                        Text("Smart's check passed. It kept \(kept.formatted(.list(type: .and))).")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     label("You said")
                     if example == .custom {
@@ -219,7 +309,7 @@ struct DictationCleanupStage: View {
     }
 
     @ViewBuilder private func pastedWindow(
-        result: Result<String, Error>?, edits: DictationEditHighlights?
+        result: Result<DictationWritingCoordinator.Preview, Error>?, edits: DictationEditHighlights?
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card)
         VStack(alignment: .leading, spacing: 0) {
@@ -233,8 +323,8 @@ struct DictationCleanupStage: View {
             Group {
                 switch result {
                 case .success(let value):
-                    let text = edits.map { showsEdits ? $0.pasted : AttributedString(value) }
-                        ?? AttributedString(value)
+                    let text = edits.map { showsEdits ? $0.pasted : AttributedString(value.text) }
+                        ?? AttributedString(value.text)
                     pastedText(text)
                 case .failure(let error):
                     Text(error.localizedDescription).foregroundStyle(.red)
@@ -249,31 +339,31 @@ struct DictationCleanupStage: View {
     }
 
     @ViewBuilder private func pastedText(_ text: AttributedString) -> some View {
-        switch app {
-        case .messages:
+        switch app.kind {
+        case .personal:
             Text(text)
                 .foregroundStyle(.white)
                 .padding(.horizontal, Theme.Spacing.md).padding(.vertical, Theme.Spacing.sm)
                 .background(Color.accentColor, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .textSelection(.enabled)
-        case .xcode, .claude:
+        case .code, .prompt:
             Text(text).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
-        case .slack, .mail, .notes:
+        case .work, .email, .document:
             Text(text).textSelection(.enabled)
         }
     }
 
     private func update(_ input: Input) async {
-        guard input.ready else { return }
         guard !input.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            preview = (input, .success(""))
+            preview = (input, .success(.init(text: "")))
             return
         }
         do {
             if input.engine != nil { try await Task.sleep(for: .milliseconds(350)) }
             try Task.checkCancellation()
-            let output = try await writing.preview(input.transcript, transform: nil)
+            let output = try await writing.preview(
+                input.transcript, transform: nil, kind: input.kind, format: input.format)
             try Task.checkCancellation()
             preview = (input, .success(output))
         } catch {
@@ -301,6 +391,21 @@ struct DictationEditHighlights {
         self.pasted = Self.marked(pasted, words: pastedWords, kept: keptPasted) { run in
             run.backgroundColor = Theme.Colors.dictationEditAdded
         }
+    }
+
+    /// Names and values worth confirming: anything with a digit or @, or a capitalized word mid-sentence.
+    static func kept(in text: String) -> [String] {
+        var found: [String] = []
+        var sentenceStart = true
+        for match in text.matches(of: /\S+/) {
+            let word = String(match.output).trimmingCharacters(in: .punctuationCharacters.subtracting(["$", "@"]))
+            let notable = word.contains(where: \.isNumber) || word.contains("@")
+                || (!sentenceStart && word.first?.isUppercase == true && word != "I")
+            if notable, !word.isEmpty, !found.contains(word) { found.append(word) }
+            sentenceStart = match.output.last.map { ".!?:\n".contains($0) } ?? false
+            if found.count == 4 { break }
+        }
+        return found
     }
 
     private static func key(_ word: Substring) -> String {
@@ -350,5 +455,60 @@ struct DictationEditHighlights {
             result[lower..<upper].mergeAttributes(container)
         }
         return result
+    }
+}
+
+extension DictationAppKind {
+    var settingsTitle: String {
+        switch self {
+        case .personal: String(localized: "Personal chat")
+        case .work: String(localized: "Work chat")
+        case .email: String(localized: "Email")
+        case .prompt: String(localized: "AI prompt")
+        case .code: String(localized: "Code editor")
+        case .document: String(localized: "Everything else")
+        }
+    }
+
+    var settingsFormatHeader: String {
+        switch self {
+        case .personal: String(localized: "Format for texts")
+        case .work: String(localized: "Format for work chats")
+        case .email: String(localized: "Format for email")
+        case .prompt: String(localized: "Format for AI tools")
+        case .code: String(localized: "Format for code editors")
+        case .document: String(localized: "Format for other apps")
+        }
+    }
+
+    var settingsApps: String {
+        switch self {
+        case .personal: String(localized: "Messages, WhatsApp, Signal and Telegram")
+        case .work: String(localized: "Slack, Teams and Discord")
+        case .email: String(localized: "Mail, Outlook, Spark and Superhuman")
+        case .prompt: String(localized: "Claude, ChatGPT, Codex, Cursor and Windsurf")
+        case .code: String(localized: "Xcode, VS Code, Zed and terminals")
+        case .document: String(localized: "Notes, Pages, browsers and other apps")
+        }
+    }
+
+    func settingsEffect(of format: DictationFormat) -> String {
+        switch (format, self) {
+        case (.full, .email): String(localized: "Greeting on its own line, then paragraphs and lists.")
+        case (.full, .prompt): String(localized: "Markdown lists, numbered when order matters.")
+        case (.full, _): String(localized: "Paragraphs and lists.")
+        case (.compact, _): String(localized: "One block, with list items on their own lines.")
+        case (.plain, _): String(localized: "Basic cleanup only.")
+        }
+    }
+}
+
+extension DictationFormat {
+    var settingsTitle: String {
+        switch self {
+        case .full: String(localized: "Full")
+        case .compact: String(localized: "Compact")
+        case .plain: String(localized: "Plain")
+        }
     }
 }

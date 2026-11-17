@@ -1408,6 +1408,7 @@ final class DictationPanelController {
         previewPauseTask = nil
         state.previewPaused = false
         state.transcript = ""
+        state.remainingSeconds = nil
         panel?.stopObservingPlacementChanges()
         panel?.orderOut(nil)
         panel = nil

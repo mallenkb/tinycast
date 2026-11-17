@@ -12,44 +12,43 @@ struct DictationWritingSettingsView: View {
     private var editorVisible: Bool { navigation.detail != nil }
     @State private var name = ""
     @State private var instructions = ""
-    @State private var sample = DictationCleanupCard.defaultSample
+    @State private var sample = String(
+        localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda.")
     @State private var result = ""
     @State private var error = ""
     @State private var previewing = false
     @State private var operation: Task<Void, Never>?
     @State private var download: Task<Void, Never>?
     @State private var operationID = UUID()
+    @State private var previewApp = DictationPreviewApp.slack
+    @State private var showsMoreOptions = false
+
+    private var localCleanupModels: [DictationCleanupModel.Variant] {
+        let models: [DictationCleanupModel.Variant] = [.emberon2, .s1Mini, .s1ASRCleanup]
+        let installed = models.filter { writing.cleanup.isInstalled($0) }
+        return installed + models.filter { !installed.contains($0) }
+    }
 
     var body: some View {
         @Bindable var settings = settings
         Group {
             if page == .cleanup {
                 Section {
-                    DictationCleanupCard(mode: $settings.dictationCleanupMode)
-                    Picker(selection: $settings.dictationCleanupEngine) {
-                        let recommended = DictationCleanupModel.Variant.defaultSmart
-                        Text("Emberon-2 Q4 (Default)").tag(recommended.rawValue)
-                        ForEach(DictationCleanupModel.Variant.allCases.filter { $0 != recommended }, id: \.rawValue) { model in
-                            Text(verbatim: model.name).tag(model.rawValue)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                        SettingsRowTitle(.dictationCleanup, "Text cleanup")
+                        DictationCleanupLevelPicker(mode: $settings.dictationCleanupMode)
+                        if settings.dictationCleanupMode == .smart || settings.dictationAutoTransform {
+                            modelCard
                         }
-                        Text("Apple Intelligence").tag("appleIntelligence")
-                    } label: {
-                        SettingsRowTitle(.dictationCleanup, "Cleanup engine")
                     }
-                    .settingsEnabled(writing.cleanup.downloading == nil)
-                    ForEach(cleanupModels, id: \.self) { model in modelRow(model) }
-                    if cleanupModels.isEmpty, let reason = writing.unavailableReason {
-                        Text(reason).foregroundStyle(.secondary)
-                    }
-                } footer: {
-                    if writing.selectedLocalModel == .emberon2 {
-                        Text("Emberon-2 handles Smart cleanup. With After dictation, S1-mini does both in one pass.")
-                    } else {
-                        Text("Smart cleanup and After dictation share this engine.")
-                    }
+                    .padding(.vertical, Theme.Spacing.sm)
                 }
                 .settingsAnchor(.dictationCleanup)
-                DictationAppOverridesSection()
+                Section {
+                    DictationCleanupStage(app: $previewApp)
+                }
+                formatSection
+                moreOptionsSection
             }
             if page == .transforms && !editorVisible {
                 Section {
@@ -164,16 +163,191 @@ struct DictationWritingSettingsView: View {
         .onChange(of: settings.dictationTransformID) { clearPreview() }
     }
 
-    private var cleanupModels: [DictationCleanupModel.Variant] {
-        var models: [DictationCleanupModel.Variant] = []
-        if let selected = writing.selectedLocalModel {
-            models.append(selected)
-            if selected.transformEngine != selected, settings.dictationAutoTransform {
-                models.append(selected.transformEngine)
+    private var engineIsAppleIntelligence: Bool { settings.dictationCleanupEngine == "appleIntelligence" }
+
+    @ViewBuilder private var modelCard: some View {
+        let model = writing.selectedLocalModel
+        let downloading = model.map { writing.cleanup.downloading == $0 } ?? false
+        let installed = model.map { writing.cleanup.isInstalled($0) } ?? true
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card)
+        HStack(spacing: Theme.Spacing.lg) {
+            Image(systemName: engineIsAppleIntelligence ? "apple.intelligence" : "sparkles")
+                .font(.title3)
+                .foregroundStyle(.white)
+                .frame(width: Theme.Size.dialogIcon, height: Theme.Size.dialogIcon)
+                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: Theme.Radius.menu))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text(verbatim: model?.name ?? String(localized: "Apple Intelligence")).fontWeight(.medium)
+                Group {
+                    if let model {
+                        let size = model.downloadBytes.formatted(.byteCount(style: .file))
+                        Text(installed
+                            ? String(localized: "Downloaded · \(size) · on this Mac")
+                            : String(localized: "\(size) · runs on this Mac"))
+                    } else if let reason = writing.unavailableReason {
+                        Text(reason)
+                    } else {
+                        Text("Built into macOS")
+                    }
+                }
+                .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Theme.Spacing.lg)
+            if downloading, let model {
+                HStack(spacing: Theme.Spacing.sm) {
+                    ProgressView(value: Double(writing.cleanup.downloadedBytes), total: Double(model.downloadBytes))
+                        .progressViewStyle(.linear)
+                        .frame(width: Theme.Size.dictationCleanupProgress)
+                        .accessibilityLabel("Model download progress")
+                    Text(Double(writing.cleanup.downloadedBytes) / Double(model.downloadBytes),
+                         format: .percent.precision(.fractionLength(0)))
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    Button("Cancel") { download?.cancel() }.buttonStyle(.link)
+                }
+            } else {
+                if let model, !installed {
+                    Button("Download") { startDownload(model) }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(writing.cleanup.downloading != nil)
+                }
+                modelMenu(model: model, installed: installed)
             }
         }
-        if let downloading = writing.cleanup.downloading, !models.contains(downloading) { models.append(downloading) }
-        return models
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Colors.cardFill, in: shape)
+        .overlay(shape.strokeBorder(Theme.Colors.cardStroke))
+    }
+
+    private func modelMenu(model: DictationCleanupModel.Variant?, installed: Bool) -> some View {
+        @Bindable var settings = settings
+        return Menu("Change") {
+            Picker("Smart model", selection: $settings.dictationCleanupEngine) {
+                ForEach(localCleanupModels, id: \.self) { candidate in
+                    let size = candidate.downloadBytes.formatted(.byteCount(style: .file))
+                    Text(verbatim: writing.cleanup.isInstalled(candidate)
+                        ? String(localized: "\(candidate.name) · Downloaded")
+                        : "\(candidate.name) · \(size)")
+                        .tag(candidate.rawValue)
+                }
+                Text("Apple Intelligence · Built in").tag("appleIntelligence")
+            }
+            .pickerStyle(.inline)
+            if let model, installed {
+                Divider()
+                Button("Remove \(model.name)", role: .destructive) {
+                    do { try writing.cleanup.remove(model) } catch { self.error = error.localizedDescription }
+                }
+                .disabled(writing.cleanup.busy)
+            }
+        }
+        .fixedSize()
+        .disabled(writing.cleanup.downloading != nil)
+    }
+
+    private func startDownload(_ model: DictationCleanupModel.Variant) {
+        error = ""
+        download = Task {
+            do { try await writing.cleanup.download(model) } catch {
+                if !Task.isCancelled { self.error = error.localizedDescription }
+            }
+        }
+    }
+
+    @ViewBuilder private var formatSection: some View {
+        @Bindable var settings = settings
+        let kind = previewApp.kind
+        let format = settings.dictationFormatsByApp ? settings.dictationAppFormats[kind] : .full
+        let arranges = settings.dictationCleanupMode == .advanced || settings.dictationCleanupMode == .smart
+        Section {
+            if settings.dictationFormatsByApp {
+                SettingsRow(title: kind.settingsApps, subtitle: kind.settingsEffect(of: format)) {
+                    DictationPreviewAppIcon(app: previewApp)
+                } trailing: {
+                    Picker(kind.settingsFormatHeader, selection: $settings.dictationAppFormats[kind]) {
+                        ForEach(DictationFormat.allCases, id: \.self) { Text($0.settingsTitle).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+            } else {
+                SettingsRow(
+                    title: String(localized: "Same format in every app"),
+                    subtitle: String(localized: "Paragraphs and lists everywhere.")
+                ) {
+                    EmptyView()
+                }
+            }
+            if format == .full {
+                HStack(spacing: Theme.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        SettingsRowTitle(.dictationCleanup, "Paragraphs")
+                        if !arranges {
+                            Text("Needs Advanced or Smart cleanup").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: Theme.Spacing.lg)
+                    Picker("Paragraphs", selection: $settings.dictationParagraphs) {
+                        Text("At pauses and topic changes").tag(DictationParagraphs.automatic)
+                        Text("When I say \u{201C}new paragraph\u{201D}").tag(DictationParagraphs.spoken)
+                        Text("Never").tag(DictationParagraphs.never)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                .settingsEnabled(arranges)
+            }
+        } header: {
+            HStack {
+                Text(verbatim: settings.dictationFormatsByApp
+                    ? kind.settingsFormatHeader : String(localized: "Format"))
+                Spacer()
+                if settings.dictationFormatsByApp && format != DictationAppFormats.suggested(for: kind) {
+                    Button("Use suggested") { settings.dictationAppFormats[kind] = DictationAppFormats.suggested(for: kind) }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var moreOptionsSection: some View {
+        @Bindable var settings = settings
+        Section {
+            DisclosureGroup("More options", isExpanded: $showsMoreOptions) {
+                Toggle(isOn: $settings.dictationFormatsByApp) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        SettingsRowTitle(.dictationCleanup, "Format for each app")
+                        Text("Off gives every app paragraphs and lists.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                Toggle(isOn: $settings.dictationDetectsWebApps) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        Text("Recognize web apps in browsers")
+                        Text("Gmail, Slack and ChatGPT in a tab get their own format. Reads the tab's address.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .disabled(!settings.dictationFormatsByApp)
+                Toggle(isOn: $settings.dictationDetectsTerminalAgents) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        Text("Recognize coding agents in terminals")
+                        Text("claude and codex in a terminal count as AI tools. Reads the window title.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .disabled(!settings.dictationFormatsByApp)
+                HStack {
+                    Spacer()
+                    Button("Reset formats to suggested") { settings.dictationAppFormats = DictationAppFormats() }
+                        .disabled(settings.dictationAppFormats == DictationAppFormats())
+                }
+            }
+        }
     }
 
     private var transformDownload: DictationCleanupModel.Variant? {
@@ -281,154 +455,6 @@ struct DictationWritingSettingsView: View {
                 guard !Task.isCancelled, operationID == current else { return }
                 result = output
             } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
-        }
-    }
-}
-
-private struct DictationCleanupCard: View {
-    static var defaultSample: String {
-        String(localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda.")
-    }
-
-    @Binding var mode: DictationCleanupMode
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            SettingsRowTitle(.dictationCleanup, "Text cleanup")
-            HStack(spacing: Theme.Spacing.sm) {
-                option(
-                    .off, title: "Off", description: "Skip text cleanup.",
-                    example: "Um, Monday, no, Tuesday, call Ana and book a room.")
-                option(
-                    .basic, title: "Basic", description: "Remove fillers and format spoken values.",
-                    example: "Monday, no, Tuesday, call Ana and book a room.")
-                option(
-                    .advanced, title: "Advanced",
-                    description: "Also apply spoken corrections and formatting commands.",
-                    example: "Tuesday, call Ana and book a room.")
-                option(
-                    .smart, title: "Smart", description: "Remove fillers, format lists, and apply spoken corrections.",
-                    example: "Tuesday:\n• Call Ana\n• Book a room")
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            Divider()
-            DictationCleanupStage()
-        }
-        .padding(.vertical, Theme.Spacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func option(
-        _ option: DictationCleanupMode, title: LocalizedStringKey, description: LocalizedStringKey,
-        example: LocalizedStringKey
-    ) -> some View {
-        let selected = mode == option
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card)
-        return Button {
-            mode = option
-        } label: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text(title).fontWeight(selected ? .semibold : .regular)
-                Text(description).font(.caption).foregroundStyle(.secondary)
-                Spacer(minLength: Theme.Spacing.xxs)
-                Text(example)
-                    .font(.caption)
-                    .italic()
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(Theme.Spacing.xs)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.menu))
-            }
-            .padding(Theme.Spacing.md)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(selected ? Theme.Colors.controlSurface : Theme.Colors.cardFill, in: shape)
-            .overlay(shape.strokeBorder(selected ? Theme.Colors.textSecondary : Theme.Colors.cardStroke))
-            .contentShape(shape)
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-}
-
-private struct DictationAppOverridesSection: View {
-    @Environment(AppSettings.self) private var settings
-    @Environment(DictationWritingCoordinator.self) private var writing
-    @State private var picking = false
-
-    var body: some View {
-        Section {
-            ForEach(settings.dictationAppOverrides.keys.sorted(), id: \.self) { bundleID in
-                DictationAppOverrideRow(
-                    bundleID: bundleID, transforms: writing.store.savedTransforms, override: override(for: bundleID)
-                ) {
-                    settings.dictationAppOverrides[bundleID] = nil
-                }
-            }
-            Button("Add Application…") { picking = true }
-                .popover(isPresented: $picking, arrowEdge: .bottom) {
-                    AppPickerPopover(excluded: Set(settings.dictationAppOverrides.keys)) { bundleID in
-                        settings.dictationAppOverrides[bundleID] = [:]
-                        picking = false
-                    }
-                }
-        } header: {
-            Text("App overrides")
-        } footer: {
-            Text("Use a different cleanup or transform when dictating into these apps.")
-        }
-    }
-
-    private func override(for bundleID: String) -> Binding<DictationAppOverride> {
-        Binding {
-            settings.dictationAppOverrides[bundleID].flatMap(DictationAppOverride.init(stored:)) ?? .init()
-        } set: {
-            settings.dictationAppOverrides[bundleID] = $0.stored
-        }
-    }
-}
-
-private struct DictationAppOverrideRow: View {
-    let bundleID: String
-    let transforms: [DictationTransform]
-    @Binding var override: DictationAppOverride
-    let onRemove: () -> Void
-    @Environment(AppIndex.self) private var appIndex
-
-    var body: some View {
-        let (name, icon) = AppPresentation.resolve(bundleID: bundleID, in: appIndex)
-        LabeledContent {
-            HStack(spacing: Theme.Spacing.sm) {
-                Picker("Cleanup", selection: $override.cleanup) {
-                    Text("Default").tag(DictationCleanupMode?.none)
-                    Text("Off").tag(DictationCleanupMode?.some(.off))
-                    Text("Basic").tag(DictationCleanupMode?.some(.basic))
-                    Text("Advanced").tag(DictationCleanupMode?.some(.advanced))
-                    Text("Smart").tag(DictationCleanupMode?.some(.smart))
-                }
-                Picker("Transform", selection: $override.transform) {
-                    Text("Default").tag(DictationAppOverride.Transform?.none)
-                    Text("No transform").tag(DictationAppOverride.Transform?.some(.off))
-                    ForEach(transforms) { transform in
-                        Text(verbatim: transform.name).tag(DictationAppOverride.Transform?.some(.transform(transform.id)))
-                    }
-                }
-                Button(action: onRemove) {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Remove override for \(name)")
-            }
-            .labelsHidden()
-            .fixedSize()
-        } label: {
-            Label {
-                Text(name).lineLimit(1)
-            } icon: {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: SettingsListMetrics.iconSize, height: SettingsListMetrics.iconSize)
-            }
         }
     }
 }

@@ -87,16 +87,17 @@ enum BackupActions {
         _ categories: Set<BackupCategory>, from staging: BackupStaging, to core: AppCore
     ) async -> BackupApplier.Summary? {
         let bundle = staging.bundle
-        if categories.contains(.configuration),
-            let data = try? Data(contentsOf: bundle.settingsURL),
-            let backup = try? SettingsBackup(json: data)
-        {
+        var settings: SettingsBackup?
+        if categories.contains(.configuration) {
+            settings = try? SettingsBackup(json: Data(contentsOf: bundle.settingsURL, options: .mappedIfSafe))
+        }
+        if let backup = settings {
             let commands = backup.customCommands?.count ?? 0
             let shortcuts = backup.hotkeys?.customCommands?.count ?? 0
             guard await confirmExecutableImport(core: core, commands: commands, shortcuts: shortcuts)
             else { return nil }
         }
-        return await BackupApplier.apply(categories, from: bundle, to: core)
+        return await BackupApplier.apply(categories, from: bundle, settings: settings, to: core)
     }
 
     /// The launcher has no picker, so its commands take everything; the pane is where you choose.
@@ -123,8 +124,11 @@ enum BackupActions {
                 let summary = await applyBackup(manifest.categories, from: staging, to: core)
             else { return }
             await present(
-                core: core, title: String(localized: "Backup Imported"),
-                message: summaryText(summary), symbol: importSymbol, tone: .success)
+                core: core,
+                title: summary.problems.isEmpty
+                    ? String(localized: "Backup Imported") : String(localized: "Import Backup"),
+                message: summaryText(summary), symbol: importSymbol,
+                tone: summary.problems.isEmpty ? .success : .danger)
         } catch {
             await present(
                 core: core, title: String(localized: "Import Failed"),

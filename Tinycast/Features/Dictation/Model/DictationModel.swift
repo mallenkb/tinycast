@@ -54,13 +54,15 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
 
     var summary: String {
         switch self {
-        case .redux: String(localized: "Lightweight and efficient.")
-        case .ultra: String(localized: "Higher accuracy, larger download.")
-        case .v3: String(localized: "Automatically detects and transcribes 25 languages.")
-        case .v2, .unified: String(localized: "Transcribes English with automatic punctuation and capitalization.")
-        case .phonon2: String(localized: "Retrained from Parakeet V3 for English with a smaller download.")
-        case .qwenSmall: String(localized: "Smaller and faster.")
-        case .qwenLarge, .cohereQ8: String(localized: "Higher accuracy, more memory.")
+        case .unified: String(localized: "Most accurate fast model. English only.")
+        case .ultra: String(localized: "Best balance for 25 languages.")
+        case .v3: String(localized: "25 languages. Ultra replaces it.")
+        case .phonon2: String(localized: "Smallest English model.")
+        case .redux: String(localized: "Smallest download for 25 languages.")
+        case .cohereQ8: String(localized: "Most accurate. Slow, with no live preview.")
+        case .qwenSmall: String(localized: "30 languages and 22 Chinese dialects.")
+        case .v2: String(localized: "Older English model. Unified replaces it.")
+        case .qwenLarge: String(localized: "Larger Qwen. Uses more memory.")
         }
     }
 

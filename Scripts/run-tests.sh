@@ -454,7 +454,7 @@ run dictionary-pronunciation-session-test Tinycast/Features/Dictionary/Model/Dic
                            Tinycast/Platform/LocalizedResource.swift Tinycast/Platform/NotificationToken.swift
 run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.swift \
                            Tinycast/Features/Dictionary/Model/DictionaryMarkup.swift
-run dictation-test         Tinycast/Features/Dictation/Model/DictationAppOverride.swift Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationCorrection.swift Tinycast/Features/Dictation/Model/DictationCorrectionPolicy.swift Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift
+run dictation-test         Tinycast/Features/Dictation/Model/DictationAppOverride.swift Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationLanguage.swift Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationCorrection.swift Tinycast/Features/Dictation/Model/DictationCorrectionPolicy.swift Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift Tinycast/Features/Dictation/Model/DictationLayout.swift Tinycast/Features/Dictation/Model/DictationWords.swift Tinycast/Features/Dictation/Model/DictationRecognition.swift
 run dictation-correction-test Tinycast/Features/Dictation/Model/DictationCorrection.swift \
                            Tinycast/Features/Dictation/Model/DictationCorrectionPolicy.swift \
                            Tinycast/Features/Dictation/Model/DictationCorrectionSession.swift \
@@ -462,8 +462,13 @@ run dictation-correction-test Tinycast/Features/Dictation/Model/DictationCorrect
                            Tinycast/Features/Dictation/Service/DictationCorrectionStore.swift \
                            Tinycast/Features/Dictation/Service/DictationSpellingLexicon.swift \
                            Tinycast/Platform/AppPaths.swift
-run -O dictation-advanced-test Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift
+run -O dictation-advanced-test Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationLayout.swift Tinycast/Features/Dictation/Model/DictationWords.swift Tinycast/Features/Dictation/Model/DictationRecognition.swift
 run dictation-cleanup-test Tinycast/Features/Dictation/Model/DictationCleanupChunks.swift
+run dictation-layout-test  Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
+                           Tinycast/Features/Dictation/Model/DictationLayout.swift \
+                           Tinycast/Features/Dictation/Model/DictationWords.swift \
+                           Tinycast/Features/Dictation/Model/DictationEditCheck.swift \
+                           Tinycast/Features/Dictation/Model/DictationRecognition.swift
 run dictation-cue-test     Tinycast/Features/Dictation/Service/DictationCueRunner.swift
 run dictation-field-test   Tinycast/Features/Dictation/Model/DictationAppOverride.swift \
                            Tinycast/Features/Dictation/Model/DictationModel.swift \
@@ -480,7 +485,11 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationAppOverrid
                            Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
                            Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
                            Tinycast/Features/Dictation/Service/AppleDictationSession.swift \
+                           Tinycast/Features/Dictation/Model/DictationRecognition.swift \
+                           Tinycast/Features/Dictation/Model/DictationLayout.swift \
+                           Tinycast/Features/Dictation/Model/DictationWords.swift \
                            Tinycast/Features/Dictation/Service/DictationCoordinator.swift \
+                           Tinycast/Features/Dictation/Service/DictationAppDetector.swift \
                            Tinycast/Features/Dictation/Service/DictationCorrectionStore.swift \
                            Tinycast/Features/Dictation/Service/DictationInsertionContext.swift \
                            Tinycast/Features/Dictation/Service/DictationLocalCleanup.swift \
@@ -495,6 +504,7 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationAppOverrid
                            Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift
 run index -O dictation-performance Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/Dictation/Model/DictationModel.swift \
+                           Tinycast/Features/Dictation/Model/DictationRecognition.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift
 run dictation-inference-test Tinycast/Features/Dictation/Model/DictationAudioChunks.swift \
     Tinycast/Features/Dictation/Service/DictationSpectrum.swift \
@@ -505,6 +515,7 @@ run dictation-inference-test Tinycast/Features/Dictation/Model/DictationAudioChu
     Tinycast/Features/Dictation/Helper/CoherePipeline.swift \
     Tinycast/Features/Dictation/Helper/CohereAsrConfig.swift
 run dictation-worker-test  Tinycast/Features/Dictation/Model/DictationModel.swift \
+                           Tinycast/Features/Dictation/Model/DictationRecognition.swift \
                            Tinycast/Features/Dictation/Model/DictationIdleRelease.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \
                            Tinycast/Features/Dictation/Service/DictationWorker.swift \

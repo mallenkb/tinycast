@@ -211,7 +211,11 @@ enum Theme {
         static let settingsPageWidth: CGFloat = 740
         static let settingsRowIcon: CGFloat = 20
         static let settingsRowButton: CGFloat = 24
-        static let dictationModelFilterIcon: CGFloat = 14
+        static let dictationModelStat: CGFloat = 72
+        static let dictationModelErrors: CGFloat = 112
+        static let dictationModelLive: CGFloat = 32
+        static let dictationCleanupProgress: CGFloat = 96
+        static let dictationModelAction: CGFloat = 96
         static let settingsSidebarIcon: CGFloat = 28
         /// Inside its tinted tile, whose inset brings it to the row icon's size.
         static let settingsSidebarGlyph: CGFloat = 14
@@ -489,8 +493,6 @@ enum Theme {
         static let dictationDarkBackground = Color(white: 0.10)
         static let dictationOutline = Color(white: 0.6).opacity(0.15)
         /// Selection fill, shared by every list so they look identical.
-        static let modelFilterSelected = adaptive(dark: .white, light: .black)
-        static let modelFilterSelectedInk = adaptive(dark: .black, light: .white)
         static let modelBadgeBackground = Color.accentColor.opacity(0.15)
         static let selection = ramp(dark: 0.08, light: 0.09)
         static let rowHover = ramp(dark: 0.03, light: 0.045)

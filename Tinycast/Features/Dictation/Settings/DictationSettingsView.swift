@@ -11,7 +11,10 @@ struct DictationSettingsView: View {
     private var page: DictationSettingsPage {
         navigation.target.map(DictationSettingsPage.page(for:)) ?? .home
     }
-    @State private var modelFilter: ModelFilter = .all
+    @State private var showsSupersededModels = false
+    @State private var englishOnly = false
+    @State private var modelSort = ModelSort.recommended
+    @State private var confirmingRemoval: DictationModel?
     @State private var microphones: [AVCaptureDevice] = []
     @State private var microphoneAccess = Permissions.microphoneAccess()
     @State private var dictionaryWord = ""
@@ -232,292 +235,336 @@ struct DictationSettingsView: View {
     }
 
     @ViewBuilder private var modelSection: some View {
-        @Bindable var settings = settings
+        let models = sortedModels.filter { !englishOnly || Self.englishOnlyModels.contains($0) }
+        let installed = models.filter { coordinator.models.isInstalled($0) }
+        let hidden = models.filter {
+            !coordinator.models.isInstalled($0) && Self.supersededModels.contains($0)
+                && coordinator.models.downloading != $0 && usesModel != $0
+        }
+        let available = models.filter {
+            !coordinator.models.isInstalled($0) && (showsSupersededModels || !hidden.contains($0))
+        }
+        let megabytes = installed.reduce(0) { $0 + $1.approximateInstalledMegabytes }
         Section {
-            modelFilters
-            ForEach(visibleChoices, id: \.self) { choice in
-                if let model = choice.model {
-                let selected = !settings.dictationUsesApple && settings.dictationModel == model
-                let installed = coordinator.models.isInstalled(model)
-                let downloading = coordinator.models.downloading == model
-                HStack(alignment: .center, spacing: Theme.Spacing.lg) {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                        Button {
-                            if model.isCohere, let language = settings.dictationLanguage,
-                                !cohereLanguages.contains(language) {
-                                settings.dictationLanguage = nil
-                            }
-                            settings.dictationModel = model
-                            settings.dictationUsesApple = false
-                        } label: {
-                            modelChoiceLabel(
-                                title: modelChoiceTitle(model), subtitle: model.summary,
-                                model: model, installed: installed, selected: selected)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!installed)
-                        if downloading {
-                            DownloadProgressView(models: coordinator.models, inline: true)
-                                .padding(.leading, Theme.Spacing.xl + Theme.Spacing.md)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer(minLength: Theme.Spacing.sm)
-                    if downloading {
-                        Button("Cancel") { coordinator.models.cancelDownload() }
-                    } else if !installed {
-                        Button("Download") { downloadModel(model) }
-                            .disabled(coordinator.models.downloading != nil || coordinator.models.removing == model)
-                    } else if installed && !selected {
-                        Button(role: .destructive) { removeModel(model) } label: { Text("Remove") }
-                            .buttonStyle(.dangerAction)
-                            .disabled(coordinator.models.transcribing || coordinator.models.removing != nil)
+            HStack(spacing: Theme.Spacing.lg) {
+                Picker("Languages", selection: $englishOnly) {
+                    Text("Any language").tag(false)
+                    Text("English only").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                Spacer(minLength: Theme.Spacing.lg)
+                Picker("Sort", selection: $modelSort) {
+                    ForEach(ModelSort.allCases, id: \.self) { sort in
+                        Text(sort.title).tag(sort)
                     }
                 }
-                .padding(.vertical, Theme.Spacing.sm)
-                if selected && model.isCohere {
-                    Text("Live preview is not available for this model.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                } else {
-                    HStack(spacing: Theme.Spacing.md) {
-                        Image(systemName: "circle").foregroundStyle(.secondary).accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                Text(verbatim: choice.title)
-                                if choice == recommendedChoice {
-                                    modelBadge("Recommended")
-                                }
-                            }
-                            Text("Unavailable").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical, Theme.Spacing.sm)
-                }
+                .labelsHidden()
+                .fixedSize()
             }
-            if modelFilter == .all || modelFilter == .live {
-                Button {
-                    settings.dictationUsesApple = true
-                } label: {
-                    modelChoiceLabel(
-                        title: String(localized: "Apple Dictation"),
-                        subtitle: String(localized: "Uses your Mac’s preferred language and downloads speech assets as needed."),
-                        model: nil, installed: true, selected: settings.dictationUsesApple)
-                }
-                .buttonStyle(.plain)
-            }
-            if !settings.dictationUsesApple, settings.dictationModel.isQwen || settings.dictationModel.isCohere,
-                coordinator.models.isInstalled(settings.dictationModel)
-            {
-                Picker(selection: languageBinding) {
-                    if settings.dictationModel.isCohere {
-                        Text(verbatim: DictationLanguage.english.displayName(locale: .current)).tag("")
-                    } else {
-                        Text(LocalizedStringResource("dictation-language-auto", defaultValue: "Auto")).tag("")
-                    }
-                    Divider()
-                    ForEach(availableLanguages) { language in
-                        Text(language.displayName(locale: .current)).tag(language.rawValue)
-                    }
-                } label: {
-                    SettingsRowTitle(.dictationModel, "Language")
-                }
-            }
+            languagePicker
         } header: {
             SettingsSectionHeader(.dictationModel)
+        } footer: {
+            if !settings.dictationUsesApple && settings.dictationModel.isCohere {
+                Text("Live preview is not available for this model.")
+            }
+        }
+        Section {
+            if !installed.isEmpty { modelListHeader(showsSelection: true) }
+            ForEach(installed, id: \.self) { model in
+                if confirmingRemoval == model { removalConfirmation(model) }
+                modelListRow(model)
+            }
+            appleDictationRow
+        } header: {
+            Text(verbatim: installed.count == 1
+                ? String(localized: "On this Mac · 1 model · \(Self.size(megabytes: megabytes))")
+                : String(localized: "On this Mac · \(installed.count) models · \(Self.size(megabytes: megabytes))"))
+        }
+        Section {
+            if !available.isEmpty { modelListHeader(showsSelection: false) }
+            ForEach(available, id: \.self) { model in
+                modelListRow(model)
+            }
+            if available.isEmpty {
+                Text("Everything that matches is downloaded.").foregroundStyle(.secondary)
+            }
+            if !hidden.isEmpty {
+                Button(showsSupersededModels
+                    ? String(localized: "Show fewer")
+                    : String(localized: "Show \(hidden.count) more: \(hidden.map(\.title).formatted(.list(type: .and)))")
+                ) {
+                    showsSupersededModels.toggle()
+                }
+                .buttonStyle(.link)
+            }
+        } header: {
+            Text("Available to download")
         }
     }
 
-    private enum ModelFilter: CaseIterable {
-        case all, accuracy, speed, multilingual, compact, live
+    private var usesModel: DictationModel? { settings.dictationUsesApple ? nil : settings.dictationModel }
 
-        var title: LocalizedStringResource {
-            switch self {
-            case .all: "All"
-            case .accuracy: "Accuracy"
-            case .speed: "Speed"
-            case .multilingual: "Multilingual"
-            case .compact: "Compact"
-            case .live: "Live"
-            }
+    private func use(_ model: DictationModel) {
+        if model.isCohere, let language = settings.dictationLanguage, !cohereLanguages.contains(language) {
+            settings.dictationLanguage = nil
         }
+        settings.dictationModel = model
+        settings.dictationUsesApple = false
+    }
 
-        var icon: String {
-            switch self {
-            case .all: "list-filter"
-            case .accuracy: "target"
-            case .speed: "zap"
-            case .multilingual: "languages"
-            case .compact: "hard-drive"
-            case .live: "mic"
+    @ViewBuilder private var languagePicker: some View {
+        if let model = usesModel, model.isQwen || model.isCohere, coordinator.models.isInstalled(model) {
+            Picker(selection: languageBinding) {
+                if model.isCohere {
+                    Text(verbatim: DictationLanguage.english.displayName(locale: .current)).tag("")
+                } else {
+                    Text(LocalizedStringResource("dictation-language-auto", defaultValue: "Auto")).tag("")
+                }
+                Divider()
+                ForEach(availableLanguages) { language in
+                    Text(language.displayName(locale: .current)).tag(language.rawValue)
+                }
+            } label: {
+                SettingsRowTitle(.dictationModel, "Language")
             }
         }
     }
 
-    private var modelFilters: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: Theme.Spacing.sm) {
-                ForEach(ModelFilter.allCases, id: \.self) { filter in
-                    let selected = filter == modelFilter
-                    Button { modelFilter = filter } label: {
-                        HStack(spacing: Theme.Spacing.xs) {
-                            if filter != .all { lucideIcon(filter.icon, size: Theme.Size.dictationModelFilterIcon) }
-                            Text(filter.title)
-                        }
-                            .font(.body)
-                            .foregroundStyle(selected ? Theme.Colors.modelFilterSelectedInk : Theme.Colors.textPrimary)
-                            .padding(.horizontal, Theme.Spacing.md)
-                            .padding(.vertical, Theme.Spacing.md)
-                            .background(selected ? Theme.Colors.modelFilterSelected : Theme.Colors.cardFill, in: Capsule())
-                            .overlay(Capsule().strokeBorder(
-                                selected ? Theme.Colors.modelFilterSelected : Theme.Colors.cardStroke))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
+    private enum ModelSort: CaseIterable {
+        case recommended, accuracy, speed, size
+
+        var title: LocalizedStringKey {
+            switch self {
+            case .recommended: "Recommended"
+            case .accuracy: "Fewest errors"
+            case .speed: "Fastest"
+            case .size: "Smallest"
+            }
+        }
+    }
+
+    /// Unmeasured models sort last, so a missing figure never reads as the best one.
+    private var sortedModels: [DictationModel] {
+        func ordered(_ value: (DictationModel) -> Double?) -> [DictationModel] {
+            Self.listedModels.sorted { lhs, rhs in
+                switch (value(lhs), value(rhs)) {
+                case let (left?, right?): left < right
+                case (.some, nil): true
+                default: false
                 }
             }
         }
-        .scrollIndicators(.hidden)
+        switch modelSort {
+        case .recommended: return Self.listedModels
+        case .accuracy: return ordered { Self.benchmark(for: $0).errors.flatMap(Double.init) }
+        case .speed: return ordered { Self.benchmark(for: $0).speed.map { -Double($0) } }
+        case .size: return ordered { Double($0.approximateInstalledMegabytes) }
+        }
     }
 
-    private enum ModelChoice: Hashable {
-        case available(DictationModel)
-        case cohereQ4
-
-        var model: DictationModel? {
-            if case .available(let model) = self { return model }
-            return nil
-        }
-
-        var title: String {
-            switch self {
-            case .cohereQ4: "Cohere Transcribe Q4"
-            case .available(let model): model.title
+    @ViewBuilder private func downloadControl(_ model: DictationModel) -> some View {
+        if coordinator.models.downloading == model {
+            VStack(alignment: .trailing, spacing: Theme.Spacing.xxs) {
+                DownloadProgressView(models: coordinator.models, inline: true)
+                Button("Cancel") { coordinator.models.cancelDownload() }.buttonStyle(.link)
             }
+        } else {
+            Button("Download") { downloadModel(model) }
+                .disabled(coordinator.models.downloading != nil || coordinator.models.removing == model)
         }
     }
 
-    private var visibleChoices: [ModelChoice] {
-        let listed: [ModelChoice] = [
-            .available(.unified), .available(.v2), .available(.ultra), .available(.v3),
-            .available(.phonon2), .available(.redux), .available(.cohereQ8), .cohereQ4,
-            .available(.qwenSmall), .available(.qwenLarge)
-        ]
-        let filtered: [ModelChoice]
-        switch modelFilter {
-        case .all: filtered = listed
-        case .accuracy:
-            filtered = listed.filter { $0.model == .unified || $0.model == .cohereQ8 || $0.model == .v2 || $0.model == .ultra }
-        case .speed:
-            filtered = listed.filter {
-                $0.model == .unified || $0.model == .ultra || $0.model == .phonon2 || $0.model == .redux
+    private static let listedModels: [DictationModel] = [
+        .ultra, .unified, .cohereQ8, .phonon2, .redux, .v3, .qwenSmall, .v2, .qwenLarge
+    ]
+    private static let supersededModels: Set<DictationModel> = [.v2, .qwenLarge]
+    private static let englishOnlyModels: Set<DictationModel> = [.v2, .phonon2, .unified]
+
+    private func modelListHeader(showsSelection: Bool) -> some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            if showsSelection {
+                Color.clear.frame(width: Theme.Size.settingsRowIcon, height: 0)
+                    .accessibilityHidden(true)
             }
-        case .multilingual:
-            filtered = listed.filter {
-                $0.model == .ultra || $0.model == .v3 || $0.model == .redux ||
-                    $0.model?.isQwen == true || $0.model?.isCohere == true
-            }
-        case .compact:
-            filtered = listed.filter { ($0.model?.approximateInstalledMegabytes ?? .max) <= 650 }
-        case .live: filtered = listed.filter { $0.model == .unified }
-        }
-        return filtered.filter { $0 == recommendedChoice } + filtered.filter { $0 != recommendedChoice }
-    }
-
-    private var recommendedChoice: ModelChoice {
-        switch modelFilter {
-        case .all, .accuracy: .available(.unified)
-        case .speed, .multilingual: .available(.ultra)
-        case .compact: .available(.redux)
-        case .live: .available(.unified)
-        }
-    }
-
-    private func lucideIcon(_ name: String, size: CGFloat = 12) -> some View {
-        Image("lucide-" + name).renderingMode(.template).resizable()
-            .scaledToFit().frame(width: size, height: size).accessibilityHidden(true)
-    }
-
-    private func modelChoiceLabel(
-        title: String, subtitle: String, model: DictationModel?, installed: Bool, selected: Bool
-    ) -> some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+            Text("Model")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            modelStatColumns(
+                size: String(localized: "Size"), speed: String(localized: "Speed"),
+                errors: "WER/100", isHeader: true)
+            Text("Live")
+                .frame(width: Theme.Size.dictationModelLive, alignment: .center)
+                .help("Shows words in the preview while you speak.")
+            Color.clear.frame(width: Theme.Size.dictationModelAction, height: 0)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Text(verbatim: title)
-                    if selected {
-                        modelBadge("In use")
-                    }
-                    if let model, ModelChoice.available(model) == recommendedChoice {
-                        modelBadge("Recommended")
-                    }
-                }
-                Text(verbatim: subtitle).font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let model {
-                    modelChoiceDetails(model, installed: installed)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+    }
+
+    private func modelStatColumns(size: String, speed: String, errors: String, isHeader: Bool = false) -> some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            Text(verbatim: size).frame(width: Theme.Size.dictationModelStat, alignment: .leading)
+            Text(verbatim: speed).frame(width: Theme.Size.dictationModelStat, alignment: .leading)
+            Group {
+                if isHeader {
+                    Text(verbatim: errors)
+                        .help("Errors per 100 words")
+                        .accessibilityLabel("Errors per 100 words")
+                } else {
+                    Text(verbatim: errors)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(width: Theme.Size.dictationModelErrors, alignment: .leading)
+        }
+        .lineLimit(isHeader ? nil : 1)
+        .fixedSize(horizontal: false, vertical: true)
+        .minimumScaleFactor(0.8)
+        .monospacedDigit()
+    }
+
+    private func modelListRow(_ model: DictationModel) -> some View {
+        let installed = coordinator.models.isInstalled(model)
+        let selected = usesModel == model
+        let benchmark = Self.benchmark(for: model)
+        return HStack(spacing: Theme.Spacing.lg) {
+            if installed {
+                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                    .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                    .frame(width: Theme.Size.settingsRowIcon, alignment: .leading)
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text(verbatim: model.title).lineLimit(1)
+                Text(verbatim: model.summary).font(.caption).foregroundStyle(.secondary)
+                    .help(languageNames(for: model))
+                if model == DictationModel.Family.parakeet.defaultModel {
+                    modelBadge("Recommended")
+                        .padding(.top, Theme.Spacing.xxs)
+                }
+            }
+            Spacer(minLength: Theme.Spacing.lg)
+            modelStatColumns(
+                size: Self.size(of: model), speed: Self.speedLabel(for: model),
+                errors: benchmark.errors ?? String(localized: "Not measured"))
+                .font(.caption).foregroundStyle(.secondary)
+                .help(benchmarkHelp(for: model))
+            liveIndicator(model.isCohere == false)
+            Group {
+                if installed {
+                    modelMenu(model, inUse: selected)
+                } else {
+                    downloadControl(model)
+                }
+            }
+            .frame(width: Theme.Size.dictationModelAction, alignment: .trailing)
         }
         .contentShape(Rectangle())
+        .onTapGesture { if installed { use(model) } }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(installed ? (selected ? [.isButton, .isSelected] : .isButton) : [])
+    }
+
+    /// Cohere's fixed 35-second encoder can only transcribe after you stop speaking.
+    private func liveIndicator(_ isLive: Bool) -> some View {
+        Image(systemName: isLive ? "checkmark" : "minus")
+            .font(.caption.weight(isLive ? .semibold : .regular))
+            .foregroundStyle(isLive ? Color.accentColor : Color.secondary)
+            .frame(width: Theme.Size.dictationModelLive, alignment: .center)
+            .help(isLive
+                ? String(localized: "Shows words in the preview while you speak.")
+                : String(localized: "Shows the text only after you stop speaking."))
+            .accessibilityLabel(isLive ? String(localized: "Live preview") : String(localized: "No live preview"))
+    }
+
+    private func modelMenu(_ model: DictationModel, inUse: Bool) -> some View {
+        Menu {
+            Button("Show in Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting([coordinator.models.directory(for: model)])
+            }
+            Divider()
+            Button("Remove…") { confirmingRemoval = model }
+                .disabled(inUse || coordinator.models.transcribing || coordinator.models.removing != nil)
+            if inUse { Text("Switch to another model to remove this one.") }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(width: Theme.Size.settingsRowIcon)
+        .accessibilityLabel(String(localized: "More actions for \(model.title)"))
+    }
+
+    private func removalConfirmation(_ model: DictationModel) -> some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            Text("Remove \(model.title)? This frees \(Self.size(of: model)). You can download it again later.")
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: Theme.Spacing.lg)
+            Button("Cancel") { confirmingRemoval = nil }
+            Button("Remove") {
+                confirmingRemoval = nil
+                removeModel(model)
+            }
+            .buttonStyle(.dangerAction)
+        }
+    }
+
+    private var appleDictationRow: some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            Image(systemName: settings.dictationUsesApple ? "largecircle.fill.circle" : "circle")
+                .foregroundStyle(settings.dictationUsesApple ? Color.accentColor : Color.secondary)
+                .frame(width: Theme.Size.settingsRowIcon, alignment: .leading)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text("Apple Dictation")
+                Text("Uses your Mac’s preferred language and downloads speech assets as needed.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { settings.dictationUsesApple = true }
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityAddTraits(settings.dictationUsesApple ? [.isButton, .isSelected] : .isButton)
     }
 
     private func modelBadge(_ title: LocalizedStringKey) -> some View {
-        Text(title).font(.caption).foregroundStyle(.tint)
+        Text(title).font(.caption).foregroundStyle(.tint).lineLimit(1).fixedSize()
             .padding(.horizontal, Theme.Spacing.sm)
             .padding(.vertical, Theme.Spacing.xxs)
             .background(Theme.Colors.modelBadgeBackground, in: Capsule())
     }
 
-    private func modelChoiceDetails(_ model: DictationModel, installed: Bool) -> some View {
-        let bytes = Int64(model.approximateInstalledMegabytes) * 1_000_000
-        let size = "~" + bytes.formatted(.byteCount(style: .file))
-        let benchmark: (speed: Int?, wer: String)? = switch model {
-        case .unified: (144, "1.68")
-        case .v2: (nil, "1.86")
-        case .ultra: (151, "2.13")
-        case .v3: (149, "2.27")
-        case .phonon2: (159, "2.47")
-        case .redux: (84, "2.71")
-        case .cohereQ8: (11, "1.49")
-        case .qwenSmall, .qwenLarge: nil
+    private static func size(of model: DictationModel) -> String {
+        size(megabytes: model.approximateInstalledMegabytes)
+    }
+
+    private static func size(megabytes: Int) -> String {
+        (Int64(megabytes) * 1_000_000).formatted(.byteCount(style: .file))
+    }
+
+    /// External benchmark figures: real-time speed and word errors per 100 words on clean speech.
+    private static func benchmark(for model: DictationModel) -> (speed: Int?, errors: String?) {
+        switch model {
+        case .unified: (144, "1.7")
+        case .v2: (nil, "1.9")
+        case .ultra: (151, "2.1")
+        case .v3: (149, "2.3")
+        case .phonon2: (159, "2.5")
+        case .redux: (84, "2.7")
+        case .cohereQ8: (11, "1.5")
+        case .qwenSmall, .qwenLarge: (nil, nil)
         }
-        return HStack(spacing: Theme.Spacing.sm) {
-            HStack(spacing: Theme.Spacing.xxs) {
-                lucideIcon("hard-drive")
-                Text(verbatim: size)
-            }
-            if let speed = benchmark?.speed {
-                HStack(spacing: Theme.Spacing.xxs) {
-                    lucideIcon("zap")
-                    Text("~\(speed)× realtime")
-                }
-                .help(benchmarkHelp(for: model))
-            }
-            HStack(spacing: Theme.Spacing.xxs) {
-                lucideIcon("languages")
-                Text(verbatim: model.coverage)
-            }
-            .help(languageNames(for: model))
-            if let benchmark {
-                HStack(spacing: Theme.Spacing.xxs) {
-                    lucideIcon("badge-check")
-                    Text("\(benchmark.wer)% clean WER")
-                }
-                .help(benchmarkHelp(for: model))
-            }
+    }
+
+    private static func speedLabel(for model: DictationModel) -> String {
+        guard let speed = benchmark(for: model).speed else {
+            return model.isQwen ? String(localized: "Moderate") : String(localized: "Not measured")
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-        .minimumScaleFactor(0.75)
+        if speed >= 140 { return String(localized: "Very fast") }
+        return speed >= 80 ? String(localized: "Fast") : String(localized: "Slow")
     }
 
     private func benchmarkHelp(for model: DictationModel?) -> String {
@@ -544,7 +591,7 @@ struct DictationSettingsView: View {
     }
 
     private func languageNames(for model: DictationModel) -> String {
-        if model == .v2 || model == .phonon2 || model == .unified { return String(localized: "English only") }
+        if Self.englishOnlyModels.contains(model) { return String(localized: "English only") }
         let codes = ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
                      "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]
         let names: [String]
@@ -734,10 +781,6 @@ struct DictationSettingsView: View {
             set: {
                 settings.dictationLanguage = $0.isEmpty ? nil : $0
             })
-    }
-
-    private func modelChoiceTitle(_ model: DictationModel) -> String {
-        return model.title
     }
 
     private struct DownloadProgressView: View {

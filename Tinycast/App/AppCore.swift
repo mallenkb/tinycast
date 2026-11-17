@@ -495,9 +495,10 @@ final class AppCore {
                 self?.dictationWriting.endRecording()
                 self?.memoryReclaimer.schedule()
             }
-            dictationCoordinator.processTranscript = { [weak self] text, isEnglish in
+            dictationCoordinator.processTranscript = { [weak self] text, recognition, kind, format, isEnglish in
                 guard let self else { return text }
-                return await self.dictationWriting.process(text, isEnglish: isEnglish)
+                return await self.dictationWriting.process(
+                    text, recognition: recognition, kind: kind, format: format, isEnglish: isEnglish)
             }
             if settings.dictationEnabled && settings.dictationIdleIndicator {
                 dictationCoordinator.applyIdleIndicator()

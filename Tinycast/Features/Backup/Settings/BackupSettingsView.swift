@@ -14,7 +14,8 @@ struct BackupSettingsView: View {
     @State private var importSelection: Set<BackupCategory> = []
     @State private var exporting = false
     @State private var importingBackup = false
-    @State private var backupStatus: Status?
+    @State private var exportStatus: Status?
+    @State private var backupImportStatus: Status?
     @State private var backupFile: URL?
     @State private var openedManifest: BackupManifest?
     /// Held between opening the file and applying it, so the extracted tree survives the picker.
@@ -59,7 +60,7 @@ struct BackupSettingsView: View {
                     Text("The ticked items, as one .tinycast file.")
                 }
                 BackupCategorySelection(selection: $exportSelection)
-                if let backupStatus { statusRow(backupStatus) }
+                if let exportStatus { statusRow(exportStatus) }
             } header: {
                 SettingsSectionHeader(.backupExport)
             }
@@ -85,6 +86,7 @@ struct BackupSettingsView: View {
                         Text("Import")
                     }
                 }
+                if let backupImportStatus { statusRow(backupImportStatus) }
             } header: {
                 SettingsSectionHeader(.backupImport)
             }
@@ -199,18 +201,18 @@ struct BackupSettingsView: View {
     private func runExport() {
         guard !exporting else { return }
         exporting = true
-        backupStatus = nil
+        exportStatus = nil
         let categories = exportSelection
         Task {
             defer { exporting = false }
             do {
                 let result = try await BackupActions.exportBackup(
                     core: core, categories: categories)
-                backupStatus = .success(BackupActions.exportText(result))
+                exportStatus = .success(BackupActions.exportText(result))
             } catch is CancellationError {
                 // The user closed the save panel; nothing to report.
             } catch {
-                backupStatus = .failure(error.localizedDescription)
+                exportStatus = .failure(error.localizedDescription)
             }
         }
     }
@@ -219,7 +221,7 @@ struct BackupSettingsView: View {
         guard let url = BackupActions.chooseBackupFile() else { return }
         discardStagedBackup()
         backupFile = url
-        backupStatus = nil
+        backupImportStatus = nil
         Task {
             do {
                 let (staging, manifest) = try await BackupActions.openBackup(at: url)
@@ -227,7 +229,7 @@ struct BackupSettingsView: View {
                 openedManifest = manifest
                 importSelection = manifest.categories
             } catch {
-                backupStatus = .failure(error.localizedDescription)
+                backupImportStatus = .failure(error.localizedDescription)
             }
         }
     }
@@ -245,7 +247,10 @@ struct BackupSettingsView: View {
             // Staged files are adopted by the stores during apply, so the tree goes either way.
             discardStagedBackup()
             backupFile = nil
-            if let summary { backupStatus = .success(BackupActions.summaryText(summary)) }
+            if let summary {
+                let message = BackupActions.summaryText(summary)
+                backupImportStatus = summary.problems.isEmpty ? .success(message) : .failure(message)
+            }
         }
     }
 

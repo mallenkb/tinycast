@@ -164,7 +164,7 @@ struct DictationFieldTest {
         expect(fixture.coordinator.addCorrection(DictationCorrection(original: "Hubtel", spelling: "Other", isManual: true)),
             "The second manual entry is saved")
         var transformInput: String?
-        fixture.coordinator.processTranscript = { transcript, _ in
+        fixture.coordinator.processTranscript = { transcript, _, _, _, _ in
             transformInput = transcript
             return transcript
         }
@@ -725,6 +725,10 @@ final class AppSettings {
     var dictationMicrophone: String?
     var dictationLanguage: String?
     var dictationAdaptsCapitalization = true
+    var dictationFormatsByApp = true
+    var dictationAppFormats = DictationAppFormats()
+    var dictationDetectsWebApps = true
+    var dictationDetectsTerminalAgents = true
     var dictationRemovesFillerWords = false
     var dictationCleanupMode: DictationCleanupMode = .off
     var dictationAppOverrides: [String: [String: String]] = [:]
@@ -753,6 +757,7 @@ final class DictationCapture {
     func nextSegment(after start: Int) async -> (end: Int, samples: [Float])? { nil }
     static weak var latest: DictationCapture?
     var onLevels: (([Float]) -> Void)?
+    var onCountdown: ((Int) -> Void)?
     var onLimit: (() -> Void)?
     var onCountdown: ((Int) -> Void)?
     var sampleCount = DictationWire.sampleRate / 2
@@ -792,9 +797,9 @@ final class DictationModelStore {
     func transcribe(
         _ samples: [Float], model: DictationModel, language: String?,
         purpose: DictationWorker.Purpose = .final
-    ) async throws -> String {
+    ) async throws -> DictationRecognition {
         defer { finished = true }
-        return try await withCheckedThrowingContinuation { pending = $0 }
+        return DictationRecognition(text: try await withCheckedThrowingContinuation { pending = $0 })
     }
 
     func finish(_ text: String) {
@@ -822,6 +827,7 @@ final class DictationPanelController {
     init(settings: AppSettings) { Self.latest = self }
     func showStarting(style: DictationIndicatorStyle) { isVisible = true }
     func showListening() {}
+    func showCountdown(_ seconds: Int) {}
     func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) { state.transcript = text }
     func hidePreview() {}
     func showIdle(style: DictationIndicatorStyle) { isVisible = true }
