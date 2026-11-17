@@ -108,8 +108,20 @@ enum SettingsSearchCatalog {
     static let entries: [SettingsSearchEntry] =
         general + applications + systemSettings + systemActions + commands + quicklinks
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
-        + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions + permissions
+        + navigation + notes + calendar + weather + emoji + ai + quickActions + dictation + extensions + permissions
         + backup + about
+
+    private static var weather: [SettingsSearchEntry] {
+        #if DEBUG
+        [
+            .init(pane: .weather, keywords: ["forecast", "Open-Meteo"]),
+            .init(.weatherWeather, "Default city", keywords: ["forecast", "location"]),
+            .init(.weatherWeather, "Use Mac location", keywords: ["current location", "local weather"])
+        ]
+        #else
+        []
+        #endif
+    }
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),

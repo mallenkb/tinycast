@@ -143,6 +143,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case calendarMenuBarHidesWhenEmpty = "calendar.menuBarHidesWhenEmpty"
     case hideCurrentEvent = "calendar.hideCurrentEventAfterMinutes"
     case calendarCommands = "calendar.commands"
+    case weatherDefaultCity = "weather.defaultCity"
     case extensionsShowInLauncher = "extensions.showInLauncher"
 
     var section: String { String(rawValue.prefix { $0 != "." }) }

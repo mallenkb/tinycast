@@ -199,6 +199,11 @@ enum SettingsFileSchema {
         case .emojiGridColumns: return bind(settings, \.emojiGridColumns)
         case .emojiCommands: return launcher.commandsBinding(for: key, owner: .emoji)
         case .calendarShowInLauncher: return bind(settings, \.calendarShowInLauncher)
+        case .weatherDefaultCity:
+            return bind(settings, \.weatherDefaultCity) { city in
+                let trimmed = city.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty || (2...160).contains(trimmed.count) ? trimmed : nil
+            }
         case .calendarLauncherLimit: return bind(settings, \.calendarLauncherLimit)
         case .calendarSpan: return bind(settings, \.calendarSpan)
         case .joinWindowMinutes: return bind(settings, \.joinWindowMinutes)

@@ -12,7 +12,7 @@ private struct InterfaceMetricsScope: ViewModifier {
 extension View {
     /// Shared, so the ⌘K menu's own hosted hierarchy cannot drift from the palette's.
     func paletteEnvironment(_ core: AppCore) -> some View {
-        self
+        let scope = self
             .modifier(InterfaceMetricsScope(settings: core.settings))
             .environment(core)
             .environment(core.settings)
@@ -42,5 +42,10 @@ extension View {
             .environment(core.calendarStore)
             .environment(core.meetingClock)
             .motionScope()
+        #if DEBUG
+        return scope.environment(core.weatherCoordinator)
+        #else
+        return scope
+        #endif
     }
 }

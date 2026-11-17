@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Fill and hover for every lead card, so none can answer a selection differently from another.
+/// Shared card shape and selection precedence.
 private struct LeadCardChrome: ViewModifier {
     @Environment(\.metrics) private var metrics
     let selected: Bool
@@ -8,7 +8,7 @@ private struct LeadCardChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(shape.fill(Theme.Colors.cardFill))
+            .background(shape.fill(Theme.Colors.leadCardFill))
             .background(shape.fill(fill))
             .armedHover($hovered)
     }
@@ -18,8 +18,8 @@ private struct LeadCardChrome: ViewModifier {
     }
 
     private var fill: Color {
-        if selected { return Theme.Colors.selection }
-        if hovered { return Theme.Colors.rowHover }
+        if selected { return Theme.Colors.leadCardSelection }
+        if hovered { return Theme.Colors.leadCardHover }
         return .clear
     }
 }

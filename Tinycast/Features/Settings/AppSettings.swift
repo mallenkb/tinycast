@@ -646,6 +646,14 @@ final class AppSettings {
         }
     }
 
+    var weatherUseMacLocation: Bool {
+        didSet { defaults.set(weatherUseMacLocation, forKey: Key.weatherUseMacLocation.rawValue) }
+    }
+
+    var weatherDefaultCity: String {
+        didSet { defaults.set(weatherDefaultCity, forKey: Key.weatherDefaultCity.rawValue) }
+    }
+
     var calendarLauncherLimit: CalendarLauncherLimit {
         didSet {
             defaults.set(calendarLauncherLimit.rawValue, forKey: Key.calendarLauncherLimit.rawValue)
@@ -1019,6 +1027,8 @@ final class AppSettings {
         calendarShowInLauncher =
             defaults.object(forKey: Key.calendarShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.calendarShowInLauncher.rawValue)
+        weatherUseMacLocation = defaults.bool(forKey: Key.weatherUseMacLocation.rawValue)
+        weatherDefaultCity = defaults.string(forKey: Key.weatherDefaultCity.rawValue) ?? ""
         calendarLauncherLimit =
             defaults.object(forKey: Key.calendarLauncherLimit.rawValue)
             .flatMap { $0 as? Int }

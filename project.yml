@@ -59,11 +59,17 @@ targets:
           - Features/IntelligentSearch/Helper
           - Resources/EmojiKeywords
           - Resources/Fonts
+          - Resources/WeatherIcons
+          - Resources/WeatherPlaces.sqlite
       # A folder reference keeps the packs in their own directory, which `EmojiIndex` lists.
       - path: Tinycast/Resources/EmojiKeywords
         type: folder
       - path: Tinycast/Resources/Fonts
         type: folder
+      - path: Tinycast/Resources/WeatherIcons
+        type: folder
+      - path: Tinycast/Resources/WeatherPlaces.sqlite
+        buildPhase: resources
       # The MIT mark's licence asks the notice to travel with the binary, not just the repo.
       - path: NOTICE.md
         buildPhase: resources

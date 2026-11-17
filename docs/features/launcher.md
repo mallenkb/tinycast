@@ -55,6 +55,37 @@ reports notification-dependent checks as skipped when the session cannot deliver
 - **`Model/SearchScopes.swift` and `Model/LauncherRankingStore.swift` are pure too** — the ranking store
   takes its clock via `now` and its path via `fileURL`, for `scopes-test` and `ranking-test`.
 
+## Weather in Tinycast Dev
+
+Type `weather in Accra` to see the forecast in root search. A country name or code such as
+`weather Ghana` or `weather GH` shows its capital's forecast. Add a country or region after a comma
+to narrow a city name. Today uses a split card: the temperature sits left of the illustration in
+a 62-point row, with six-point gaps above and below it. The hourly forecast sits on the right,
+with cloud, droplet and wind controls beside its title. Select a day below the overview to see that
+day's hours. Loading uses a filled skeleton card with a shimmer that stops when the palette closes
+or Reduce Motion is enabled. Weather queries suppress the unrelated header search spinner.
+The timeline scrolls horizontally and reveals navigation arrows on hover or keyboard
+focus. This Week keeps the same overview and shows the selected metric by day. Temperature and
+wind units follow the Mac's regional preferences. Daily
+precipitation shows the highest hourly probability and total precipitation. Daily wind shows
+maximum speed and gusts. Times are local to the forecast location.
+
+In **Settings → Weather**, turn on **Use Mac location** or choose a default city. The city picker
+searches a bundled GeoNames index offline and shows the region and country before you save a city.
+Plain `weather` uses the Mac's location when enabled and the saved city when the option is off.
+An explicit city in the query takes priority. The weather card links to Settings for setup.
+
+Weather queries can include a place and a forecast time. Examples include
+`weather is Accra`, `weather at 4 pm`, `weather in Accra tomorrow at 4 pm`, and
+`what's the weather in London on Friday?`. Dates and times use the forecast location's time zone.
+Open-Meteo supplies up to 16 days of forecast data.
+
+Tinycast resolves city names on the Mac and sends coordinates to Open-Meteo for live forecasts.
+With **Use Mac location** on, it requests a location fix only when the forecast needs it and sends
+coordinates rounded to two decimal places. The card cancels the request and releases the forecast
+when it closes. The public endpoint is enabled in Debug builds for development.
+See [Open-Meteo's API plans](https://open-meteo.com/en/pricing) for commercial use.
+
 ## Search scopes
 
 `SearchScopes` (`Launcher/Model/SearchScopes.swift`) owns the paths; the list is user-editable in

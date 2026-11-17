@@ -44,8 +44,8 @@
   Tinycast did not write. `kind` is a plain `TEXT` column, so the case cost no migration; an older
   build simply fails to decode the row.
 - **A colour is parsed from the text on demand, never stored.** `ColorValue` is the single parser
-  behind the clipboard's swatches and the launcher's colour card, so the two can never disagree
-  about what counts as a colour or what it converts to.
+  behind clipboard swatches and the launcher's colour card. Clipboard history can also use the
+  recorded source app to accept a six-digit hex value without a prefix.
 - **Recognized text is search metadata and nothing else.** It lives in its own `item_text` table,
   never on `ClipboardItem` and never in the resident window, so no surface can paste it, copy it,
   or classify an entry by it. The one exception is Copy Text, which the reader invokes explicitly:
@@ -341,6 +341,9 @@ a narrow filter over a broad query can show fewer rows than the history holds.
 A copied colour is drawn as the colour and can be copied back out in another notation. Two
 surfaces read one parser: the clipboard history, and the launcher, where pasting a colour answers
 with a card the way the calculator does.
+
+Clipboard history accepts standalone six-digit hex without `#` from Figma, Figma Beta, Affinity,
+and Illustrator. It uses the app recorded at capture time. Pasting an entry preserves its original text.
 
 `ColorValue` (`Model/`, Foundation-only) is that parser. It takes the CSS spellings people copy —
 the four hex lengths, plus `rgb()`/`hsl()`/`oklch()` and their alpha forms in both the comma and

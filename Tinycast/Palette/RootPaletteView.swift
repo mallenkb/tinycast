@@ -183,6 +183,11 @@ struct RootPaletteView: View {
 
     private var showsSearchProgress: Bool {
         guard vm.isVisible else { return false }
+        #if DEBUG
+        if vm.mode == .launcher,
+           WeatherQuery(vm.query, defaultCity: settings.weatherDefaultCity,
+                        useMacLocation: settings.weatherUseMacLocation) != nil { return false }
+        #endif
         if searchIntent.isResolving { return true }
         return fileSearch.isFetching
             && (vm.mode == .fileSearch || (vm.mode == .launcher && core.fileSearchCoordinator.showsFilesInLauncher))
