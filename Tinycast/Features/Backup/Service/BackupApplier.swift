@@ -19,7 +19,7 @@ enum BackupApplier {
     ) async -> Summary {
         var summary = Summary()
         if let settings {
-            summary.settings = settings.apply(to: core)
+            summary.settings = apply(settings, to: core)
         } else if categories.contains(.configuration) {
             summary.problems.append(
                 String(localized: "Couldn't read \(BackupCategory.configuration.descriptor.label)."))

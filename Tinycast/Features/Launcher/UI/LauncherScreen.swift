@@ -173,7 +173,7 @@ struct LauncherScreen: PaletteScreen {
     private var leadCard: LauncherList.LeadCard? {
         if let calc { return .calc(calc) }
         if let color { return .color(color) }
-        if let weatherQuery { return .weather(weatherQuery) }
+        if let query = resolved.weatherQuery { return .weather(query) }
         return meeting.map { .meeting($0, now: now) }
     }
 

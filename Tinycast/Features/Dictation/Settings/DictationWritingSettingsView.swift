@@ -49,6 +49,7 @@ struct DictationWritingSettingsView: View {
                 }
                 formatSection
                 moreOptionsSection
+                DictationAppOverridesSection()
             }
             if page == .transforms && !editorVisible {
                 Section {
@@ -455,6 +456,88 @@ struct DictationWritingSettingsView: View {
                 guard !Task.isCancelled, operationID == current else { return }
                 result = output
             } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+        }
+    }
+}
+
+private struct DictationAppOverridesSection: View {
+    @Environment(AppSettings.self) private var settings
+    @Environment(DictationWritingCoordinator.self) private var writing
+    @State private var picking = false
+
+    var body: some View {
+        Section {
+            ForEach(settings.dictationAppOverrides.keys.sorted(), id: \.self) { bundleID in
+                DictationAppOverrideRow(
+                    bundleID: bundleID, transforms: writing.store.savedTransforms, override: override(for: bundleID)
+                ) {
+                    settings.dictationAppOverrides[bundleID] = nil
+                }
+            }
+            Button("Add Application…") { picking = true }
+                .popover(isPresented: $picking, arrowEdge: .bottom) {
+                    AppPickerPopover(excluded: Set(settings.dictationAppOverrides.keys)) { bundleID in
+                        settings.dictationAppOverrides[bundleID] = [:]
+                        picking = false
+                    }
+                }
+        } header: {
+            Text("App overrides")
+        } footer: {
+            Text("Use a different cleanup or transform when dictating into these apps.")
+        }
+    }
+
+    private func override(for bundleID: String) -> Binding<DictationAppOverride> {
+        Binding {
+            settings.dictationAppOverrides[bundleID].flatMap(DictationAppOverride.init(stored:)) ?? .init()
+        } set: {
+            settings.dictationAppOverrides[bundleID] = $0.stored
+        }
+    }
+}
+
+private struct DictationAppOverrideRow: View {
+    let bundleID: String
+    let transforms: [DictationTransform]
+    @Binding var override: DictationAppOverride
+    let onRemove: () -> Void
+    @Environment(AppIndex.self) private var appIndex
+
+    var body: some View {
+        let (name, icon) = AppPresentation.resolve(bundleID: bundleID, in: appIndex)
+        LabeledContent {
+            HStack(spacing: Theme.Spacing.sm) {
+                Picker("Cleanup", selection: $override.cleanup) {
+                    Text("Default").tag(DictationCleanupMode?.none)
+                    Text("Off").tag(DictationCleanupMode?.some(.off))
+                    Text("Basic").tag(DictationCleanupMode?.some(.basic))
+                    Text("Advanced").tag(DictationCleanupMode?.some(.advanced))
+                    Text("Smart").tag(DictationCleanupMode?.some(.smart))
+                }
+                Picker("Transform", selection: $override.transform) {
+                    Text("Default").tag(DictationAppOverride.Transform?.none)
+                    Text("No transform").tag(DictationAppOverride.Transform?.some(.off))
+                    ForEach(transforms) { transform in
+                        Text(verbatim: transform.name).tag(DictationAppOverride.Transform?.some(.transform(transform.id)))
+                    }
+                }
+                Button(action: onRemove) {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove override for \(name)")
+            }
+            .labelsHidden()
+            .fixedSize()
+        } label: {
+            Label {
+                Text(name).lineLimit(1)
+            } icon: {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: SettingsListMetrics.iconSize, height: SettingsListMetrics.iconSize)
+            }
         }
     }
 }

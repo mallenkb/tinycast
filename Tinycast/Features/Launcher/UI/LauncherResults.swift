@@ -5,6 +5,7 @@ struct LauncherResults {
     let results: [AppEntry]
     let calc: CalcResult?
     let color: ColorValue?
+    let weatherQuery: WeatherQuery?
     /// Only the empty query pins favorites — a category shows its sections without one of its own.
     let pinsFavorites: Bool
     let pinnedFavorites: [FavoritesStore.Item]
@@ -73,6 +74,7 @@ struct LauncherResults {
         self.files = files
         self.fallbacks = fallbacks
         self.color = color
+        self.weatherQuery = weatherQuery
         self.pinsFavorites = pinsFavorites
         self.pinnedFavorites = pinnedFavorites
         self.meetingCount = pinsFavorites ? ordered.meetingCount : 0
@@ -83,7 +85,7 @@ struct LauncherResults {
         } else if let color {
             self.rows = [.color(color)] + entries
         } else if let weatherQuery {
-            self.rows = [.weather(weatherQuery)] + entries
+            self.rows = [.weather(weatherQuery)]
         } else if let meeting {
             self.rows = [.meeting(meeting)] + entries
         } else {

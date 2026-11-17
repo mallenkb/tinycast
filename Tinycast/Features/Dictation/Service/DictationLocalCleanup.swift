@@ -30,7 +30,8 @@ enum DictationLocalCleanup {
             if block.isLine, mode == .basic {
                 line = DictationTextFormatter.cleanBasicLine(block.text[...], normalize: normalize, budget: &budget)
             } else if block.isLine, mode == .advanced {
-                line = DictationTextFormatter.cleanAdvancedLine(block.text[...], normalize: normalize, budget: &budget)
+                line = DictationTextFormatter.cleanAdvancedLine(
+                    block.text[...], normalize: normalize, budget: &budget, automaticParagraphs: false)
             } else {
                 _ = normalize(block.text)
             }

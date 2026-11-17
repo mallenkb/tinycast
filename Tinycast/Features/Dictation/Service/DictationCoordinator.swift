@@ -10,7 +10,8 @@ final class DictationCoordinator {
 
     private struct RecognizedPrefix: Sendable {
         let end: Int
-        let text: String
+        let recognition: DictationRecognition
+        var text: String { recognition.text }
         let model: DictationModel
         let language: String?
     }
@@ -907,11 +908,11 @@ final class DictationCoordinator {
                 nextRequest = .now + (wantsPreview ? cadence * preview.stretch : .milliseconds(500))
                 if canRecognizeSegments, let segment = await capture.nextSegment(after: prefix?.end ?? 0) {
                     guard token == current, phase == .listening, !Task.isCancelled else { break }
-                    let text: String
+                    let recognition: DictationRecognition
                     do {
-                        text = try await models.transcribe(
-                            segment.samples, model: model, language: language, purpose: .segment).text
-                        guard !text.isEmpty else { throw DictationWire.Failure.unavailable }
+                        recognition = try await models.transcribe(
+                            segment.samples, model: model, language: language, purpose: .segment)
+                        guard !recognition.text.isEmpty else { throw DictationWire.Failure.unavailable }
                     } catch {
                         guard token == current, !Task.isCancelled else { return nil }
                         // The next segment from the same start covers the dropped audio again.
@@ -921,15 +922,16 @@ final class DictationCoordinator {
                     }
                     guard token == current, !Task.isCancelled else { return nil }
                     segmentFailures = 0
+                    let text = recognition.text
                     if let previous = prefix, Self.continuesAmount(text, after: previous.text) {
                         prefix = nil
                         canRecognizeSegments = false
                         continue
                     }
                     guard !Self.endsAtUnfinishedPhrase(text) else { continue }
-                    let cumulative = prefix.map { $0.text + " " + text } ?? text
-                    prefix = RecognizedPrefix(end: segment.end, text: cumulative, model: model, language: language)
-                    if phase == .listening { onStableTranscript?(cumulative, isEnglish) }
+                    let cumulative = prefix?.recognition.appending(recognition) ?? recognition
+                    prefix = RecognizedPrefix(end: segment.end, recognition: cumulative, model: model, language: language)
+                    if phase == .listening { onStableTranscript?(cumulative.text, isEnglish) }
                     continue
                 }
                 guard token == current, phase == .listening, !Task.isCancelled else { break }
@@ -970,10 +972,7 @@ final class DictationCoordinator {
             do {
                 let tail = try await models.transcribe(Array(samples[prefix.end...]), model: model, language: language)
                 if !tail.text.isEmpty, !Self.continuesAmount(tail.text, after: prefix.text) {
-                    let words = prefix.text.split(whereSeparator: \.isWhitespace).count
-                    return DictationRecognition(
-                        text: prefix.text + " " + tail.text,
-                        pauses: tail.pauses.map { DictationPause(word: words + $0.word, milliseconds: $0.milliseconds) })
+                    return prefix.recognition.appending(tail)
                 }
             } catch {
                 try Task.checkCancellation()

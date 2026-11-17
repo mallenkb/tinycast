@@ -3688,58 +3688,6 @@
         }
       }
     },
-    "%@%% clean WER" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%% Clean-WER"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%% WER en audio limpio"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%% WER audio clair"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "クリーン音声 WER %@%%"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "깨끗한 음성 WER %@%%"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%% WER em áudio limpo"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%% WER на чистой речи"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "干净音频 WER %@%%"
-          }
-        }
-      }
-    },
     "%@%@" : {
       "localizations" : {
         "en" : {
@@ -18404,58 +18352,6 @@
         }
       }
     },
-    "Accuracy" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genauigkeit"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Precisión"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Précision"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "精度"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "정확도"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Precisão"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Точность"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "准确度"
-          }
-        }
-      }
-    },
     "Act on selected text. Nothing is read until you press a shortcut." : {
       "localizations" : {
         "de" : {
@@ -22913,58 +22809,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "还会应用更正、列表和段落。"
-          }
-        }
-      }
-    },
-    "Also apply spoken corrections and formatting commands." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auch gesprochene Korrekturen und Formatierungsbefehle anwenden."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aplica también las correcciones y los comandos de formato dictados."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Applique aussi les corrections et les commandes de mise en forme dictées."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "言い直しや音声による書式設定コマンドも反映します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "말로 한 정정과 서식 명령도 적용합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Também aplica correções e comandos de formatação ditados."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Также применяет голосовые исправления и команды форматирования."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "同时应用口头更正和语音格式指令。"
           }
         }
       }
@@ -27783,58 +27627,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "自动检查更新"
-          }
-        }
-      }
-    },
-    "Automatically detects and transcribes 25 languages." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erkennt und transkribiert automatisch 25 Sprachen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Detecta y transcribe automáticamente 25 idiomas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Détecte et transcrit automatiquement 25 langues."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "25言語を自動で検出し、文字起こしします。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "25개 언어를 자동으로 감지하고 받아씁니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Detecta e transcreve automaticamente 25 idiomas."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Автоматически определяет и распознаёт речь на 25 языках."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动识别并转写 25 种语言。"
           }
         }
       }
@@ -36875,58 +36667,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "整理"
-          }
-        }
-      }
-    },
-    "Cleanup engine" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bereinigungsmodell"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Motor de limpieza"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Moteur de nettoyage"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "整形エンジン"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "정리 엔진"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mecanismo de limpeza"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Модель обработки"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "整理引擎"
           }
         }
       }
@@ -53994,110 +53734,6 @@
         }
       }
     },
-    "Emberon-2 Q4 (Default)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4 (Standard)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4 (Predeterminado)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4 (Par défaut)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4（デフォルト）"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4(기본값)"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4 (Padrão)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4 (по умолчанию)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 Q4（默认）"
-          }
-        }
-      }
-    },
-    "Emberon-2 handles Smart cleanup. With After dictation, S1-mini does both in one pass." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 übernimmt die intelligente Bereinigung. Mit „Nach dem Diktieren“ erledigt S1-mini beides in einem Durchgang."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 se encarga de la limpieza inteligente. Con Después del dictado, S1-mini hace ambas cosas en una sola pasada."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 assure le nettoyage intelligent. Avec Après la dictée, S1-mini fait les deux en une seule passe."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "スマート整形には Emberon-2 を使用します。「音声入力後」がオンのときは、S1-mini が両方を一度に処理します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "스마트 정리에는 Emberon-2를 사용합니다. 받아쓰기 후가 켜져 있으면 S1-mini가 두 작업을 한 번에 처리합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Emberon-2 faz a limpeza inteligente. Com Após o ditado, o S1-mini faz as duas coisas de uma só vez."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 выполняет умную очистку. С параметром «После диктовки» S1-mini делает и то и другое за один проход."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emberon-2 负责智能整理。开启“听写后”时，S1-mini 一次完成两项处理。"
-          }
-        }
-      }
-    },
     "Emberon-2 is an optional English model for Smart cleanup. The download is %@." : {
       "localizations" : {
         "de" : {
@@ -58312,58 +57948,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完全按你说的内容。"
-          }
-        }
-      }
-    },
-    "Example" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beispiel"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ejemplo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exemple"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "例"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "예시"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exemplo"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пример"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "示例"
           }
         }
       }
@@ -64545,58 +64129,6 @@
         }
       }
     },
-    "Getting local weather…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokales Wetter wird geladen…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obteniendo el pronóstico local…"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chargement de la météo locale…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "現在地の天気を取得中…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "현지 날씨를 가져오는 중…"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscando a previsão local…"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Загрузка местного прогноза…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在获取当地天气…"
-          }
-        }
-      }
-    },
     "Give the action a name." : {
       "localizations" : {
         "de" : {
@@ -67305,58 +66837,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最高 %@ · 最低 %@"
-          }
-        }
-      }
-    },
-    "Higher accuracy, larger download." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Höhere Genauigkeit, größerer Download."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mayor precisión, descarga más grande."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plus précis, mais plus volumineux à télécharger."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "精度が高くなりますが、ダウンロードサイズが大きくなります。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "정확도가 더 높고 다운로드 용량이 더 큽니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maior precisão, download maior."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Выше точность, больше объём загрузки."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "准确度更高，下载更大。"
           }
         }
       }
@@ -71005,58 +70485,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在菜单、“我的日程”和启动器搜索中。"
-          }
-        }
-      }
-    },
-    "In use" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In Verwendung"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En uso"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utilisé"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用中"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "사용 중"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Em uso"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Используется"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用中"
           }
         }
       }
@@ -77366,58 +76794,6 @@
         }
       }
     },
-    "Lightweight and efficient." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leichtgewichtig und effizient."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ligero y eficiente."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Léger et efficace."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "軽量で効率的です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "가볍고 효율적입니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leve e eficiente."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Лёгкий и эффективный."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "轻巧高效。"
-          }
-        }
-      }
-    },
     "Lime" : {
       "localizations" : {
         "de" : {
@@ -82216,58 +81592,6 @@
         }
       }
     },
-    "Monday, no, Tuesday, call Ana and book a room." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Montag, nein, Dienstag, ruf Ana an und buch einen Raum."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El lunes, no, el martes, llama a Ana y reserva una sala."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lundi, non, mardi, appelle Ana et réserve une salle."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月曜、いや火曜にアナに電話して、部屋を予約して。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "월요일, 아니 화요일에 아나에게 전화하고 방을 예약해 줘."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na segunda, não, na terça, ligue para a Ana e reserve uma sala."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В понедельник, нет, во вторник, позвони Ане и забронируй комнату."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "周一，不，周二给安娜打电话，再订个房间。"
-          }
-        }
-      }
-    },
     "More actions for %@" : {
       "localizations" : {
         "de" : {
@@ -84054,58 +83378,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "越过最后一个显示器后回到第一个。"
-          }
-        }
-      }
-    },
-    "Multilingual" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mehrsprachig"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multilingüe"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multilingue"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "多言語"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다국어"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multilíngue"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Многоязычный"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "多语言"
           }
         }
       }
@@ -109775,110 +109047,6 @@
         }
       }
     },
-    "Remove fillers and format spoken values." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Füllwörter entfernen und gesprochene Werte formatieren."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elimina las muletillas y da formato a los valores dictados."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprime les mots de remplissage et met en forme les valeurs dictées."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "つなぎ言葉を削除し、話した数値などを整えます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "군더더기 말을 제거하고 말로 입력한 값의 형식을 정리합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove palavras de preenchimento e formata valores ditados."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Удаляет слова-паразиты и форматирует продиктованные значения."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除语气词并格式化口述数值。"
-          }
-        }
-      }
-    },
-    "Remove fillers, format lists, and apply spoken corrections." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Füllwörter entfernen, Listen formatieren und gesprochene Korrekturen übernehmen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elimina muletillas, da formato a las listas y aplica las correcciones dictadas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprime les mots de remplissage, met en forme les listes et applique les corrections dictées."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "フィラーを削除し、リストを整え、話しながら訂正した内容を反映します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "군더더기 말을 제거하고 목록을 정리하며 말로 정정한 내용을 반영합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove palavras de preenchimento, formata listas e aplica correções ditadas."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Удаляет слова-паразиты, оформляет списки и учитывает устные исправления."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除填充词、整理列表，并应用口述更正。"
-          }
-        }
-      }
-    },
     "Remove from Favorites" : {
       "localizations" : {
         "de" : {
@@ -112970,58 +112138,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "结果"
-          }
-        }
-      }
-    },
-    "Retrained from Parakeet V3 for English with a smaller download." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf Basis von Parakeet V3 für Englisch trainiert, mit kleinerem Download."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reentrenado a partir de Parakeet V3 para inglés, con una descarga más pequeña."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réentraîné à partir de Parakeet V3 pour l’anglais, avec un téléchargement plus léger."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parakeet V3を英語向けに再学習した、ダウンロードサイズの小さいモデルです。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parakeet V3를 영어에 맞게 다시 학습한 모델로, 다운로드 크기가 더 작습니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Retreinado a partir do Parakeet V3 para inglês, com um download menor."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дообучен на основе Parakeet V3 для английского языка и занимает меньше места при загрузке."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "基于 Parakeet V3 针对英语重新训练，下载体积更小。"
           }
         }
       }
@@ -124693,58 +123809,6 @@
         }
       }
     },
-    "Skip text cleanup." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Textbereinigung überspringen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Omite la limpieza de texto."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ignore le nettoyage du texte."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テキストの整形をスキップします。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 정리를 건너뜁니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ignora a limpeza de texto."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пропускает очистку текста."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "跳过文本清理。"
-          }
-        }
-      }
-    },
     "Slack, Teams and Discord" : {
       "localizations" : {
         "de" : {
@@ -125005,58 +124069,6 @@
         }
       }
     },
-    "Smaller and faster." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kleiner und schneller."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Más pequeño y rápido."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plus petit et plus rapide."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "より小さく、より高速です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "더 작고 빠릅니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Menor e mais rápido."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Меньше и быстрее."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更小更快。"
-          }
-        }
-      }
-    },
     "Smallest" : {
       "localizations" : {
         "de" : {
@@ -125313,58 +124325,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "智能"
-          }
-        }
-      }
-    },
-    "Smart cleanup and After dictation share this engine." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Intelligente Bereinigung und Nach dem Diktat verwenden dieses Modul."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La limpieza inteligente y Después del dictado usan este motor."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le nettoyage intelligent et Après la dictée utilisent ce moteur."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "スマート整形と「音声入力後」はこのエンジンを使います。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "스마트 정리와 받아쓰기 후 기능에서 이 엔진을 함께 사용합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A limpeza inteligente e Após o ditado usam este mecanismo."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Умная обработка и действия после диктовки используют этот движок."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "智能清理和听写后处理共用此引擎。"
           }
         }
       }
@@ -144391,58 +143351,6 @@
         }
       }
     },
-    "Transcribes English with automatic punctuation and capitalization." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transkribiert Englisch mit automatischer Zeichensetzung und Großschreibung."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transcribe el inglés con puntuación y mayúsculas automáticas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transcrit l’anglais avec ajout automatique de la ponctuation et des majuscules."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "英語を文字起こしし、句読点と大文字を自動で補います。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "영어를 받아쓰고 문장 부호와 대문자를 자동으로 적용합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transcreve o inglês com pontuação e maiúsculas automáticas."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Распознаёт английскую речь и автоматически расставляет знаки препинания и заглавные буквы."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "转写英语，并自动添加标点和处理大小写。"
-          }
-        }
-      }
-    },
     "Transcribing dictation" : {
       "localizations" : {
         "de" : {
@@ -145427,110 +144335,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请尝试在设置 ▸ 文件搜索中重建索引。"
-          }
-        }
-      }
-    },
-    "Tuesday, call Ana and book a room." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ruf Ana am Dienstag an und buch einen Raum."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El martes, llama a Ana y reserva una sala."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mardi, appelle Ana et réserve une salle."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "火曜にアナに電話して、部屋を予約して。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "화요일에 아나에게 전화하고 방을 예약해 줘."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na terça, ligue para a Ana e reserve uma sala."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Во вторник позвони Ане и забронируй комнату."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "周二给安娜打电话，再订个房间。"
-          }
-        }
-      }
-    },
-    "Tuesday:\n• Call Ana\n• Book a room" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dienstag:\n• Ana anrufen\n• Einen Raum buchen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Martes:\n• Llamar a Ana\n• Reservar una sala"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mardi :\n• Appeler Ana\n• Réserver une salle"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "火曜：\n• アナに電話する\n• 部屋を予約する"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "화요일:\n• 아나에게 전화하기\n• 방 예약하기"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terça-feira:\n• Ligar para a Ana\n• Reservar uma sala"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вторник:\n• Позвонить Ане\n• Забронировать комнату"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "周二：\n• 给安娜打电话\n• 订个房间"
           }
         }
       }
@@ -146919,58 +145723,6 @@
     "URL" : {
       "comment" : "Subtitle on the Open in Browser row for a typed web address",
       "shouldTranslate" : false
-    },
-    "Um, Monday, no, Tuesday, call Ana and book a room." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ähm, Montag, nein, Dienstag, ruf Ana an und buch einen Raum."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eh, el lunes, no, el martes, llama a Ana y reserva una sala."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Euh, lundi, non, mardi, appelle Ana et réserve une salle."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "えっと、月曜、いや火曜にアナに電話して、部屋を予約して。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "음, 월요일, 아니 화요일에 아나에게 전화하고 방을 예약해 줘."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hum, na segunda, não, na terça, ligue para a Ana e reserve uma sala."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Эм, в понедельник, нет, во вторник, позвони Ане и забронируй комнату."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "嗯，周一，不，周二给安娜打电话，再订个房间。"
-          }
-        }
-      }
     },
     "Unavailable" : {
       "comment" : "Hyper Key status",
@@ -158419,58 +157171,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "居中"
-          }
-        }
-      }
-    },
-    "~%lld× realtime" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "~%lld× Echtzeit"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "~%lld× tiempo real"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "~%lld× temps réel"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "リアルタイムの約%lld倍"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "실시간의 약 %lld배"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "~%lld× tempo real"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "~%lld× в реальном времени"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "约实时速度的 %lld 倍"
           }
         }
       }
