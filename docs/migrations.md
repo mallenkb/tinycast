@@ -31,3 +31,4 @@ When the check fails, delete everything the row lists, then the row.
 
 | Migration | Repairs | Delete with it |
 | --- | --- | --- |
+| `CompactFavoritesMigration` | Removes the retired compact favorites preference from defaults and settings.json | Its startup call, harness, runner entry and testing.md row |

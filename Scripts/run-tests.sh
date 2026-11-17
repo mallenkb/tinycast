@@ -844,6 +844,9 @@ run hotkey-dispatch-test   Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
 run extension-output-tail-test Tinycast/Features/Extensions/Service/ExtensionOutputTail.swift
 
 run settings-preference-test Tinycast/Features/Settings/Model/Preference.swift
+run compact-favorites-migration-test Tinycast/Migrations/CompactFavoritesMigration.swift \
+                           Tinycast/Features/Settings/Model/*.swift \
+                           Tinycast/Platform/AppPaths.swift
 run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
                            Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
                            Tinycast/Features/Settings/Service/SettingsFileRepository.swift \
