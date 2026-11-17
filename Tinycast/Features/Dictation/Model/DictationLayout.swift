@@ -271,7 +271,7 @@ enum DictationLayout {
             } else if suggested.contains(run.utf8.distance(from: run.startIndex, to: starts[index])) {
                 split = paragraphSentences >= 2 && (!pauses.known || pause >= 400)
             } else if DictationTextFormatter.startsParagraphTransition(remainder) {
-                split = paragraphSentences >= 2 && paragraphWords >= 35 && remaining >= 15
+                split = paragraphSentences >= 2 && paragraphWords >= 30 && remaining >= 15
                     && (!pauses.known || pause >= 600)
             } else {
                 split = paragraphWords >= 90 && remaining >= 35

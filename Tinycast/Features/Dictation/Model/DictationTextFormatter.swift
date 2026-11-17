@@ -119,11 +119,35 @@ enum DictationTextFormatter {
         return literalCheck.firstMatch(of: literalPattern) != nil
     }
 
+    /// Hides addresses, paths and abbreviations behind private-use marks, so cleanup can't reshape them.
+    private static func protectingLiterals(_ line: Substring, _ clean: (Substring) -> String?) -> String? {
+        guard preservesLiteral(line) else { return clean(line) }
+        var literals: [String] = []
+        let word = /(?<lead>[(\["'“‘]*)(?<core>\S*?)(?<trail>[.,!?;:)\]"'’”]*)(?=\s|$)/
+        let masked = line.replacing(word) { match in
+            let core = match.core
+            guard !core.isEmpty, literals.count < 256, preservesLiteral(core) else { return String(match.output.0) }
+            literals.append(String(core))
+            return match.lead + literalMark(literals.count - 1) + match.trail
+        }
+        guard !literals.isEmpty else { return clean(line) }
+        guard var result = clean(Substring(masked)) else { return nil }
+        for (index, literal) in literals.enumerated() {
+            result = result.replacing(literalMark(index), with: literal)
+        }
+        return result
+    }
+
+    private static func literalMark(_ index: Int) -> String {
+        "\u{E000}" + String(Character(UnicodeScalar(0xE100 + index)!))
+    }
+
     static func cleanBasicLine(_ line: Substring, normalize: (String) -> String, budget: inout Budget) -> String? {
-        guard !preservesLiteral(line) else { return String(line) }
-        var text = String(line)
-        guard formatSpokenValues(&text, normalize: normalize, budget: &budget) else { return nil }
-        return text
+        protectingLiterals(line) { masked in
+            var text = String(masked)
+            guard formatSpokenValues(&text, normalize: normalize, budget: &budget) else { return nil }
+            return text
+        }
     }
 
     nonisolated(unsafe) private static let newParagraphOnlyPattern = /(?i:new paragraph)[.!]?/
@@ -220,7 +244,14 @@ enum DictationTextFormatter {
     static func cleanAdvancedLine(
         _ line: Substring, normalize: (String) -> String, budget: inout Budget, automaticParagraphs: Bool = true
     ) -> String? {
-        guard !preservesLiteral(line) else { return String(line) }
+        protectingLiterals(line) { masked in
+            cleanAdvancedProse(masked, normalize: normalize, budget: &budget, automaticParagraphs: automaticParagraphs)
+        }
+    }
+
+    private static func cleanAdvancedProse(
+        _ line: Substring, normalize: (String) -> String, budget: inout Budget, automaticParagraphs: Bool
+    ) -> String? {
         guard let first = line.firstIndex(where: { !$0.isWhitespace }),
               let last = line.lastIndex(where: { !$0.isWhitespace })
         else { return String(line) }
@@ -1014,9 +1045,10 @@ enum DictationTextFormatter {
     static func currencyCleanup(_ transcript: String, now: @escaping () -> ContinuousClock.Instant = { .now }) -> String {
         var budget = Budget(now: now)
         return cleanLines(transcript, budget: &budget) { line, budget in
-            guard !preservesLiteral(line) else { return String(line) }
-            let text = String(line)
-            return budget.spend(on: text) ? normalizeSpokenCurrency(text) : nil
+            protectingLiterals(line) { masked in
+                let text = String(masked)
+                return budget.spend(on: text) ? normalizeSpokenCurrency(text) : nil
+            }
         } ?? transcript
     }
 
