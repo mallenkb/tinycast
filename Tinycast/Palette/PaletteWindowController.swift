@@ -152,7 +152,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         NotesPanel.refusesInheritedKey = previousOwnWindow?.isVisible != true
         panel?.orderOut(nil)
         NotesPanel.refusesInheritedKey = false
-        commandEscapeTap.disable()
         core.inputSourceSwitcher.endSession()
         core.calendarCoordinator.paletteDidHide()
         core.roomCoordinator.paletteDidHide()
@@ -249,6 +248,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         commandEscapeTap.enable()
         panel?.level = .palette
+        commandEscapeTap.enable()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             // A re-summon leaves first responder where it was, so neither of these gets an event.
