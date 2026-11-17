@@ -757,7 +757,6 @@ final class DictationCapture {
     func nextSegment(after start: Int) async -> (end: Int, samples: [Float])? { nil }
     static weak var latest: DictationCapture?
     var onLevels: (([Float]) -> Void)?
-    var onCountdown: ((Int) -> Void)?
     var onLimit: (() -> Void)?
     var onCountdown: ((Int) -> Void)?
     var sampleCount = DictationWire.sampleRate / 2
@@ -827,7 +826,6 @@ final class DictationPanelController {
     init(settings: AppSettings) { Self.latest = self }
     func showStarting(style: DictationIndicatorStyle) { isVisible = true }
     func showListening() {}
-    func showCountdown(_ seconds: Int) {}
     func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) { state.transcript = text }
     func hidePreview() {}
     func showIdle(style: DictationIndicatorStyle) { isVisible = true }
