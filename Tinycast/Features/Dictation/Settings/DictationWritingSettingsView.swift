@@ -25,7 +25,7 @@ struct DictationWritingSettingsView: View {
         Group {
             if page == .cleanup {
                 Section {
-                    DictationCleanupCard(sample: $sample, mode: $settings.dictationCleanupMode)
+                    DictationCleanupCard(mode: $settings.dictationCleanupMode)
                     Picker(selection: $settings.dictationCleanupEngine) {
                         let recommended = DictationCleanupModel.Variant.defaultSmart
                         Text("Emberon-2 Q4 (Default)").tag(recommended.rawValue)
@@ -290,29 +290,9 @@ private struct DictationCleanupCard: View {
         String(localized: "For Friday, no sorry, Monday, book the room, invite the team, and send the agenda.")
     }
 
-    private struct Input: Equatable {
-        let sample: String
-        let mode: DictationCleanupMode
-        let removesFillers: Bool
-        let engine: String?
-        let downloading: Bool
-        let installed: Bool
-    }
-
-    @Binding var sample: String
     @Binding var mode: DictationCleanupMode
-    @Environment(AppSettings.self) private var settings
-    @Environment(DictationWritingCoordinator.self) private var writing
-    @State private var preview: (input: Input, result: Result<String, Error>)?
 
     var body: some View {
-        let engine = settings.dictationSmartCleanup ? settings.dictationCleanupEngine : nil
-        let model = settings.dictationSmartCleanup ? writing.selectedLocalModel : nil
-        let input = Input(
-            sample: sample, mode: mode, removesFillers: settings.dictationRemovesFillerWords,
-            engine: engine, downloading: model != nil && writing.cleanup.downloading == model,
-            installed: model.map { writing.cleanup.isInstalled($0) } ?? false)
-        let result = preview?.input == input ? preview?.result : nil
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             SettingsRowTitle(.dictationCleanup, "Text cleanup")
             HStack(spacing: Theme.Spacing.sm) {
@@ -332,63 +312,10 @@ private struct DictationCleanupCard: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             Divider()
-            Grid(alignment: .topLeading, horizontalSpacing: Theme.Spacing.xxl, verticalSpacing: Theme.Spacing.md) {
-                GridRow(alignment: .center) {
-                    HStack {
-                        Text("Sample transcript")
-                        Spacer()
-                        examplesMenu
-                    }
-                    HStack(spacing: Theme.Spacing.sm) {
-                        Text("Preview")
-                        Spacer()
-                        if engine != nil { Text(verbatim: writing.cleanupEngineName) }
-                        if !sample.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && result == nil {
-                            ProgressView().controlSize(.mini)
-                        }
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                GridRow(alignment: .top) {
-                    TextField("Sample transcript", text: $sample, axis: .vertical)
-                        .labelsHidden()
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...5)
-                        .frame(maxWidth: .infinity)
-                    Group {
-                        switch result {
-                        case .success(let text):
-                            Text(verbatim: text).textSelection(.enabled)
-                        case .failure(let error):
-                            Text(error.localizedDescription).foregroundStyle(.red)
-                        case nil:
-                            Color.clear.frame(height: 0).accessibilityHidden(true)
-                        }
-                    }
-                    .lineSpacing(Theme.Spacing.xxs)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
+            DictationCleanupStage()
         }
         .padding(.vertical, Theme.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .task(id: input) { await update(input) }
-    }
-
-    private var examplesMenu: some View {
-        Menu("Examples") {
-            Button("Default") { sample = Self.defaultSample }
-            Button("Currency") { sample = "The total is forty-five dollars and ninety-nine cents." }
-            Button("Date") { sample = "Set the deadline for the twenty-fourth of June, twenty twenty-seven." }
-            Button("Time") { sample = "Let's meet at nine thirty in the morning." }
-            Button("Paragraphs") {
-                sample = "The room is booked. New paragraph. Please send the agenda before we meet."
-            }
-        }
-        .menuStyle(.borderlessButton)
-        .controlSize(.small)
-        .fixedSize()
     }
 
     private func option(
@@ -422,19 +349,6 @@ private struct DictationCleanupCard: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func update(_ input: Input) async {
-        guard !input.downloading, !input.sample.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        do {
-            if input.engine != nil { try await Task.sleep(for: .milliseconds(350)) }
-            try Task.checkCancellation()
-            let output = try await writing.preview(input.sample, transform: nil)
-            try Task.checkCancellation()
-            preview = (input, .success(output))
-        } catch {
-            guard !Task.isCancelled else { return }
-            preview = (input, .failure(error))
-        }
-    }
 }
 
 private struct DictationAppOverridesSection: View {

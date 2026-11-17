@@ -449,6 +449,8 @@ enum Theme {
     }
 
     enum Colors {
+        static let dictationEditAdded = Color.green.opacity(0.22)
+        static let dictationEditRemoved = Color.red
         /// Resolves against the window's `effectiveAppearance`, so a token repaints on its own.
         static func adaptive(dark: NSColor, light: NSColor) -> Color {
             Color(nsColor: NSColor(name: nil) { $0.isDark ? dark : light })

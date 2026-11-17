@@ -44,6 +44,7 @@
 		0964D6642A8FB99D9D498A70 /* HyperKeyDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30712AF270CDA8D67F6C5E83 /* HyperKeyDiagnostics.swift */; };
 		0976BBB954D48DE55C6B4263 /* MenuSearchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD8A186797267935E09816C9 /* MenuSearchScreen.swift */; };
 		09C2F66D963E4E07A5A4F346 /* RaycastClipboardImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B154C9F1BC46B39E2283527 /* RaycastClipboardImport.swift */; };
+		09D92E56FC6B97C212D231FE /* DictationCleanupPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = C714D9C04809B38725C74EA2 /* DictationCleanupPreview.swift */; };
 		0A086C5452FD9FCE68AF4E46 /* InputSourceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FCD070CDE64691E5F6ED28D /* InputSourceSwitcher.swift */; };
 		0A238E823704B904EFFB4F22 /* BundleLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3085C57A94FFF35FF74EC86 /* BundleLocalization.swift */; };
 		0A6B142F6DCEF83FEFF5EF1F /* CompactShortcutsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD9BD942CF0C95ECEFC41F4 /* CompactShortcutsSection.swift */; };
@@ -1848,6 +1849,7 @@
 		C5941CE8F08FD5986FED12E9 /* QuickActionsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsSettingsView.swift; sourceTree = "<group>"; };
 		C5BA06E4CC7E8D40E3285F16 /* KeyCapChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCapChip.swift; sourceTree = "<group>"; };
 		C6D071FE0BC8D1CF9D42361C /* SpotlightContentQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightContentQuery.swift; sourceTree = "<group>"; };
+		C714D9C04809B38725C74EA2 /* DictationCleanupPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationCleanupPreview.swift; sourceTree = "<group>"; };
 		C7B3FC48B58E1005453E7E18 /* Snippet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snippet.swift; sourceTree = "<group>"; };
 		C7C0BF3D7DF448954C04653C /* DeliveryQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeliveryQueue.swift; sourceTree = "<group>"; };
 		C7C0F66A568B254D17C11355 /* LocalizedResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedResource.swift; sourceTree = "<group>"; };
@@ -3873,6 +3875,7 @@
 		C23A9ACF428FD868258D2A0B /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				C714D9C04809B38725C74EA2 /* DictationCleanupPreview.swift */,
 				D5B82D619B4D297EA487AD19 /* DictationSettingsOverview.swift */,
 				61C82CFE8F650EAD34CA1CB9 /* DictationSettingsView.swift */,
 				E2DC309AFC396ADB5DA021FC /* DictationWritingSettingsView.swift */,
@@ -4975,6 +4978,7 @@
 				3148283E270E8B8808D2A6FB /* DictationCapture.swift in Sources */,
 				15295B0FAD315711C2727DED /* DictationCleanupChunks.swift in Sources */,
 				2386057DF6029EF06842B6E4 /* DictationCleanupModel.swift in Sources */,
+				09D92E56FC6B97C212D231FE /* DictationCleanupPreview.swift in Sources */,
 				529FB7ED8BD12F0DA09E0CF7 /* DictationCoordinator.swift in Sources */,
 				FA4CD96259E1978A4F2E86B4 /* DictationCorrection.swift in Sources */,
 				CEA8986EB7D7079C090DAF52 /* DictationCorrectionPolicy.swift in Sources */,
@@ -5852,7 +5856,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 28;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				DICTATION_EXECUTABLE_NAME = "Tinycast Dev Dictation";
@@ -5873,7 +5877,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.27;
+				MARKETING_VERSION = 0.1.28;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -6008,7 +6012,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 28;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
@@ -6026,7 +6030,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.27;
+				MARKETING_VERSION = 0.1.28;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

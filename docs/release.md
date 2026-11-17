@@ -39,6 +39,7 @@ Version 0.1.26 keeps the live dictation preview visible near screen edges and ad
 previews for hex values copied from supported design apps.
 Version 0.1.27 adds dictation retry and undo, improves correction learning, and asks before extensions
 run or stop processes.
+Version 0.1.28 adds app previews to Text cleanup, with the pasted result above the original transcript.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

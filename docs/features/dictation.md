@@ -402,9 +402,10 @@ A transform shortcut processes the latest History entry and opens History for re
 replaces arbitrary text in another app. Manual operations check cancellation, entry identity, and
 unchanged input before updating History. Restoring an original cancels a pending manual operation.
 The Text cleanup cards show fixed examples of the same dictation at each level. Below the cards,
-the preview sits beside the editable sample and updates when the sample or mode changes.
-The Examples menu fills the sample with currency, a date, a time, or a spoken paragraph command.
-Smart cleanup waits briefly for typing to pause. The transform editor has its own sample preview.
+choose the destination app on the left. The pasted preview appears in that app's style above
+"You said". The example picker fills the transcript or lets you enter your own. Show edits marks
+what cleanup removed and added. Smart cleanup waits briefly for typing to pause. The transform
+editor has its own sample preview.
 
 Prompt Engineer uses a structured output template, preserves quoted examples, and leaves missing
 requirements as placeholders. It generates a prompt instead of executing the dictated task.
