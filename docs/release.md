@@ -43,6 +43,7 @@ Version 0.1.28 adds app previews to Text cleanup, with the pasted result above t
 Version 0.1.29 integrates the latest Dictation formatting and settings work along with backup and clipboard updates.
 Version 0.1.30 pastes dictation into Chromium and Electron apps such as Edge, Slack and Teams again.
 Version 0.1.31 refines Dictation cleanup controls and Weather sizing, and caches forecasts in memory until local midnight.
+Version 0.1.32 gives result cards a near-solid base in Dark mode, deepens the Dark palette tint, and centers the Weather icon on the temperature.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

@@ -507,7 +507,7 @@ enum Theme {
             dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
 
         static let paletteTint = adaptive(
-            dark: .srgbInk(0, alpha: 0.55), light: .srgbInk(1, alpha: 0.40))
+            dark: .srgbInk(0, alpha: 0.60), light: .srgbInk(1, alpha: 0.40))
         static let paletteBorder = ramp(dark: 0.10, light: 0.12)
         static let paletteLightShadow = ramp(dark: 0, light: 0.12)
         static let dictationBackground = adaptive(dark: .black, light: .black)
@@ -551,6 +551,9 @@ enum Theme {
         /// The Settings card: a faint surface whose border doubles as the row divider.
         static let cardFill = ramp(dark: 0.05, light: 0.04)
         static let leadCardFill = ramp(dark: 0.05, light: 0.02)
+        /// Dark glass shows the wallpaper through a 5% tint, so lead cards sit on a near-solid base.
+        static let leadCardBacking = adaptive(
+            dark: NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 0.86), light: .clear)
         static let weatherCardFill = adaptive(
             dark: .srgbInk(1, alpha: 0.05),
             light: NSColor(srgbRed: 242.0 / 255, green: 243.0 / 255, blue: 245.0 / 255, alpha: 1))

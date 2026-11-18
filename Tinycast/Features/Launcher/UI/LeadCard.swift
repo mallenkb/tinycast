@@ -10,6 +10,7 @@ private struct LeadCardChrome: ViewModifier {
         content
             .background(shape.fill(Theme.Colors.leadCardFill))
             .background(shape.fill(fill))
+            .background(shape.fill(Theme.Colors.leadCardBacking))
             .armedHover($hovered)
     }
 

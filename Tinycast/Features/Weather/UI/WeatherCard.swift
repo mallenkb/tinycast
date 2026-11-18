@@ -210,6 +210,8 @@ struct WeatherCard: View {
             .padding(.vertical, metrics.spacing.xl)
             .background(Theme.Colors.weatherCardFill,
                         in: RoundedRectangle(cornerRadius: metrics.scaled(Theme.Weather.cornerRadius)))
+            .background(Theme.Colors.leadCardBacking,
+                        in: RoundedRectangle(cornerRadius: metrics.scaled(Theme.Weather.cornerRadius)))
             attribution
         }
     }
@@ -306,13 +308,18 @@ struct WeatherCard: View {
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: metrics.spacing.md) {
+                let size = metrics.scaled(Theme.Weather.temperatureSize)
                 Text(verbatim: temperature(value))
-                    .font(.system(size: metrics.scaled(Theme.Weather.temperatureSize), weight: .medium))
+                    .font(.system(size: size, weight: .medium))
                     .tracking(-metrics.spacing.xxs)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .layoutPriority(1)
+                    // Centres the icon on the digits, not on a line box padded for ascenders.
+                    .alignmentGuide(VerticalAlignment.center) { dimensions in
+                        dimensions[.firstTextBaseline] - NSFont.systemFont(ofSize: size, weight: .medium).capHeight / 2
+                    }
                 Spacer(minLength: 0)
                 if let condition {
                     WeatherIcon(condition: condition, size: metrics.scaled(Theme.Weather.overviewIllustration))

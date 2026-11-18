@@ -36,6 +36,8 @@ struct WeatherLoadingCard: View {
                 .frame(maxWidth: .infinity)
                 .background(Theme.Colors.weatherCardFill,
                             in: RoundedRectangle(cornerRadius: metrics.scaled(Theme.Weather.cornerRadius)))
+                .background(Theme.Colors.leadCardBacking,
+                            in: RoundedRectangle(cornerRadius: metrics.scaled(Theme.Weather.cornerRadius)))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Loading…"))
