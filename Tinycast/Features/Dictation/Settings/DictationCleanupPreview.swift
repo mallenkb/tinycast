@@ -82,6 +82,7 @@ struct DictationCleanupLevelPicker: View {
     @Binding var mode: DictationCleanupMode
 
     private static let levels: [DictationCleanupMode] = [.off, .basic, .advanced, .smart]
+    private static let inset = Theme.Spacing.xxs
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -90,17 +91,16 @@ struct DictationCleanupLevelPicker: View {
                     option(level)
                 }
             }
-            .padding(Theme.Spacing.xxs)
+            .padding(Self.inset)
             .frame(maxWidth: .infinity)
             .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card).strokeBorder(Theme.Colors.cardStroke))
             Text(Self.summary(mode)).foregroundStyle(.secondary)
         }
     }
 
     private func option(_ level: DictationCleanupMode) -> some View {
         let selected = mode == level
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.menu)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card - Self.inset)
         return Button {
             mode = level
         } label: {
@@ -111,7 +111,6 @@ struct DictationCleanupLevelPicker: View {
             .padding(.vertical, Theme.Spacing.sm)
             .frame(maxWidth: .infinity)
             .background(selected ? Theme.Colors.controlSurface : Color.clear, in: shape)
-            .overlay(shape.strokeBorder(selected ? Theme.Colors.cardStroke : Color.clear))
             .contentShape(shape)
         }
         .buttonStyle(.plain)

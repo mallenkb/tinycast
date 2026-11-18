@@ -60,7 +60,7 @@ reports notification-dependent checks as skipped when the session cannot deliver
 Type `weather in Accra` to see the forecast in root search. A country name or code such as
 `weather Ghana` or `weather GH` shows its capital's forecast. Add a country or region after a comma
 to narrow a city name. Today uses a split card: the temperature sits left of the illustration in
-a 62-point row, with six-point gaps above and below it. The hourly forecast sits on the right,
+a 68-point row, with six-point gaps above and below it. The hourly forecast sits on the right,
 with cloud, droplet and wind controls beside its title. Select a day below the overview to see that
 day's hours. Loading uses a filled skeleton card with a shimmer that stops when the palette closes
 or Reduce Motion is enabled. Weather queries suppress the unrelated header search spinner.
@@ -82,8 +82,10 @@ Open-Meteo supplies up to 16 days of forecast data.
 
 Tinycast resolves city names on the Mac and sends coordinates to Open-Meteo for live forecasts.
 With **Use Mac location** on, it requests a location fix only when the forecast needs it and sends
-coordinates rounded to two decimal places. The card cancels the request and releases the forecast
-when it closes. Forecasts use the public Open-Meteo endpoint.
+coordinates rounded to two decimal places. The card cancels a request in flight when it closes.
+`WeatherCoordinator` keeps each place's forecast in memory until midnight at that place, so a
+repeat search the same day shows it at once without a request. Failures are never kept, so Retry
+always fetches again. Forecasts use the public Open-Meteo endpoint.
 See [Open-Meteo's API plans](https://open-meteo.com/en/pricing) for commercial use.
 
 ## Search scopes

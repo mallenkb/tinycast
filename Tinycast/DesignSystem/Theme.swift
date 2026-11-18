@@ -18,8 +18,8 @@ enum Theme {
         static let shimmerDuration: TimeInterval = 1.8
         static let overviewWidth: CGFloat = 188
         static let temperatureSize: CGFloat = 52
-        static let readingHeight: CGFloat = 62
-        static let overviewIllustration: CGFloat = 58
+        static let readingHeight: CGFloat = 68
+        static let overviewIllustration: CGFloat = 68
         static let hourWidth: CGFloat = 76
         static let hourlyIllustration: CGFloat = 40
         static let illustrationHeight: CGFloat = 46

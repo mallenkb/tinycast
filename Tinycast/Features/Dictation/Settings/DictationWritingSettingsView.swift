@@ -217,7 +217,6 @@ struct DictationWritingSettingsView: View {
         }
         .padding(Theme.Spacing.lg)
         .background(Theme.Colors.cardFill, in: shape)
-        .overlay(shape.strokeBorder(Theme.Colors.cardStroke))
     }
 
     private func modelMenu(model: DictationCleanupModel.Variant?, installed: Bool) -> some View {

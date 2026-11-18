@@ -228,7 +228,7 @@ struct WeatherCard: View {
                 periodButton(.requested, active: period) { Text("Requested forecast") }
             }
         }
-        .padding(metrics.spacing.xs)
+        .padding(metrics.spacing.xxs)
         .background(Theme.Colors.weatherControlTrack, in: Capsule())
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Forecast period"))
@@ -244,8 +244,9 @@ struct WeatherCard: View {
             label()
                 .font(metrics.typography.caption)
                 .foregroundStyle(active == value ? .primary : .secondary)
-                .padding(.horizontal, metrics.spacing.xl)
-                .padding(.vertical, metrics.spacing.sm)
+                .padding(.horizontal, metrics.spacing.lg)
+                .frame(minWidth: metrics.scaled(Theme.Weather.metricWidth),
+                       minHeight: metrics.scaled(Theme.Weather.metricHeight))
                 .background {
                     if active == value { Capsule().fill(Theme.Colors.weatherControlSelection) }
                 }
