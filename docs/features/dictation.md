@@ -341,6 +341,16 @@ This tool uses installed models and runs outside the deterministic suite and app
 
 ## Text cleanup and transforms
 
+Advanced and Smart cleanup first apply spoken take-backs in `DictationRetraction`, before any
+model sees the text. A take-back removes itself and the sentence before it, or the words before it
+when it follows a comma mid-sentence. Every cue ("scratch that", "never mind", "forget that", "I take
+that back", "let me rephrase", "start over" and the rest) is also ordinary speech to the reader, so a
+cue applies only when what follows restates what came before, sharing at least a third of its
+meaningful words. "Meet at noon. Never mind. Meet at one." drops the first sentence, while "The vendor
+quote is too high. Scrap that." stays as dictated. Phrases about the speaker's own words, such as
+"forget what I just said", apply without a restatement. A cue also has to stand alone, so "ignore that
+warning" never counts. This runs without a model, so it works with every engine.
+
 Smart cleanup is opt-in. Its engine defaults to Emberon-2 Q4, with Apple Intelligence,
 S1-mini by Superwhisper, and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
 S1-mini by Superwhisper for dictation with paragraph breaks. Each Q4_K_M download has its own

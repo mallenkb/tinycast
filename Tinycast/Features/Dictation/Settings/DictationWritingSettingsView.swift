@@ -315,7 +315,7 @@ struct DictationWritingSettingsView: View {
     @ViewBuilder private var moreOptionsSection: some View {
         @Bindable var settings = settings
         Section {
-            DisclosureGroup("More options", isExpanded: $showsMoreOptions) {
+            DisclosureGroup(isExpanded: $showsMoreOptions) {
                 Toggle(isOn: $settings.dictationFormatsByApp) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                         SettingsRowTitle(.dictationCleanup, "Format for each app")
@@ -346,6 +346,13 @@ struct DictationWritingSettingsView: View {
                     Button("Reset formats to suggested") { settings.dictationAppFormats = DictationAppFormats() }
                         .disabled(settings.dictationAppFormats == DictationAppFormats())
                 }
+            } label: {
+                Button {
+                    withAnimation { showsMoreOptions.toggle() }
+                } label: {
+                    Text("More options").frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }

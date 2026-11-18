@@ -464,6 +464,7 @@ run dictation-correction-test Tinycast/Features/Dictation/Model/DictationCorrect
                            Tinycast/Platform/AppPaths.swift
 run -O dictation-advanced-test Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift Tinycast/Features/Dictation/Model/DictationLayout.swift Tinycast/Features/Dictation/Model/DictationWords.swift Tinycast/Features/Dictation/Model/DictationRecognition.swift
 run dictation-cleanup-test Tinycast/Features/Dictation/Model/DictationCleanupChunks.swift
+run dictation-retraction-test Tinycast/Features/Dictation/Model/DictationRetraction.swift
 run dictation-layout-test  Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
                            Tinycast/Features/Dictation/Model/DictationLayout.swift \
                            Tinycast/Features/Dictation/Model/DictationWords.swift \
@@ -493,6 +494,7 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationAppOverrid
                            Tinycast/Features/Dictation/Service/DictationCorrectionStore.swift \
                            Tinycast/Features/Dictation/Service/DictationInsertionContext.swift \
                            Tinycast/Features/Dictation/Service/DictationLocalCleanup.swift \
+                           Tinycast/Features/Dictation/Model/DictationRetraction.swift \
                            Tinycast/Features/Dictation/Service/DictationSpellingLexicon.swift \
                            Tinycast/Features/Dictation/Service/DictationWire.swift \
                            Tinycast/Features/AI/UI/ChatComposerTextView.swift \

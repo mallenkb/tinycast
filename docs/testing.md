@@ -35,6 +35,9 @@ Run the compiled harness with `--list` to export the 5,000 pairs as JSON Lines:
 "${TMPDIR:-/tmp}/tinycast-harness/dictation-advanced-test" --list
 ```
 
+`dictation-retraction-test` checks that spoken take-backs such as "scrap that" remove what they
+follow, and that ordinary sentences using the same words stay as dictated.
+
 `dictation-layout-test` checks the Smart output check, paragraph layout and app styles without a
 model. Its corpus lists sample dictations with the number of paragraph breaks each should get.
 
