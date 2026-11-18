@@ -35,6 +35,17 @@ enum TextReplacementPolicy {
         return .matched(NSRange(start..<beforeCursor.endIndex, in: value))
     }
 
+    /// Chromium and Electron often show no caret over AX, so only a known non-text focus refuses.
+    static func refusesInsertion(focusedRole: String?) -> Bool {
+        guard let focusedRole else { return false }
+        return nonTextRoles.contains(focusedRole)
+    }
+
+    private static let nonTextRoles: Set<String> = [
+        "AXBrowser", "AXButton", "AXCell", "AXCheckBox", "AXDisclosureTriangle", "AXImage", "AXList",
+        "AXMenuButton", "AXOutline", "AXPopUpButton", "AXRadioButton", "AXRow", "AXSlider", "AXTable",
+    ]
+
     /// Chromium answers `.success` and applies nothing, so the value has to read back as we wrote it.
     static func confirmsReplacement(
         originalValue: String,
@@ -187,11 +198,14 @@ enum AccessibilityTextReplacer {
         expectedKeyword: String?,
         keywordLength: Int
     ) -> TargetState {
-        // A typed keyword proves a caret even where AX cannot see one, so only insertion is refused.
-        let missingTarget: TargetState = keywordLength > 0 ? .unavailable : .noTextTarget
-        guard let element = AccessibilityText.focusedElement(in: targetApp) else { return missingTarget }
+        guard let element = AccessibilityText.focusedElement(in: targetApp) else { return .unavailable }
         if usesTextMarkerSelection(element) { return .renderer }
-        guard let originalRange = selectedRange(in: element) else { return missingTarget }
+        guard let originalRange = selectedRange(in: element) else {
+            // A typed keyword proves a caret even where AX cannot see one, so only insertion is refused.
+            let role = AccessibilityText.attribute(element, kAXRoleAttribute) as? String
+            return keywordLength == 0 && TextReplacementPolicy.refusesInsertion(focusedRole: role)
+                ? .noTextTarget : .unavailable
+        }
         guard isAttributeSettable(kAXSelectedTextRangeAttribute, in: element),
             isAttributeSettable(kAXSelectedTextAttribute, in: element),
             let value = stringValue(in: element)

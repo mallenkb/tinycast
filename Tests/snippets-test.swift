@@ -835,6 +835,16 @@ struct SnippetsTests {
         check(
             "no focused text element never falls back to synthesized key events",
             !AccessibilityReplacement.noTextTarget.fallsBackToEvents)
+        check(
+            "a list or button in focus refuses an insertion",
+            TextReplacementPolicy.refusesInsertion(focusedRole: "AXList")
+                && TextReplacementPolicy.refusesInsertion(focusedRole: "AXButton"))
+        check(
+            "an unreadable focus or a Chromium group without a caret still gets a paste",
+            !TextReplacementPolicy.refusesInsertion(focusedRole: nil)
+                && !TextReplacementPolicy.refusesInsertion(focusedRole: "AXGroup")
+                && !TextReplacementPolicy.refusesInsertion(focusedRole: "AXWebArea")
+                && !TextReplacementPolicy.refusesInsertion(focusedRole: "AXTextArea"))
 
         check(
             "an AX keyword one character behind the event stream remains pending",

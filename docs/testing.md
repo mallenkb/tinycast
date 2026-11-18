@@ -19,7 +19,6 @@ GitHub Build runs lint, every harness except the `exclusive` ones, and an unsign
 The exclusive harnesses and manual checks remain local responsibilities. Each is expanded below; the manual sweep at the end
 is judged by what you touched.
 
-`compact-favorites-migration-test` checks removal of the retired compact favorites setting.
 
 ## The harnesses
 

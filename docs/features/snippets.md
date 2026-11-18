@@ -348,10 +348,12 @@ their turn instead of an "applied" message over untouched text; a value that cha
 we did not write is `.rejected`, because events would then edit a document we can no longer describe.
 
 **No caret, no keystrokes.** An insertion with no keyword to delete (a palette or hotkey expansion,
-a Quick Action reply, dictation) first asks Accessibility for the focused element. When
-there is none, or it has no selected text range and is not a marker-based renderer, delivery stops
-with `DeliveryFailure.noTextTarget` and posts nothing: typed characters there would fire app
-shortcuts or Finder's type-select. The caller decides what to offer instead; Snippets asks the reader
+a Quick Action reply, dictation) first asks Accessibility for the focused element. When it has no
+selected text range, is not a marker-based renderer, and its role is a list, table, button or other
+control in `TextReplacementPolicy.refusesInsertion`, delivery stops with
+`DeliveryFailure.noTextTarget` and posts nothing: typed characters there would fire app shortcuts or
+Finder's type-select. Any other focus, including none Accessibility can read, still gets the paste,
+because Chromium and Electron apps often expose no caret on a field that takes text. The caller decides what to offer instead; Snippets asks the reader
 to click into a text field, Quick Actions copies the reply. An automatic expansion never takes this
 path, because the keyword the reader just typed proves a caret even where Accessibility shows none.
 
