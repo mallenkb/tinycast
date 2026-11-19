@@ -123,6 +123,7 @@ enum SettingsFileSchema {
                 for: key, action: .dictationToggleAlternate, name: String(localized: "Hands-free"))
         case .dictationPlaysSounds: return bind(settings, \.dictationPlaysSounds)
         case .dictationIndicatorStyle: return bind(settings, \.dictationIndicatorStyle)
+        case .dictationHideIndicatorText: return bind(settings, \.dictationHideIndicatorText)
         case .dictationIndicatorPositions:
             return SettingsFileBinding(key, read: {
                 SettingsFileJSON(jsonObject: settings.dictationIndicatorPositions)

@@ -65,7 +65,7 @@ enum DictationLocalCleanup {
         case .advanced:
             return DictationTextFormatter.advancedCleanup(
                 DictationRetraction.applying(text), normalize: normalize, automaticParagraphs: false, now: now)
-        case .smart: return DictationTextFormatter.removingFillerWords(DictationRetraction.applying(text))
+        case .smart: return DictationRetraction.containsCue(text) ? text : DictationTextFormatter.removingFillerWords(text)
         }
     }
 

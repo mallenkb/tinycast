@@ -34,9 +34,13 @@ enum Theme {
 
     enum Spacing {
         static let xxs: CGFloat = 2
-        static let dictationWaveGap: CGFloat = 5
-        static let dictationLabelWaveGap: CGFloat = 3
-        static let dictationWaveInset: CGFloat = 16
+        static let dictationWaveGap: CGFloat = 2
+        static let dictationCompactWaveGap: CGFloat = 3.6
+        static let dictationCompactInset: CGFloat = 18.59
+        static let dictationTranscriptVerticalInset: CGFloat = 13
+        static let dictationRoomyInset: CGFloat = 16
+        static let dictationStatusGap: CGFloat = 7
+        static let dictationTranscriptInset: CGFloat = 17
         static let dictationPanelBottomInset: CGFloat = 16
         static let xs: CGFloat = 4
         static let sm: CGFloat = 6
@@ -79,6 +83,7 @@ enum Theme {
         static let glyph: CGFloat = 2
         /// A pill holding a square thumbnail; a full capsule fights the thumbnail's own corners.
         static let attachmentChip: CGFloat = 8
+        static let dictationTranscript: CGFloat = 15
         static let card: CGFloat = 10
         static let codeBlock: CGFloat = 14
         /// A window-to-be in the room preview, rounded like a real window rather than a row.
@@ -331,17 +336,18 @@ enum Theme {
         /// Transient volume HUD shown after any volume or mute command.
         static let hudWidth: CGFloat = 200
         static let hudHeight: CGFloat = 100
-        static let dictationWaveBar: CGFloat = 3
+        static let dictationWaveBar: CGFloat = 1.6
+        static let dictationCompactWaveBar: CGFloat = 2.08
         static let dictationWaveBarCount = 7
         static let dictationIndicatorHeight: CGFloat = 30
         static let dictationIdleWidth: CGFloat = 40
-        static let dictationIdleHeight: CGFloat = 7
+        static let dictationIdleHeight: CGFloat = 6
         static let dictationIdleHoverWidth: CGFloat = 60
-        static let dictationPreviewWidth: CGFloat = 400
+        static let dictationPreviewWidth: CGFloat = 410
         static let dictationSettingsPreviewWidth: CGFloat = 240
-        static let dictationOutlineWidth: CGFloat = 1
-        static let dictationLabelWaveBarCount = 5
+        static let dictationOutlineWidth: CGFloat = 0.6
         static let dictationSpinnerDiameter: CGFloat = 14
+        static let dictationSpinnerStroke: CGFloat = 2
         static let dictationClockWidth: CGFloat = 32
         /// Read-only volume bar geometry used by the HUD.
         static let volumeTrackHeight: CGFloat = 6
@@ -361,11 +367,13 @@ enum Theme {
 
     enum Duration {
         static let dictationPreviewPause: TimeInterval = 4
+        static let dictationCardToProcessing: TimeInterval = 0.1
+        static let dictationPillCollapse: TimeInterval = 0.3
         static let dictationPreviewLineShift: TimeInterval = 0.32
-        static let dictationCharacterStep: TimeInterval = 0.03
-        static let dictationCharacterFade: TimeInterval = 0.15
-        static let dictationRevealLimit: TimeInterval = 0.34
-        static let dictationRevealLineDelay: TimeInterval = 0.12
+        static let dictationWordFade: TimeInterval = 0.7
+        static let dictationWordStagger: TimeInterval = 0.05
+        static let dictationBatchDelay: TimeInterval = 0.15
+        static let dictationCorrectionFade: TimeInterval = 0.16
         static let dictationIndicatorMorph: TimeInterval = 0.24
         static let dictationCountdownFade: TimeInterval = 0.65
         static let dictationCountdownDigit: TimeInterval = 0.46
@@ -515,9 +523,11 @@ enum Theme {
         static let dictationIdleBar = Color(white: 0.5)
         static let dictationLightInk = Color(white: 23.0 / 255)
         static let dictationLightBorder = Color(white: 0.78)
-        static let dictationDarkInk = Color.white
-        static let dictationDarkBackground = Color(white: 0.10)
-        static let dictationOutline = Color(white: 0.6).opacity(0.15)
+        static let dictationLightLiveInk = Color(red: 0.12, green: 0.36, blue: 0.66)
+        static let dictationDarkLiveInk = Color(red: 119 / 255, green: 184 / 255, blue: 242 / 255)
+        static let dictationDarkInk = Color(red: 245 / 255, green: 245 / 255, blue: 246 / 255)
+        static let dictationDarkBackground = Color(red: 36 / 255, green: 36 / 255, blue: 38 / 255)
+        static let dictationOutline = Color(red: 68 / 255, green: 68 / 255, blue: 72 / 255)
         /// Selection fill, shared by every list so they look identical.
         static let modelBadgeBackground = Color.accentColor.opacity(0.15)
         static let selection = ramp(dark: 0.08, light: 0.09)

@@ -118,6 +118,8 @@ enum SettingsBackupCoverage {
             "Machine-local geometry: each position belongs to a display on this Mac.",
         AppSettingsKey.dictationIndicatorStyle.rawValue:
             "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationHideIndicatorText.rawValue:
+            "Dictation appearance preferences stay local.",
         AppSettingsKey.dictationLivePreview.rawValue:
             "Live dictation processing stays a device-local preference.",
         AppSettingsKey.dictationTwoLinePreview.rawValue:

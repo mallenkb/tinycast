@@ -172,6 +172,8 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     private var displayedLevels: [Float]
     private let spectrum: DictationSpectrum
     private var waveformStartIndex = 0
+    private var lastFloorSample = 0
+    private var waveformNoiseFloor = DictationPausePolicy.quietLevel
     private var lastLevelUpdate: TimeInterval = 0
     private var reachedLimit = false
     private var lastCountdown: Int?
@@ -231,11 +233,22 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
         let now = ProcessInfo.processInfo.systemUptime
         guard now - lastLevelUpdate >= 0.05 else { return }
         lastLevelUpdate = now
-        let levels = spectrum.levels(for: samples[waveformStartIndex...])
+        if samples.count - lastFloorSample >= DictationPausePolicy.sampleRate {
+            let recent = samples.suffix(2 * DictationPausePolicy.sampleRate)
+            let measured = DictationPausePolicy.noiseFloor(recent)
+            let riseLimit = max(DictationPausePolicy.quietLevel, waveformNoiseFloor) * 1.1
+            waveformNoiseFloor = min(measured, riseLimit, DictationPausePolicy.maximumQuietLevel)
+            lastFloorSample = samples.count
+        }
+        let fresh = samples[waveformStartIndex...]
+        let hasVoice = DictationPausePolicy.containsVoice(fresh, noiseFloor: waveformNoiseFloor)
+        let levels = hasVoice ? spectrum.levels(for: fresh) : nil
         waveformStartIndex = samples.count
-        for index in levels.indices {
-            let response: Float = levels[index] > displayedLevels[index] ? 0.6 : 0.25
-            displayedLevels[index] += (levels[index] - displayedLevels[index]) * response
+        for index in displayedLevels.indices {
+            let target = levels?[index] ?? 0
+            let response: Float = target > displayedLevels[index] ? 0.85 : 0.35
+            let level = displayedLevels[index] + (target - displayedLevels[index]) * response
+            displayedLevels[index] = level < 0.02 ? 0 : level
         }
         onLevels(displayedLevels)
     }

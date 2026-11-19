@@ -203,20 +203,18 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeReadout 38`
 
 Every Dictation indicator is 30pt tall while starting, listening, and transcribing.
-Its bottom edge sits 32pt above the bottom of the usable screen area.
-The compact capsule has light and dark finishes. Its waveform centers seven bars with 16pt
-of horizontal padding on each side. The bars are
-2.5pt wide and 5.0625pt apart. The pill shows Starting… as soon as a recording begins setup.
-During final transcription and cleanup, a rounded dash spins on a faint ring. Labeled styles cycle
-through the same shuffled list of ten processing words every two seconds across both stages.
-The word shimmers when motion is enabled.
-Every waveform bar and spinner stroke is 2.5pt wide, or 5 pixels at 2× scale.
-Dictation's Indicator style setting also offers labeled capsules and rounded rectangles, with
-light, dark, or outlined finishes. These versions show five bars with 3pt gaps
-and a text status. The 1pt outline straddles the fill edge within the shared 30pt height.
-All styles use the compact waveform's height profile. The panel keeps its
-bottom edge and horizontal center when its width changes. Settings previews listening and
-transcription for the selected style.
+By default its bottom edge sits 16pt above the visible bottom Dock or the screen edge.
+Compact centers seven 2.08pt bars with 3.6pt gaps and 18.59pt padding on each side.
+The other indicator shapes use 1.6pt bars with 2pt gaps. The bars rest at 2.4pt high
+and reach 12pt during speech. The indicator and live transcript card have a 0.6pt inner outline.
+When recording stops, the live card folds toward the indicator. The 14pt processing ring then
+replaces the waveform. In Compact the bars crossfade into a centered ring as the capsule narrows.
+Its window reserves the waveform width throughout cleanup so the transition fits at screen edges.
+Labeled styles pair the ring with a word from the shuffled list of ten.
+The word changes every two seconds while work is underway. Hide indicator text leaves just the
+waveform or ring. After delivery the indicator contracts to a 40pt by 6pt idle bar.
+The fold and the resting bar share an anchor that follows the pill's position on the display.
+Settings previews listening and processing for the selected style.
 
 Notes adds `noteWindow 440×180` (opening size on a first run, and the floor), `noteWindowMaxHeight 860`,
 `noteTitlebar 44`, `noteTitleInset 120`, `noteEditorInset 16`, `noteSearchHeight 34`,

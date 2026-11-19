@@ -373,6 +373,7 @@ enum SettingsSearchCatalog {
         .init(.dictationMemory, "Release model from memory"),
         .init(.dictationOutput, "Microphone"),
         .init(.dictationOutput, "Indicator style", keywords: ["appearance", "waveform", "capsule", "overlay"]),
+        .init(.dictationOutput, "Hide indicator text", keywords: ["waveform", "listening", "label"]),
         .init(.dictationOutput, "Live transcript preview", keywords: ["speech", "recording", "words"]),
         .init(.dictationOutput, "Two-line live preview", keywords: ["transcript", "wrap", "recording"]),
         .init(.dictationOutput, "Show idle indicator", keywords: ["bar", "dock", "ready"]),

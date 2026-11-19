@@ -18,6 +18,10 @@ enum DictationIndicatorStyle: String, CaseIterable, Identifiable, Sendable {
 
     var isCompact: Bool { shape == .compact }
 
+    func showsProcessingText(hidesStatusText: Bool) -> Bool {
+        !isCompact && !hidesStatusText
+    }
+
     var isDark: Bool {
         switch self {
         case .lightCompact, .lightGrayCompact, .lightCapsule, .lightRounded,

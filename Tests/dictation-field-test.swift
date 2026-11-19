@@ -6,6 +6,7 @@ import SwiftUI
 struct DictationFieldTest {
     static func main() async throws {
         NSApplication.shared.setActivationPolicy(.prohibited)
+        testPreviewWordEdits()
         await testPreparedCleanup()
         try await testDelivery()
         try await testCorrectionLearning()
@@ -31,6 +32,24 @@ struct DictationFieldTest {
         try await testAppSwitchCopies()
         try await testRetryAfterCancel()
         print("ALL PASSED")
+    }
+
+    private static func testPreviewWordEdits() {
+        typealias Sequence = DictationPreviewSequence
+        func edits(_ old: String, _ new: String) -> [Sequence.WordEdit] {
+            Sequence.wordEdits(from: Sequence.words(in: old), to: Sequence.words(in: new))
+        }
+        expect(edits("Send the", "Send the invoice") == [.kept(0), .kept(1), .inserted],
+               "Appending a word preserves earlier fades")
+        expect(edits("to Ann today", "to Ana today") == [.kept(0), .replaced(1), .kept(2)],
+               "A correction changes a single word even when the suffix stays the same")
+        expect(edits("a b c", "b c d") == [.followsDeletion(1), .kept(2), .inserted],
+               "A rolling window retains the words that are still visible")
+        expect(edits("email Ana now scratch that email Ben now", "email Ben now")
+                == [.kept(0), .followsDeletion(6), .kept(7)],
+               "A completed take-back marks the replacement already heard in the live preview")
+        expect(Sequence.words(in: "Hello 👋 世界。").joined() == "Hello👋世界。",
+               "Word boundaries keep symbols and punctuation alongside unspaced text")
     }
 
     private static func testPreparedCleanup() async {
@@ -829,6 +848,10 @@ final class DictationPanelController {
     func showPreview(_ text: String, twoLines: Bool, cumulative: Bool) { state.transcript = text }
     func hidePreview() {}
     func showIdle(style: DictationIndicatorStyle) { isVisible = true }
+    func releaseForDelivery() {}
+    func collapsePill(onDismiss: @escaping @MainActor () -> Void) { onDismiss() }
+    func waitForCardToClose() async {}
+    func applyTextVisibility() {}
     func showTranscribing() {}
     func showCountdown(_ seconds: Int) {}
     func close() { isVisible = false }

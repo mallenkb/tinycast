@@ -90,10 +90,11 @@ extension AppCore {
                 _ = $0.dictationEnabled
                 _ = $0.dictationIdleIndicator
                 _ = $0.dictationIndicatorStyle
+                _ = $0.dictationHideIndicatorText
             },
             apply: {
                 $0.hotKeys.dictationEnabled = $0.settings.dictationEnabled
-                $0.dictationCoordinator.applyIdleIndicator()
+                $0.dictationCoordinator.applyIndicatorSettings()
             }),
         FeatureSwitch(
             {

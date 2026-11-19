@@ -124,7 +124,7 @@ final class DictationCoordinator {
         panel.onStart = { [weak self] in self?.pressed(.toggle) }
         capture.onLevels = { [weak self] in
             guard let self else { return }
-            panel.state.levels = $0
+            if phase == .listening || phase == .starting { panel.state.levels = $0 }
             if pendingStartCue == token { playStartCue() }
         }
         capture.onCountdown = { [weak self] seconds in
@@ -425,6 +425,8 @@ final class DictationCoordinator {
             showMessage(String(localized: "No speech detected"), .neutral)
             return
         }
+        await panel.waitForCardToClose()
+        guard token == current, !Task.isCancelled else { return }
         let isEnglish = englishOverride(
             model: usedApple ? nil : recording.source.model, language: recording.source.language)
         let followsFocus = shortcutMode != nil
@@ -446,11 +448,7 @@ final class DictationCoordinator {
             await injector.drain()
             guard token == current, !Task.isCancelled else { return }
         }
-        if settings.dictationEnabled && settings.dictationIdleIndicator && !terminating {
-            panel.showIdle(style: settings.dictationIndicatorStyle)
-        } else {
-            panel.close()
-        }
+        panel.releaseForDelivery()
         let destination = followsFocus ? focusedTarget() : target
         let switchedApps = followsFocus && stoppedIn != nil && Self.processID(of: destination) != stoppedIn
         let insertion = switchedApps
@@ -550,7 +548,7 @@ final class DictationCoordinator {
 
     private func finishTranscript(_ transcript: String, original: String?, destination: InjectionTarget? = nil) {
         let app = destination?.externalApp ?? (destination?.ownEditor == nil ? nil : NSRunningApplication.current)
-        reset(cancelTranscription: false)
+        reset(cancelTranscription: false, collapseIndicator: true)
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         if !text.isEmpty { recordTranscript(text, original, app) }
     }
@@ -834,7 +832,7 @@ final class DictationCoordinator {
         models.prepareForTermination()
     }
 
-    private func reset(cancelTranscription: Bool = true, showIdleIndicator: Bool = true) {
+    private func reset(cancelTranscription: Bool = true, showIdleIndicator: Bool = true, collapseIndicator: Bool = false) {
         token = UUID()
         recognitionTask?.cancel()
         recognitionTask = nil
@@ -859,10 +857,19 @@ final class DictationCoordinator {
         pendingDiscard = nil
         field = nil
         if showIdleIndicator {
-            applyIdleIndicator()
+            if collapseIndicator {
+                panel.collapsePill { [weak self] in self?.applyIdleIndicator() }
+            } else {
+                applyIdleIndicator()
+            }
         } else {
             panel.close()
         }
+    }
+
+    func applyIndicatorSettings() {
+        panel.applyTextVisibility()
+        applyIdleIndicator()
     }
 
     func applyIdleIndicator() {

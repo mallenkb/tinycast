@@ -4,6 +4,23 @@ import CoreText
 import SwiftUI
 
 private extension DictationIndicatorStyle {
+    var horizontalInset: CGFloat {
+        isCompact ? Theme.Spacing.dictationCompactInset : Theme.Spacing.dictationRoomyInset
+    }
+
+    var waveGap: CGFloat {
+        isCompact ? Theme.Spacing.dictationCompactWaveGap : Theme.Spacing.dictationWaveGap
+    }
+
+    var waveBarWidth: CGFloat {
+        isCompact ? Theme.Size.dictationCompactWaveBar : Theme.Size.dictationWaveBar
+    }
+
+    var waveWidth: CGFloat {
+        let count = CGFloat(Theme.Size.dictationWaveBarCount)
+        return count * waveBarWidth + (count - 1) * waveGap
+    }
+
     var backgroundColor: Color {
         isDark ? Theme.Colors.dictationDarkBackground : Theme.Colors.dictationLightBackground
     }
@@ -14,11 +31,16 @@ private extension DictationIndicatorStyle {
 final class DictationDisplayState {
     var transcript = ""
     var previewPaused = false
+    var foldingCard = false
+    var foldingPill = false
+    var hidesStatusText = false
     var animatesTranscript = true
     var twoLinePreview = false
     var idleHovered = false
     var indicatorWidth: CGFloat = 0
     var indicatorOffset: CGFloat = 0
+    var idleCenterShift: CGFloat = 0
+    var idleLift: CGFloat = 0
     var remainingSeconds: Int?
     var processingStarted: Date?
     var showsElapsed = false
@@ -31,35 +53,30 @@ final class DictationDisplayState {
 private struct DictationWaveform: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let levels: [Float]
-    let compact: Bool
+    let style: DictationIndicatorStyle
 
     var body: some View {
-        HStack(
-            alignment: .center,
-            spacing: compact ? Theme.Spacing.dictationWaveGap : Theme.Spacing.dictationLabelWaveGap
-        ) {
+        HStack(spacing: style.waveGap) {
             ForEach(levels.indices, id: \.self) { index in
-                let restingHeight: CGFloat = index == levels.count / 2 ? 7 : 6
                 Capsule(style: .circular)
                     .fill(.foreground)
                     .frame(
-                        width: Theme.Size.dictationWaveBar,
-                        height: restingHeight + 10 * CGFloat(levels[index]))
+                        width: style.waveBarWidth,
+                        height: 2.4 + 9.6 * CGFloat(levels[index]))
                     .fixedSize()
             }
         }
-        .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: levels)
+        .animation(reduceMotion || !Motion.isEnabled ? nil : .linear(duration: 0.05), value: levels)
     }
 }
 
 /// Reads the live levels itself, so only the bars re-evaluate at the capture rate.
 private struct DictationLiveWaveform: View {
     let state: DictationDisplayState
-    let compact: Bool
+    let style: DictationIndicatorStyle
 
     var body: some View {
-        DictationWaveform(
-            levels: DictationIndicatorView.listeningLevels(state.levels, compact: compact), compact: compact)
+        DictationWaveform(levels: DictationIndicatorView.listeningLevels(state.levels), style: style)
     }
 }
 
@@ -123,6 +140,8 @@ struct DictationIndicatorView: View {
 
     let style: DictationIndicatorStyle
     let phase: Phase
+    let hidesStatusText: Bool
+    var folding = false
     var levels: [Float] = []
     var liveLevels: DictationDisplayState?
     var idleHovered = false
@@ -142,13 +161,14 @@ struct DictationIndicatorView: View {
     }
 
     private var processingTitles: [String] {
-        guard case .transcribing(let titles) = phase, !style.isCompact else { return [] }
+        guard case .transcribing(let titles) = phase,
+            style.showsProcessingText(hidesStatusText: hidesStatusText) else { return [] }
         return titles
     }
 
     var body: some View {
         let titles = processingTitles
-        HStack(spacing: Theme.Spacing.xl) {
+        HStack(spacing: Theme.Spacing.dictationStatusGap) {
             switch phase {
             case .idle:
                 Group {
@@ -164,15 +184,19 @@ struct DictationIndicatorView: View {
                     height: idleHovered ? Theme.Size.dictationIndicatorHeight : Theme.Size.dictationIdleHeight)
             case .starting:
                 DictationProcessingRing(ink: ink)
-                Text("Starting…")
-            case .listening:
-                if let liveLevels {
-                    DictationLiveWaveform(state: liveLevels, compact: style.isCompact)
-                } else {
-                    DictationWaveform(
-                        levels: Self.listeningLevels(levels, compact: style.isCompact), compact: style.isCompact)
+                if !hidesStatusText { Text("Starting…") }
+            case .listening where style.isCompact, .transcribing where style.isCompact:
+                ZStack {
+                    if phase.isTranscribing {
+                        DictationProcessingRing(ink: ink).transition(.opacity)
+                    } else {
+                        waveform.transition(.opacity)
+                    }
                 }
-                if !style.isCompact {
+                .frame(width: phase.isTranscribing ? Theme.Size.dictationSpinnerDiameter : style.waveWidth)
+            case .listening:
+                waveform
+                if !hidesStatusText {
                     Text("Listening")
                     if let remainingSeconds { countdown(remainingSeconds) }
                 }
@@ -186,18 +210,23 @@ struct DictationIndicatorView: View {
                 }
             }
         }
-        .opacity(phase.isIdle || contentReady ? 1 : 0)
+        .opacity(!folding && (phase.isIdle || contentReady) ? 1 : 0)
         .font(Theme.Typography.panelTitle)
-        .padding(.horizontal, phase.isIdle ? 0 : Theme.Spacing.dictationWaveInset)
+        .padding(.horizontal, phase.isIdle ? 0 : style.horizontalInset)
         .frame(height: phase.isIdle && !idleHovered
             ? Theme.Size.dictationIdleHeight : Theme.Size.dictationIndicatorHeight)
         .background {
-            shape
-                .fill(background)
-                .overlay {
-                    shape.strokeBorder(borderInk, lineWidth: Theme.Size.dictationOutlineWidth)
-                        .opacity(showsBorder ? 1 : 0)
-                }
+            GeometryReader { geometry in
+                shape
+                    .fill(folding ? Theme.Colors.dictationIdleBar : background)
+                    .overlay {
+                        shape.strokeBorder(borderInk, lineWidth: Theme.Size.dictationOutlineWidth)
+                            .opacity(showsBorder && !folding ? 1 : 0)
+                    }
+                    .frame(width: folding ? Theme.Size.dictationIdleWidth : geometry.size.width,
+                           height: folding ? Theme.Size.dictationIdleHeight : geometry.size.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            }
         }
         .fixedSize()
         .animation(morphAnimation, value: phase.isIdle)
@@ -234,6 +263,14 @@ struct DictationIndicatorView: View {
 
     private var processingResize: Animation? {
         animates ? .easeInOut(duration: Theme.Duration.dictationProcessingResize) : nil
+    }
+
+    @ViewBuilder private var waveform: some View {
+        if let liveLevels {
+            DictationLiveWaveform(state: liveLevels, style: style)
+        } else {
+            DictationWaveform(levels: Self.listeningLevels(levels), style: style)
+        }
     }
 
     private func countdown(_ seconds: Int) -> some View {
@@ -322,26 +359,19 @@ struct DictationIndicatorView: View {
         return style.isDark ? style.backgroundColor : Theme.Colors.dictationBackground
     }
 
-    static func listeningLevels(_ levels: [Float], compact: Bool) -> [Float] {
+    static func listeningLevels(_ levels: [Float]) -> [Float] {
         let barCount = Theme.Size.dictationWaveBarCount
         let peaks = (0..<barCount).map { index in
             let start = index * levels.count / barCount
             let end = (index + 1) * levels.count / barCount
             return levels[start..<end].max() ?? 0
         }
-        let smoothed = peaks.indices.map { index in
+        return peaks.indices.map { index in
             let left = peaks[max(0, index - 1)]
             let right = peaks[min(peaks.count - 1, index + 1)]
             return (left + 2 * peaks[index] + right) / 4
         }
-        guard !compact else { return smoothed }
-        let visibleCount = Theme.Size.dictationLabelWaveBarCount
-        let inset = (barCount - visibleCount) / 2
-        return (0..<visibleCount).map { index in
-            let start = index == 0 ? 0 : index + inset
-            let end = index == visibleCount - 1 ? barCount : index + inset + 1
-            return smoothed[start..<end].max() ?? 0
-        }
+
     }
 }
 
@@ -354,12 +384,12 @@ private struct DictationProcessingRing: View {
 
     var body: some View {
         let diameter = Theme.Size.dictationSpinnerDiameter
-        let stroke = Theme.Size.dictationWaveBar
+        let stroke = Theme.Size.dictationSpinnerStroke
         Circle()
             .strokeBorder(ink.opacity(0.14), lineWidth: stroke)
             .overlay {
                 Circle()
-                    .trim(from: 0, to: 0.36)
+                    .trim(from: 0, to: 0.25)
                     .stroke(ink, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
                     .padding(stroke / 2)
                     .rotationEffect(.degrees(spinning ? 270 : -90))
@@ -414,11 +444,12 @@ private struct DictationTranscribingLabel: View {
 }
 
 struct DictationProcessingWidth: View {
+    let style: DictationIndicatorStyle
     var showsElapsed = false
 
     var body: some View {
         let titles = DictationIndicatorView.Phase.processingLabels
-        HStack(spacing: Theme.Spacing.xl) {
+        HStack(spacing: Theme.Spacing.dictationStatusGap) {
             Color.clear.frame(width: Theme.Size.dictationSpinnerDiameter, height: 0)
             ZStack {
                 ForEach(titles.indices, id: \.self) { index in
@@ -428,7 +459,7 @@ struct DictationProcessingWidth: View {
             if showsElapsed { Color.clear.frame(width: Theme.Size.dictationClockWidth, height: 0) }
         }
         .font(Theme.Typography.panelTitle)
-        .padding(.horizontal, Theme.Spacing.dictationWaveInset)
+        .padding(.horizontal, style.horizontalInset)
         .fixedSize()
         .hidden()
         .accessibilityHidden(true)
@@ -441,35 +472,47 @@ struct DictationTranscriptView: View {
     let animates: Bool
     let twoLines: Bool
     let style: DictationIndicatorStyle
+    var folding = false
     var maximumWidth = Theme.Size.dictationPreviewWidth
     @State private var displayedText = ""
-    @State private var characterReveals: [CharacterReveal] = []
+    @State private var words: [Substring] = []
+    @State private var reveals: [Int: WordReveal] = [:]
+    @State private var outgoing: [OutgoingWord] = []
 
     private struct TranscriptUpdate: Equatable {
         let text: String
         let animated: Bool
+        let twoLines: Bool
     }
 
-    private struct CharacterReveal {
-        private static let fadeCurve = UnitCurve.bezier(
-            startControlPoint: UnitPoint(x: 0, y: 0), endControlPoint: UnitPoint(x: 0.58, y: 1))
-
-        let range: Range<Int>
+    private struct WordReveal {
         let start: Date
+        var previous: String?
+        var previousInk: Color?
 
-        var duration: TimeInterval {
-            min(Double(range.count) * Theme.Duration.dictationCharacterStep, Theme.Duration.dictationRevealLimit)
-        }
-        var end: Date { start.addingTimeInterval(duration + Theme.Duration.dictationCharacterFade) }
+        var end: Date { start.addingTimeInterval(Theme.Duration.dictationWordFade) }
 
-        func opacity(at date: Date, index: Int) -> Double {
-            let fraction = Double(index - range.lowerBound + 1) / Double(range.count)
-            let threshold = duration * (1 - cbrt(1 - fraction))
-            let fade = (date.timeIntervalSince(start) - threshold) / Theme.Duration.dictationCharacterFade
-            return Self.fadeCurve.value(at: min(1, max(0, fade)))
+        func color(at date: Date, accent: Color, ink: Color) -> Color {
+            let progress = min(1, max(0, date.timeIntervalSince(start) / Theme.Duration.dictationWordFade))
+            let blend = min(1, max(0, (progress - 0.3) / 0.7))
+            let opacity = previous == nil
+                ? 0.16 + 0.84 * min(1, progress / 0.46)
+                : min(1, max(0, date.timeIntervalSince(start) / Theme.Duration.dictationCorrectionFade))
+            return accent.mix(with: ink, by: blend * blend * (3 - 2 * blend)).opacity(opacity)
         }
     }
 
+    private struct OutgoingWord: Identifiable {
+        let id: Int
+        let lineStart: Int
+        let x: CGFloat
+        let width: CGFloat
+        let text: String
+        let ink: Color
+        let start: Date
+    }
+
+    private var accent: Color { style.isDark ? Theme.Colors.dictationDarkLiveInk : Theme.Colors.dictationLightLiveInk }
     private var usesMotion: Bool { animates && !reduceMotion && Motion.isEnabled }
     private var ink: Color { style.isDark ? Theme.Colors.dictationDarkInk : Theme.Colors.dictationLightInk }
 
@@ -485,7 +528,7 @@ struct DictationTranscriptView: View {
     }
 
     private static var lineStride: CGFloat { lineHeight + Theme.Spacing.md }
-    private static let verticalInset = Theme.Spacing.md
+    private static let verticalInset = Theme.Spacing.dictationTranscriptVerticalInset
 
     static func maximumHeight(twoLines: Bool) -> CGFloat {
         lineHeight + (twoLines ? lineStride : 0) + 2 * verticalInset
@@ -496,7 +539,7 @@ struct DictationTranscriptView: View {
     }
 
     private var maximumTextWidth: CGFloat {
-        maximumWidth - 2 * Theme.Spacing.xl
+        maximumWidth - 2 * Theme.Spacing.dictationTranscriptInset
     }
 
     private func measuredWidth(_ text: String) -> CGFloat {
@@ -506,32 +549,25 @@ struct DictationTranscriptView: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: characterReveals.isEmpty || !usesMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: reveals.isEmpty || !usesMotion)) { timeline in
             transcriptViewport(at: timeline.date)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: transcript))
-        .onChange(of: twoLines) {
-            updateWrappedLines(displayedText)
-            characterReveals = []
-        }
-        .task(id: TranscriptUpdate(text: transcript, animated: usesMotion)) {
+        .opacity(folding ? 0 : 1)
+        .animation(usesMotion ? .easeInOut(duration: Theme.Duration.dictationPreviewLineShift / 2) : nil, value: folding)
+        .task(id: TranscriptUpdate(text: transcript, animated: usesMotion, twoLines: twoLines)) {
             let next = transcript.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-            guard usesMotion else {
-                updateText(next)
-                characterReveals = []
-                return
-            }
-            await revealCharacters(next)
+            await revealWords(in: next)
         }
-        .padding(.horizontal, Theme.Spacing.xl)
+        .padding(.horizontal, Theme.Spacing.dictationTranscriptInset)
         .padding(.vertical, Self.verticalInset)
         .foregroundStyle(ink)
         .background(
             style.backgroundColor,
-            in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+            in: RoundedRectangle(cornerRadius: Theme.Radius.dictationTranscript))
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.card)
+            RoundedRectangle(cornerRadius: Theme.Radius.dictationTranscript)
                 .strokeBorder(
                     style.isDark ? Theme.Colors.dictationOutline : Theme.Colors.dictationLightBorder,
                     lineWidth: Theme.Size.dictationOutlineWidth)
@@ -545,9 +581,9 @@ struct DictationTranscriptView: View {
         let offset = twoLines ? 0 : scrollOffset
         return Group {
             if twoLines && !lines.isEmpty {
-                rollingLines(text, lines: lines)
+                rollingLines(text, lines: lines, at: date)
             } else {
-                transcriptLine(text)
+                transcriptLine(text, startingAt: 0, at: date)
             }
         }
         .fixedSize(horizontal: true, vertical: false)
@@ -568,35 +604,84 @@ struct DictationTranscriptView: View {
         }
     }
 
-    private func revealCharacters(_ source: String) async {
-        let previous = displayedText
+    private func revealWords(in source: String) async {
         updateText(source)
-        characterReveals = []
-        let first = DictationPreviewSequence.revealStart(previous: previous, incoming: source, limit: 36)
-        guard first < source.count else { return }
-        let changed = first..<source.count
-        var start = Date()
-        var pending: [CharacterReveal] = []
-        let lines = twoLines ? Array(wrappedLines.suffix(2)) : [NSRange(source.startIndex..., in: source)]
-        for line in lines {
-            guard let range = Range(line, in: source) else { continue }
-            let lower = source.distance(from: source.startIndex, to: range.lowerBound)
-            let upper = source.distance(from: source.startIndex, to: range.upperBound)
-            let newCharacters = changed.clamped(to: lower..<upper)
-            guard !newCharacters.isEmpty else { continue }
-            let reveal = CharacterReveal(range: newCharacters, start: start)
-            pending.append(reveal)
-            start = start.addingTimeInterval(min(reveal.duration, Theme.Duration.dictationRevealLineDelay))
+        let old = words
+        words = DictationPreviewSequence.words(in: source)
+        guard usesMotion else {
+            reveals = [:]
+            outgoing = []
+            return
         }
-        characterReveals = pending
-        if let end = pending.map(\.end).max() {
-            do { try await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow))) } catch { return }
+        let edits = DictationPreviewSequence.wordEdits(from: old, to: words)
+        let now = Date()
+        var active: [Int: WordReveal] = [:]
+        var delay: TimeInterval = 0
+        for (index, edit) in edits.enumerated() {
+            switch edit {
+            case .inserted:
+                active[index] = WordReveal(start: now.addingTimeInterval(delay))
+                delay = min(Theme.Duration.dictationBatchDelay, delay + Theme.Duration.dictationWordStagger)
+            case .kept(let prior), .followsDeletion(let prior):
+                if let reveal = reveals[prior], reveal.end > now { active[index] = reveal }
+            case .replaced(let prior):
+                let oldInk = reveals[prior]?.color(at: now, accent: accent, ink: ink) ?? ink
+                active[index] = WordReveal(start: now, previous: String(old[prior]), previousInk: oldInk)
+            }
         }
-        characterReveals = []
+        reveals = active
+        outgoing = outgoingWords(for: active, in: source, at: now)
+        guard let end = active.values.map(\.end).max() else { return }
+        do { try await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow))) } catch { return }
+        reveals = [:]
+        outgoing = []
     }
 
-    private func transcriptLine(_ text: AttributedString) -> some View {
+    private func outgoingWords(for active: [Int: WordReveal], in source: String, at now: Date) -> [OutgoingWord] {
+        let replacements = active.filter { _, reveal in
+            reveal.previous != nil && now.timeIntervalSince(reveal.start) < Theme.Duration.dictationCorrectionFade
+        }
+        guard !replacements.isEmpty else { return [] }
+        let lines = twoLines ? Array(wrappedLines.suffix(2)) : [NSRange(source.startIndex..., in: source)]
+        var result: [OutgoingWord] = []
+        for line in lines {
+            guard let range = Range(line, in: source) else { continue }
+            let attributed = NSAttributedString(string: String(source[range]), attributes: [.font: Self.transcriptFont])
+            let layout = CTLineCreateWithAttributedString(attributed)
+            for (index, reveal) in replacements {
+                let word = words[index]
+                guard let previous = reveal.previous, let oldInk = reveal.previousInk,
+                      range.contains(word.startIndex), word.endIndex <= range.upperBound else { continue }
+                let location = NSRange(word.startIndex..<word.endIndex, in: source)
+                let start = CTLineGetOffsetForStringIndex(layout, location.location - line.location, nil)
+                let end = CTLineGetOffsetForStringIndex(layout, NSMaxRange(location) - line.location, nil)
+                result.append(OutgoingWord(id: index, lineStart: line.location, x: min(start, end), width: abs(end - start),
+                                           text: previous, ink: oldInk, start: reveal.start))
+            }
+        }
+        return result
+    }
+
+    private func transcriptLine(_ text: AttributedString, startingAt lineStart: Int, at date: Date) -> some View {
         Text(text)
+            .overlay(alignment: .leading) {
+                ZStack(alignment: .leading) {
+                    ForEach(outgoing) { word in
+                        let fade = date.timeIntervalSince(word.start) / Theme.Duration.dictationCorrectionFade
+                        if usesMotion, word.lineStart == lineStart, fade < 1 {
+                            Text(verbatim: word.text)
+                                .foregroundStyle(word.ink)
+                                .fixedSize()
+                                .frame(width: word.width, alignment: .leading)
+                                .clipped()
+                                .opacity(1 - max(0, fade))
+                                .offset(x: word.x)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
             .font(Theme.Typography.dictationTranscript)
             .lineLimit(1)
             .contentTransition(.identity)
@@ -604,7 +689,7 @@ struct DictationTranscriptView: View {
             .transaction { $0.animation = nil }
     }
 
-    private func rollingLines(_ text: AttributedString, lines: ArraySlice<NSRange>) -> some View {
+    private func rollingLines(_ text: AttributedString, lines: ArraySlice<NSRange>, at date: Date) -> some View {
         let stride = Self.lineStride
         let source = displayedText
         return ZStack(alignment: .topLeading) {
@@ -613,7 +698,7 @@ struct DictationTranscriptView: View {
                     let start = AttributedString.Index(range.lowerBound, within: text),
                     let end = AttributedString.Index(range.upperBound, within: text)
                 {
-                    transcriptLine(AttributedString(text[start..<end]))
+                    transcriptLine(AttributedString(text[start..<end]), startingAt: lines[index].location, at: date)
                         .frame(height: Self.lineHeight)
                         .offset(y: CGFloat(index - lines.startIndex) * stride)
                         .transition(.asymmetric(insertion: .offset(y: stride), removal: .offset(y: -stride)))
@@ -650,24 +735,14 @@ struct DictationTranscriptView: View {
     }
 
     private func text(at date: Date) -> AttributedString {
-        let source = displayedText
-        guard usesMotion, !characterReveals.isEmpty else { return AttributedString(source) }
-        var result = AttributedString()
-        var position = source.startIndex
-        var previousEnd = 0
-        for reveal in characterReveals where reveal.end > date {
-            let first = source.index(position, offsetBy: reveal.range.lowerBound - previousEnd)
-            result.append(AttributedString(source[position..<first]))
-            let end = source.index(first, offsetBy: reveal.range.count)
-            for (index, character) in zip(reveal.range, source[first..<end]) {
-                var part = AttributedString(String(character))
-                part.foregroundColor = ink.opacity(reveal.opacity(at: date, index: index))
-                result.append(part)
-            }
-            position = end
-            previousEnd = reveal.range.upperBound
+        var result = AttributedString(displayedText)
+        guard usesMotion else { return result }
+        for (index, reveal) in reveals where reveal.end > date {
+            let word = words[index]
+            guard let start = AttributedString.Index(word.startIndex, within: result),
+                  let end = AttributedString.Index(word.endIndex, within: result) else { continue }
+            result[start..<end].foregroundColor = reveal.color(at: date, accent: accent, ink: ink)
         }
-        result.append(AttributedString(source[position...]))
         return result
     }
 }
@@ -686,17 +761,23 @@ private struct DictationPanelView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if !phase.isIdle && !style.isCompact {
-                DictationProcessingWidth(showsElapsed: state.showsElapsed)
+            if !phase.isIdle && style.showsProcessingText(hidesStatusText: state.hidesStatusText) {
+                DictationProcessingWidth(style: style, showsElapsed: state.showsElapsed)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onProcessingWidthChanged($0) }
                     .frame(width: phase.isTranscribing ? nil : 0, height: 0)
             }
             panelContents
         }
         .frame(
-            minWidth: state.transcript.isEmpty ? 0 : Theme.Size.dictationPreviewWidth,
+            minWidth: minimumPanelWidth,
             minHeight: Theme.Size.dictationIndicatorHeight, alignment: .bottom)
         .motionScope()
+    }
+
+    var minimumPanelWidth: CGFloat {
+        if !state.transcript.isEmpty { return Theme.Size.dictationPreviewWidth }
+        guard style.isCompact, phase.isTranscribing else { return 0 }
+        return style.waveWidth + 2 * style.horizontalInset
     }
 
     private var previewOffset: CGFloat {
@@ -710,7 +791,11 @@ private struct DictationPanelView: View {
             if !state.transcript.isEmpty {
                 DictationTranscriptView(
                     transcript: state.transcript, animates: state.animatesTranscript,
-                    twoLines: state.twoLinePreview, style: style)
+                    twoLines: state.twoLinePreview, style: style, folding: state.foldingCard)
+                    .scaleEffect(x: state.foldingCard ? 0.16 : 1, y: state.foldingCard ? 0 : 1,
+                                 anchor: state.previewBelow ? .top : .bottom)
+                    .offset(y: state.foldingCard ? (state.previewBelow ? -Theme.Spacing.md : Theme.Spacing.md) : 0)
+                    .opacity(state.foldingCard ? 0 : 1)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { previewWidth = $0 }
                     .offset(x: previewOffset)
                     .frame(height: DictationTranscriptView.maximumHeight(twoLines: state.twoLinePreview),
@@ -722,10 +807,11 @@ private struct DictationPanelView: View {
                         reduceMotion || !Motion.isEnabled || !state.animatesTranscript
                             ? nil : .easeInOut(duration: Theme.Duration.dictationPreviewLineShift),
                         value: state.previewPaused)
-                    .accessibilityHidden(state.previewPaused)
+                    .accessibilityHidden(state.previewPaused || state.foldingCard)
             }
             DictationIndicatorView(
-                style: style, phase: phase, liveLevels: state, idleHovered: state.idleHovered,
+                style: style, phase: phase, hidesStatusText: state.hidesStatusText, folding: state.foldingPill,
+                liveLevels: state, idleHovered: state.idleHovered,
                 remainingSeconds: state.remainingSeconds,
                 processingStarted: state.showsElapsed ? state.processingStarted : nil, onStart: onStart)
                 .overlay {
@@ -734,7 +820,9 @@ private struct DictationPanelView: View {
                         onClick: { if phase.isIdle { onStart() } }, onMoved: onDragMoved)
                 }
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { state.indicatorWidth = $0 }
-                .offset(x: state.indicatorOffset)
+                .offset(
+                    x: state.indicatorOffset + (state.foldingPill ? state.idleCenterShift : 0),
+                    y: state.foldingPill || (phase.isIdle && !state.idleHovered) ? -state.idleLift : 0)
         }
     }
 }
@@ -794,7 +882,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         updatePlacementTimer()
     }
 
-    override var canBecomeKey: Bool { !host.rootView.phase.isIdle }
+    override var canBecomeKey: Bool { !host.rootView.phase.isIdle && !ignoresMouseEvents }
     override var canBecomeMain: Bool { false }
 
     func setStyle(_ style: DictationIndicatorStyle) { host.rootView.style = style }
@@ -806,12 +894,15 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     func show(_ phase: DictationIndicatorView.Phase) {
         let previous = frame
         let previousPillY = previous.minY + pillLift
+        let root = host.rootView
+        let reserveWidth = phase.isTranscribing && root.phase.isTranscribing
+            && root.style.showsProcessingText(hidesStatusText: root.state.hidesStatusText)
         if !phase.isIdle { stopWatchingIdleHover() }
         host.rootView.phase = phase
         hasShadow = host.rootView.style.isDark && !phase.isIdle
         host.layoutSubtreeIfNeeded()
         let size = host.fittingSize
-        let width = phase.isTranscribing ? max(previous.width, size.width) : size.width
+        let width = reserveWidth ? max(previous.width, size.width) : size.width
         let destination = NSRect(
             x: previous.midX - width / 2, y: previousPillY - pillLift(for: size.height),
             width: width, height: size.height)
@@ -864,11 +955,18 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
     private func panelOrigin(center: CGFloat, pillY: CGFloat, on screen: NSScreen, bottom: CGFloat) -> CGPoint {
         let state = host.rootView.state
         let pillHeight = hasPreview ? Theme.Size.dictationIndicatorHeight : frame.height
-        let y = min(max(pillY, bottom), max(bottom, top(on: screen) - pillHeight))
-        let roomAbove = top(on: screen) - y - pillHeight
+        let upperLimit = max(bottom, top(on: screen) - pillHeight)
+        let y = min(max(pillY, bottom), upperLimit)
+        let roomAbove = upperLimit - y
         let previewHeight = max(0, frame.height - pillHeight)
         let below = hasPreview && previewHeight > roomAbove && y - bottom > roomAbove
-        let center = clampedCenter(center, on: screen)
+        let idleCenter = clampedCenter(center, on: screen, width: Theme.Size.dictationIdleWidth)
+        let center = clampedCenter(center, on: screen, width: placementWidth)
+        let idleCenterShift = idleCenter - center
+        let verticalFraction = upperLimit > bottom ? (y - bottom) / (upperLimit - bottom) : 0
+        let idleLift = verticalFraction * (Theme.Size.dictationIndicatorHeight - Theme.Size.dictationIdleHeight)
+        if state.idleCenterShift != idleCenterShift { state.idleCenterShift = idleCenterShift }
+        if state.idleLift != idleLift { state.idleLift = idleLift }
         let visible = screen.visibleFrame
         let inset = Theme.Spacing.dictationPanelBottomInset
         let minX = visible.minX + inset
@@ -912,9 +1010,9 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         return bottom + Theme.Spacing.dictationPanelBottomInset
     }
 
-    private func clampedCenter(_ center: CGFloat, on screen: NSScreen) -> CGFloat {
+    private func clampedCenter(_ center: CGFloat, on screen: NSScreen, width: CGFloat) -> CGFloat {
         let inset = Theme.Spacing.dictationPanelBottomInset
-        let half = placementWidth / 2
+        let half = width / 2
         let minimum = screen.visibleFrame.minX + inset + half
         let maximum = max(minimum, screen.visibleFrame.maxX - inset - half)
         return min(max(center, minimum), maximum)
@@ -922,8 +1020,14 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
 
     private var placementWidth: CGFloat {
         let root = host.rootView
+        if root.phase.isIdle {
+            return root.state.idleHovered ? Theme.Size.dictationIdleHoverWidth : Theme.Size.dictationIdleWidth
+        }
+        if root.style.isCompact, root.phase.isTranscribing { return root.minimumPanelWidth }
         let indicatorWidth = min(max(root.state.indicatorWidth, 2), frame.width)
-        guard !root.phase.isIdle, !root.style.isCompact, processingWidth > 0 else { return indicatorWidth }
+        guard root.style.showsProcessingText(hidesStatusText: root.state.hidesStatusText), processingWidth > 0 else {
+            return indicatorWidth
+        }
         if root.phase.isTranscribing { return min(processingWidth, frame.width) }
         return max(indicatorWidth, processingWidth)
     }
@@ -960,7 +1064,7 @@ private final class DictationPanel: NSPanel, AnimatedPanel {
         let pillHeight = hasPreview ? Theme.Size.dictationIndicatorHeight : frame.height
         let maxY = max(bottom, top(on: screen) - pillHeight)
         let y = min(max(point.y + dragStartLift, bottom), maxY)
-        let center = clampedCenter(point.x + dragStartCenterOffset, on: screen)
+        let center = clampedCenter(point.x + dragStartCenterOffset, on: screen, width: placementWidth)
         let xs = [visible.minX + inset + placementWidth / 2, visible.midX,
                   visible.maxX - inset - placementWidth / 2]
         let ys = [bottom, min(max(bounds.midY - pillHeight / 2, bottom), maxY), maxY]
@@ -1246,15 +1350,39 @@ final class DictationPanelController {
     private let settings: AppSettings
     private var panel: DictationPanel?
     private var escapeMonitors: [Any] = []
+    private var transitionTask: Task<Void, Never>?
+    private var collapseID: UUID?
     private var previewPauseTask: Task<Void, Never>?
     private var elapsedTask: Task<Void, Never>?
     var onAccept: (() -> Void)?
     var onCancel: (() -> Void)?
     var onStart: (() -> Void)?
 
-    init(settings: AppSettings) { self.settings = settings }
+    init(settings: AppSettings) {
+        self.settings = settings
+        state.hidesStatusText = settings.dictationHideIndicatorText
+    }
+
+    func applyTextVisibility() {
+        guard state.hidesStatusText != settings.dictationHideIndicatorText else { return }
+        state.hidesStatusText = settings.dictationHideIndicatorText
+        panel?.refit()
+    }
+
+    private var animatesTransitions: Bool {
+        Motion.isEnabled && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private func cancelTransition() {
+        collapseID = nil
+        transitionTask?.cancel()
+        transitionTask = nil
+        state.foldingCard = false
+        state.foldingPill = false
+    }
 
     func showStarting(style: DictationIndicatorStyle) {
+        cancelTransition()
         let screen = DictationPanel.activeScreen
         guard let screen else { return }
         state.levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
@@ -1284,6 +1412,7 @@ final class DictationPanelController {
     }
 
     func showIdle(style: DictationIndicatorStyle) {
+        cancelTransition()
         stopWatchingForEscape()
         resetClocks()
         let screen = DictationPanel.activeScreen
@@ -1357,10 +1486,54 @@ final class DictationPanelController {
         panel?.show(.listening)
     }
 
+    func releaseForDelivery() {
+        stopWatchingForEscape()
+        resetClocks()
+        panel?.ignoresMouseEvents = true
+        panel?.resignKey()
+    }
+
+    func collapsePill(onDismiss: @escaping @MainActor () -> Void) {
+        guard panel?.isVisible == true, animatesTransitions else { onDismiss(); return }
+        let id = UUID()
+        collapseID = id
+        withAnimation(.easeInOut(duration: Theme.Duration.dictationPillCollapse), completionCriteria: .removed) {
+            state.foldingPill = true
+        } completion: { [weak self] in
+            guard let self, collapseID == id else { return }
+            collapseID = nil
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { onDismiss() }
+        }
+    }
+
+    func waitForCardToClose() async {
+        await transitionTask?.value
+    }
+
     func showTranscribing() {
         previewPauseTask?.cancel()
         previewPauseTask = nil
         resetClocks()
+        state.levels = [Float](repeating: 0, count: DictationSpectrum.barCount)
+        guard !state.transcript.isEmpty, !state.previewPaused, state.animatesTranscript, animatesTransitions else {
+            beginProcessing()
+            return
+        }
+        let duration = Theme.Duration.dictationPreviewLineShift
+        withAnimation(.easeInOut(duration: duration)) { state.foldingCard = true }
+        transitionTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(duration + Theme.Duration.dictationCardToProcessing)) } catch { return }
+            guard let self else { return }
+            transitionTask = nil
+            beginProcessing()
+        }
+    }
+
+    private func beginProcessing() {
+        state.transcript = ""
+        state.foldingCard = false
         state.processingStarted = .now
         elapsedTask = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(Theme.Duration.dictationElapsedDelay)) } catch { return }
@@ -1402,6 +1575,7 @@ final class DictationPanelController {
     }
 
     func close() {
+        cancelTransition()
         stopWatchingForEscape()
         resetClocks()
         previewPauseTask?.cancel()

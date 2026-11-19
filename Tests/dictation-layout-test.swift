@@ -28,7 +28,11 @@ struct DictationLayoutTest {
             ("Send it to Ana, new paragraph, thanks.", "Send it to Ana.\n\nThanks.", nil),
             ("The rate is twelve point five per cent.", "The rate is 12.5%.", nil),
             ("The shift starts at 07:30.", "The shift starts at 7:30.", nil),
-            ("Meet at nine thirty, no sorry, ten.", "Meet at 10.", nil)
+            ("Meet at nine thirty, no sorry, ten.", "Meet at 10.", nil),
+            ("Save the receipt, email Ana the invoice, scratch that, email Ben the invoice.",
+             "Save the receipt, email Ben the invoice.", nil),
+            ("Charge ten dollars. Scratch that. Charge twelve dollars.", "Charge $12.",
+             "Charge $10. Scratch that. Charge $12.")
         ]
         for (source, edited, reference) in accepted {
             let result = verdict(source, edited, reference: reference)
@@ -48,7 +52,12 @@ struct DictationLayoutTest {
             ("Send the agenda to the team before the meeting starts.",
              "Distribute the itinerary among colleagues prior to commencement.", .changedWords),
             ("Book the room.", "", .changedWords),
-            ("The shift starts at 07:30.", "The shift starts at 8:30.", .changedNumber)
+            ("The shift starts at 07:30.", "The shift starts at 8:30.", .changedNumber),
+            ("Meet at nine thirty, no sorry, ten.", "Meet at 9.", .changedNumber),
+            ("Save the receipt, email Ana the invoice, scratch that, email Ben the invoice.",
+             "Email Ben the invoice.", .changedWords),
+            ("Ask Ana about the scratch on the desk.", "Ask about the scratch on the desk.", .changedName),
+            ("Please do not scratch the desk.", "Please scratch the desk.", .changedNegation)
         ]
         for (source, edited, expected) in rejected {
             let result = verdict(source, edited)

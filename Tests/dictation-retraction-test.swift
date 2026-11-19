@@ -45,6 +45,64 @@ struct DictationRetractionTest {
         expect("Your draft has a typo. Scratch that, we can fix it later.",
                "Your draft has a typo. Scratch that, we can fix it later.")
 
+        let conditional = "If the build fails, start over. The build needs a clean cache."
+        let invoice = "Save the receipt, email Ana the invoice, no, scratch that, email Ben the invoice."
+        let correctedInvoice = "Save the receipt, email Ben the invoice."
+        let chain = "Call Ana, scratch that, call Ben, scratch that, call Sam."
+        let amount = "Keep $50 for supplies. Charge $10. Scratch that. Charge $12."
+        expect(conditional, conditional)
+        expect(invoice, correctedInvoice)
+        expect("Save the receipt and email Ana the invoice, scratch that, email Ben the invoice.",
+               "Save the receipt and email Ben the invoice.")
+        expect(chain, "Call Sam.")
+        expect(amount, "Keep $50 for supplies. Charge $12.")
+        let unpunctuated = "Save the receipt and call Ana no scratch that call Ben"
+        let conditionalCorrection = "Call me if it rains. Scratch that. Call me if it snows."
+        expect(unpunctuated, "Save the receipt and call Ben")
+        expect("Call Ana no scratch that call Ben no scratch that call Sam", "Call Sam")
+        expect(conditionalCorrection, "Call me if it snows.")
+        let literal = "Wait, scratch that itch before we leave."
+        expect(literal, literal)
+        expect("Call me to scratch that itch. Scratch that. Call me to book a room.", "Call me to book a room.")
+        expect("Call Ana scratch that call Ben", "Call Ben")
+
+        func check(_ condition: Bool, _ message: String) {
+            if !condition { print("FAIL: \(message)"); failures += 1 }
+        }
+        check(!DictationRetraction.containsCue(literal), "A literal phrase should use ordinary Smart cleanup")
+        let checks = [
+            (conditional, conditional, true),
+            (conditional, "The build needs a clean cache.", false),
+            (invoice, correctedInvoice, true),
+            (invoice, "Email Ben the invoice.", false),
+            (invoice, "Save the receipt, email Ana the invoice.", false),
+            (chain, "Call Sam.", true),
+            (chain, "Call Ben.", false),
+            (unpunctuated, "Save the receipt and call Ben.", true),
+            (unpunctuated, "Call Ben.", false),
+            (conditionalCorrection, "Call me if it snows.", true),
+            ("Use red. Scratch that. Make it blue.", "Make it blue.", true),
+            ("Use red. Scratch that. Make it blue.", "Make it green.", false),
+            ("Book the room. Forget what I just said.", "", true),
+            ("Book the room. Forget what I just said.", "Book the room.", false),
+            (amount, "Keep $50 for supplies. Charge $12.", true),
+            (amount, "Keep $50 for supplies. Charge $10.", false),
+            (amount, "Keep $5 for supplies. Charge $12.", false),
+            ("Charge $10. Scratch that. Charge $.50.", "Charge $50.", false),
+        ]
+        for (raw, output, expected) in checks {
+            check(DictationRetraction(raw).accepts(output) == expected, "Smart edit of \(raw): \(output)")
+        }
+
+        let plan = DictationRetraction(amount)
+        let cut = amount.range(of: " Scratch")!.lowerBound
+        let beforeCharge = amount.range(of: "Charge $10")!.lowerBound
+        check(plan.crossesBoundary(cut), "The prepared section ends before its take-back")
+        check(!plan.crossesBoundary(beforeCharge), "An earlier section can still be reused")
+        let sections = plan.keepingContext(in: [amount.startIndex..<cut, cut..<amount.endIndex])
+        check(sections.map { String(amount[$0]) } == ["Keep $50 for supplies. ", "Charge $10. Scratch that. Charge $12."],
+              "A split correction should reach the model in one section")
+
         if failures > 0 {
             print("\(failures) retraction case(s) failed")
             exit(1)

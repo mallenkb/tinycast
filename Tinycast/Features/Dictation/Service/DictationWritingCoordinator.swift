@@ -102,8 +102,8 @@ final class DictationWritingCoordinator {
     }
 
     // Emberon-2 can't follow transform instructions, so S1-mini does Smart cleanup in the same pass.
-    private func combinesSmart(_ smart: Bool, transform: DictationTransform?) -> Bool {
-        guard smart, transform != nil else { return false }
+    private func combinesSmart(_ smart: Bool, transform: DictationTransform?, text: String) -> Bool {
+        guard smart, transform != nil, !DictationRetraction.containsCue(text) else { return false }
         return selectedLocalModel.map { $0.transformEngine != $0 } ?? true
     }
 
@@ -144,7 +144,7 @@ final class DictationWritingCoordinator {
               recordingEngine == settings.dictationCleanupEngine,
               isEnglish == true || (isEnglish == nil && NLLanguageRecognizer.dominantLanguage(for: raw) == .english),
               selectedLocalModel != nil else { return }
-        stableText = DictationTextFormatter.removingFillerWords(raw)
+        stableText = DictationRetraction.containsCue(raw) ? raw : DictationTextFormatter.removingFillerWords(raw)
         prepareNextSection()
     }
 
@@ -259,8 +259,18 @@ final class DictationWritingCoordinator {
     }
 
     @concurrent private static func verdict(source: String, edited: String) async -> DictationEditCheck.Verdict {
+        let retractions = DictationRetraction(source)
+        if retractions.hasCues, retractions.accepts(edited) { return .accepted }
         let reference = await DictationLocalCleanup.clean(source, mode: .basic, isEnglish: true)
         return DictationEditCheck.verdict(source: source, edited: edited, reference: reference)
+    }
+
+    @concurrent private static func checkedBeforeTransform(
+        _ result: String, source: String, smart: Bool, isEnglish: Bool?
+    ) async -> String {
+        guard smart, DictationRetraction.containsCue(source),
+              await verdict(source: source, edited: result) != .accepted else { return result }
+        return await DictationLocalCleanup.clean(source, mode: .advanced, isEnglish: isEnglish)
     }
 
     @concurrent private static func arrange(
@@ -296,7 +306,7 @@ final class DictationWritingCoordinator {
         let engine = settings.dictationCleanupEngine
         let model = selectedLocalModel
         let transform = automaticTransform
-        let combined = combinesSmart(smart, transform: transform)
+        let combined = combinesSmart(smart, transform: transform, text: original)
         let prepared = prewarmedApple
         prewarmedApple = nil
         guard smart || transform != nil else { return original }
@@ -305,7 +315,7 @@ final class DictationWritingCoordinator {
             do {
                 let prompt = instructions(smart: true, transform: nil)
                 result = try await cleanRecording(
-                    original, model: model, engine: engine, isEnglish: isEnglish,
+                    original, model: transform == nil ? model : model?.transformEngine, engine: engine, isEnglish: isEnglish,
                     prewarmedSession: prepared?.instructions == prompt ? prepared?.session : nil)
             } catch {
                 guard !Task.isCancelled, settings.dictationCleanupEngine == engine else { return original }
@@ -316,6 +326,8 @@ final class DictationWritingCoordinator {
             }
         }
         guard let transform else { return result }
+        result = await Self.checkedBeforeTransform(result, source: original, smart: smart, isEnglish: isEnglish)
+        guard !result.isEmpty, !Task.isCancelled, settings.dictationCleanupEngine == engine else { return result }
         do {
             let prompt = instructions(smart: combined, transform: transform)
             let output = try await transformed(
@@ -346,10 +358,12 @@ final class DictationWritingCoordinator {
         var tail = original[...]
         var prefix = ""
         if isEnglish != false, recordingEngine == engine {
+            let retractions = DictationRetraction(original)
             for section in preparedSections {
                 guard tail.utf8.starts(with: section.source.utf8),
                       let end = String.Index(tail.utf8.index(tail.utf8.startIndex,
                                                              offsetBy: section.source.utf8.count), within: tail),
+                      !retractions.crossesBoundary(end),
                       end == tail.endIndex || tail[end].isWhitespace || section.source.last?.isWhitespace == true
                 else { break }
                 prefix += section.result
@@ -392,32 +406,45 @@ final class DictationWritingCoordinator {
         var result = ""
         var cursor = text.startIndex
         let chunks = DictationCleanupChunks(tokenizing: text)
-        for chunk in chunks.ranges {
-            for section in Self.smartSections(in: text, range: chunk) {
-                try checkCurrent(engine)
-                result += text[cursor..<section.lowerBound]
-                cursor = section.upperBound
-                let source = String(text[section])
-                if DictationCleanupChunks.hasProtectedValue(source[...]) {
-                    result += await DictationLocalCleanup.clean(source, mode: .basic, isEnglish: isEnglish)
-                    continue
-                }
-                if !failed {
-                    do {
-                        let output = try await rewrite(source)
-                        try checkCurrent(engine)
+        let retractions = DictationRetraction(text)
+        let sections = chunks.ranges.flatMap { Self.smartSections(in: text, range: $0) }
+        for range in retractions.keepingContext(in: sections) {
+            guard let first = text[range].firstIndex(where: { !$0.isWhitespace }),
+                  let last = text[range].lastIndex(where: { !$0.isWhitespace }) else { continue }
+            let section = first..<text.index(after: last)
+            try checkCurrent(engine)
+            result += text[cursor..<section.lowerBound]
+            cursor = section.upperBound
+            let source = String(text[section])
+            let hasCue = DictationRetraction.containsCue(source)
+            if !hasCue, DictationCleanupChunks.hasProtectedValue(source[...]) {
+                result += await DictationLocalCleanup.clean(source, mode: .basic, isEnglish: isEnglish)
+                continue
+            }
+            let hasLiteral = hasCue && (DictationTextFormatter.preservesLiteral(source[...])
+                || source.contains(where: { "\"“”`".contains($0) }))
+            if !failed, !hasLiteral, source.utf8.count <= DictationCleanupChunks.byteLimit {
+                do {
+                    let output = try await rewrite(source)
+                    try checkCurrent(engine)
+                    if hasCue {
+                        if await Self.verdict(source: source, edited: output) == .accepted {
+                            result += output
+                            continue
+                        }
+                    } else {
                         result += DictationCleanupChunks.acceptsSmartEdit(output, source: source) ? output : source
                         continue
-                    } catch {
-                        try checkCurrent(engine)
-                        guard let onFailure else { throw error }
-                        failed = true
-                        logger.error("Text cleanup failed: \(error.localizedDescription, privacy: .public)")
-                        onFailure(error)
                     }
+                } catch {
+                    try checkCurrent(engine)
+                    guard let onFailure else { throw error }
+                    failed = true
+                    logger.error("Text cleanup failed: \(error.localizedDescription, privacy: .public)")
+                    onFailure(error)
                 }
-                result += await DictationLocalCleanup.clean(source, mode: .advanced, isEnglish: isEnglish)
             }
+            result += await DictationLocalCleanup.clean(source, mode: .advanced, isEnglish: isEnglish)
         }
         try checkCurrent(engine)
         return result + text[cursor...]
@@ -450,13 +477,14 @@ final class DictationWritingCoordinator {
         let smart = settings.dictationSmartCleanup
         let engine = settings.dictationCleanupEngine
         let model = selectedLocalModel
-        let combined = combinesSmart(smart, transform: transform)
+        let combined = combinesSmart(smart, transform: transform, text: text)
         var result = await DictationLocalCleanup.clean(text, mode: settings.dictationCleanupMode)
         try checkCurrent(engine)
         if smart, !combined {
             do {
                 if let model {
-                    result = try await smartCleanup(result, model: model, engine: engine, isEnglish: nil)
+                    result = try await smartCleanup(result, model: transform == nil ? model : model.transformEngine,
+                                                    engine: engine, isEnglish: nil)
                 } else {
                     result = try await cleanWithAppleIntelligence(
                         result, engine: engine, instructions: instructions(smart: true, transform: nil))
@@ -469,6 +497,9 @@ final class DictationWritingCoordinator {
             try checkCurrent(engine)
         }
         guard let transform else { return result }
+        result = await Self.checkedBeforeTransform(result, source: text, smart: smart, isEnglish: nil)
+        try checkCurrent(engine)
+        guard !result.isEmpty else { return result }
         result = try await transformed(
             result, with: transform, model: model, instructions: instructions(smart: combined, transform: transform))
         try checkCurrent(engine)
@@ -520,6 +551,7 @@ final class DictationWritingCoordinator {
             instructions += """
                 \nPreserve the speaker's phrasing. Arrange clear lists and paragraphs.
                 Resolve only explicit, unambiguous spoken corrections, such as 'Thursday, no, Friday'.
+                \(DictationRetraction.instructions)
                 """
         }
         if let transform { instructions += "\nRequested transform:\n" + transform.instructions }

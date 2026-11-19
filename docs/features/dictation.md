@@ -126,13 +126,13 @@ models use CPU/Neural Engine.
   The Information section shows the date and word count.
   New entries also show the app where the transcript was pasted successfully.
   Dictation History and Dictation Settings are available even when recording is disabled.
-- The compact dictation indicators use seven bars. The other styles use a capsule or rounded
-  rectangle and include a status label. The style picker selects the shape. A Dark mode switch
+- Compact shows seven waveform bars while listening and only a spinner during cleanup. Hide indicator text hides the status words and
+  timers while the waveform, processing ring and VoiceOver status remain available. The style picker selects the shape. A Dark mode switch
   chooses light or dark for every style. Gray is no longer offered in Settings.
   The pill and transcript preview share the background for the selected appearance. In light mode,
   they also share the border color. Both appearances show an outline around the pill and transcript.
-  The pill appears when the shortcut or composer mic starts a recording and shows Starting…
-  until microphone setup completes off the main thread.
+  The pill appears when the shortcut or composer mic starts a recording and shows a ring during microphone setup,
+  accompanied by Starting… when indicator text is visible.
   By default it sits 16 points above a visible bottom Dock, or above the screen edge when the Dock is hidden,
   on another edge or display, or the active app is full-screen with the Dock hidden. Dragging the pill
   shows alignment guides and snaps it to the display center and edges. A click on the idle pill still
@@ -180,17 +180,23 @@ models use CPU/Neural Engine.
   Its text and width are retained, and a new transcript update fades it back in. Empty or repeated
   recognition results do not restart this timer. Finishing or cancelling recording cancels the timer.
   Transcript animation defaults to on and follows global animations and Reduce Motion.
-  The animation preference remains accessible in settings.json. The newest words receive a
-  character reveal of up to 340 ms per line with a 150 ms fade. Word alignment preserves earlier
-  text when recognition revises a phrase or shifts the rolling window. The viewport follows the
-  newest text. The preview grows to its maximum width without shrinking during a recording.
-  By default it scrolls along one line. Both modes grow up to 400 points; two-line
-  mode shows the newest two lines.
+  New words appear in blue and settle to the indicator’s normal text color over 700 ms.
+  When recognition changes a word, its replacement crossfades in place over 160 ms.
+  Words shared by both transcripts keep their color and any fade already in progress.
+  The read-only preview has no caret. On stop, the visible card folds toward the pill over 320 ms.
+  After a 100 ms pause, the pill shows the processing ring and final cleanup can proceed.
+  Audio capture stops immediately and final speech recognition can run while the card folds.
+  A hidden or disabled preview skips the fold and pause. Reduce Motion skips both animations.
+  After delivery the pill collapses to the idle bar's position over 300 ms. At the top edge it
+  contracts upward, at the bottom it contracts downward, and halfway up either side it stays
+  vertically centered. The bar stays visible when Show idle indicator is on and disappears otherwise.
+  Spoken take-backs remain visible during recording. Final cleanup determines the text to paste.
+  The viewport follows the newest text and grows to a maximum width of 410 points during a recording.
+  By default it scrolls along one line. Two-line mode shows the newest two lines.
   Overlapping audio windows use bounded word alignment to retain recent words and apply recognition
   revisions. Uncertain overlaps replace the recent preview rather than append possible duplicates.
-  Preview history is limited to 100 words. Text updates without an implicit crossfade inside the
-  separately animated, clipped viewport. Reduce Motion or turning the effect off displays updates
-  immediately.
+  Preview history is limited to 100 words. Reduce Motion or turning off transcript animation in
+  settings.json displays updates immediately.
   While live preview is active, Basic and Advanced prepare completed blocks that remain unchanged
   across two recognition updates. One background task runs at a time and never writes to the preview.
   Final cleanup reuses complete lines only on an exact source match. Within a revised line it can
@@ -206,8 +212,8 @@ models use CPU/Neural Engine.
   tail goes through cleanup in order. Automatic transforms still use the complete transcript.
   Each indicator fits the current state. Settings previews both listening and processing for the
   selected style, with the processing words cycling as they do during dictation.
-  The waveform blends neighboring
-  frequency peaks so the bars rise together. Capture samples 21 bands at most 20 times per
+  The waveform settles to seven dots when audio falls below the recording’s noise floor.
+  During speech it blends neighboring frequency peaks so the bars rise together. Capture samples 21 bands at most 20 times per
   second through a reused 512-point Accelerate transform. The logarithmic bands span 32–5000 Hz.
   The bars grow around a fixed centerline and ease between readings when Reduce Motion is off.
   A spinning ring replaces the bars during final transcription and cleanup. Labeled styles cycle
@@ -220,7 +226,7 @@ models use CPU/Neural Engine.
   The ring and the text shimmer are repeating SwiftUI animations rather than per-frame timelines,
   and pause when Reduce Motion is on. Only the waveform view reads live levels. After five seconds
   of processing, labeled styles add an elapsed clock. In the final minute of a recording, labeled
-  styles show a countdown after Listening; the compact pill keeps its size and VoiceOver announces
+  styles show a countdown after Listening. VoiceOver announces
   one minute and ten seconds left in every style. The Settings preview stops cycling words while
   its window is inactive or the preview is scrolled away.
   Closing the panel releases its hosting view.
@@ -341,15 +347,23 @@ This tool uses installed models and runs outside the deterministic suite and app
 
 ## Text cleanup and transforms
 
-Advanced and Smart cleanup first apply spoken take-backs in `DictationRetraction`, before any
-model sees the text. A take-back removes itself and the sentence before it, or the words before it
-when it follows a comma mid-sentence. Every cue ("scratch that", "never mind", "forget that", "I take
-that back", "let me rephrase", "start over" and the rest) is also ordinary speech to the reader, so a
-cue applies only when what follows restates what came before, sharing at least a third of its
-meaningful words. "Meet at noon. Never mind. Meet at one." drops the first sentence, while "The vendor
-quote is too high. Scrap that." stays as dictated. Phrases about the speaker's own words, such as
-"forget what I just said", apply without a restatement. A cue also has to stand alone, so "ignore that
-warning" never counts. This runs without a model, so it works with every engine.
+Advanced cleanup resolves English spoken take-backs against the nearest clause. In
+"Save the receipt, email Ana the invoice, no, scratch that, email Ben the invoice," it keeps
+"Save the receipt, email Ben the invoice." It follows successive corrections in order.
+When recognition omits punctuation, "Call Ana no scratch that call Ben" still becomes
+"Call Ben" because the replacement repeats "call". "Scratch that itch" stays literal.
+Ordinary instructions such as "If the build fails, start over" stay in the transcript.
+"Call me if it rains. Scratch that. Call me if it snows." keeps the revised condition.
+Most cues require the replacement to repeat at least a third of the clause's meaningful words.
+An explicit "forget what I just said" also works when the speaker stops there.
+
+Smart cleanup sends the original wording of a take-back to the selected on-device engine.
+The edit check allows the model to keep the clause or drop it together with the cue.
+The replacement and surrounding words must still match in order, allowing capitalization,
+punctuation and Basic formatting. If validation fails, Advanced cleans the original section.
+A take-back and its replacement stay together across model sections. If the speaker corrects
+a previously prepared section, Tinycast processes that section again after recording stops.
+When the whole correction exceeds the engine's section limit, Advanced handles it locally.
 
 Smart cleanup is opt-in. Its engine defaults to Emberon-2 Q4, with Apple Intelligence,
 S1-mini by Superwhisper, and S1-ASR-Cleanup available as alternatives. S1-ASR-Cleanup is Daniel Rosehill's fine-tune of
@@ -357,12 +371,14 @@ S1-mini by Superwhisper for dictation with paragraph breaks. Each Q4_K_M downloa
 file in the shared caches, pinned to a repository revision and checked against its SHA-256 digest. The app
 bundles a pinned, statically linked llama.cpp server under `Contents/Helpers/TinycastCleanup`.
 It binds only to authenticated loopback, disables its web UI and logs, and performs no remote
-inference. Downloads alone use the network. The local models are intended for English. Smart cleanup
+inference. Downloads alone use the network. The S1 models run with an 8-bit KV cache and flash
+attention, which gives the same output as f16 with about 200 MB less memory. Emberon-2's cache is
+small enough to stay at f16. The local models are intended for English. Smart cleanup
 with a local model preserves other languages. Smart cleanup processes long recordings in sections
 of up to 1,800 UTF-8 bytes, preferring line and sentence breaks and retaining the original whitespace
 between sections. Text without a safe break within that limit stays as dictated. For local cleanup,
-one helper serves sections sequentially. Sentences with recognized numbers, currency, and literal
-text use local rules. If a model response loses too many source words or adds a protected value,
+one helper serves sections sequentially. Sentences with recognized numbers or currency use local rules unless a take-back needs both
+amounts for context. Literal text still uses local rules. If a model response loses too many source words or adds a protected value,
 the source section stays in the transcript. If a model request fails, completed sections are kept
 and Advanced cleanup handles the remaining sections. A transform sends the whole transcript in one
 request when it fits: up to 3,500 characters for a local engine, and up to 8,000 for Apple
@@ -371,13 +387,13 @@ list in the same 1,800-byte sections. Prompt Engineer and custom transforms need
 longer transcript fails at once with a too-long message. Apple Intelligence gives one request, or all
 of its sections, a single deadline of 15 seconds plus 8 ms per byte, and prewarms the next section's
 session while the current one runs. Apple Intelligence and Emberon-2 each combine Smart cleanup with
-an automatic transform in one request when both are enabled.
+an automatic transform in one request when both are enabled and the transcript has no take-back.
+When it has one, Smart checks the correction before applying the transform.
 For Smart cleanup, the S1 models use their published settings and disable thinking. S1-mini uses
 semi-formal, lists, and general. S1-ASR-Cleanup uses semi-formal, prose, general, and layers 1 and 2.
 Emberon-2 uses Promethic Labs' cleanup prompt and the transcript without an S1 control line.
 When Emberon-2 is selected, After dictation and manual transforms use S1-mini. With an automatic
-transform, S1-mini also takes the Smart cleanup instructions, so the recording loads one model and
-makes one pass. Emberon-2 can't follow transform instructions, and loading both would mean two
+transform, S1-mini also takes the Smart cleanup instructions, so the recording loads one model. Emberon-2 can't follow transform instructions, and loading both would mean two
 servers or a cold start between key release and paste. When a recording will use Smart cleanup or an
 automatic transform, Tinycast starts loading the engine that recording will use at recording start. The local helper stays available through the recording
 and exits when the recording and its cleanup or transform finish. Cancelling a recording releases

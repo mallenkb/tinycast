@@ -168,9 +168,10 @@ and `emoji.commands`. Commands without a feature pane use `commands.builtIn`. Ea
 ID after `command:`. The recording shortcuts use `dictation.holdShortcut`, `dictation.toggleShortcut`, and
 `dictation.toggleAlternateShortcut`.
 The palette shortcut uses `general.launcherShortcut`.
-`dictation.animateTranscript` controls the character fade and defaults to true.
+`dictation.animateTranscript` controls the live word fade and correction crossfade. It defaults to true.
 `dictation.livePreview` and `dictation.idleIndicator` are opt-in booleans for the transcript preview
 and the idle bar. `dictation.twoLinePreview` wraps the live preview across two lines and defaults to false.
+`dictation.hideIndicatorText` hides status words and timers inside the indicator. It defaults to false.
 `dictation.indicatorStyle` stores the shape and background selection. It accepts `compact`
 for dark compact, `lightCompact`, `grayCompact`, `lightGrayCompact`, `lightCapsule`, `darkCapsule`, `outlinedCapsule`,
 `lightOutlinedCapsule`, `lightRounded`, `darkRounded`, `outlinedRounded`, or `lightOutlinedRounded`.

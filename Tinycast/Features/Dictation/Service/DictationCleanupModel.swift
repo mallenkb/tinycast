@@ -72,6 +72,15 @@ final class DictationCleanupModel {
 
         var transformEngine: Self { self == .emberon2 ? .s1Mini : self }
 
+        // The S1 caches cost ~200 MB at f16 and give identical output at q8; Emberon's is small.
+        var cacheArguments: [String] {
+            switch self {
+            case .s1Mini, .s1ASRCleanup:
+                ["--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0"]
+            case .emberon2: []
+            }
+        }
+
         var controlLine: String? {
             switch self {
             case .s1Mini: "[Styling: semi-formal] [Structure: lists] [Context: general]"
@@ -192,7 +201,8 @@ final class DictationCleanupModel {
                 try checkCurrent()
                 let output = try await response(
                     to: variant.controlLine.map { $0 + "\n" + chunk } ?? chunk,
-                    instructions: variant.cleanupInstructions,
+                    instructions: DictationRetraction.containsCue(chunk)
+                        ? variant.cleanupInstructions + "\n" + DictationRetraction.instructions : variant.cleanupInstructions,
                     maxOutputTokens: 2_048, server: server, session: session)
                 try checkCurrent()
                 return output
@@ -339,7 +349,7 @@ final class DictationCleanupModel {
             "--model", modelURL(variant).path, "--host", "127.0.0.1", "--port", String(port), "--api-key", key,
             "--ctx-size", "4096", "--parallel", "1", "--jinja", "--no-webui", "--log-disable",
             "--chat-template-kwargs", "{\"enable_thinking\":false}"
-        ]
+        ] + variant.cacheArguments
         child.standardOutput = FileHandle.nullDevice
         child.standardError = FileHandle.nullDevice
         child.standardInput = FileHandle.nullDevice

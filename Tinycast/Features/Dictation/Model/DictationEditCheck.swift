@@ -7,6 +7,12 @@ enum DictationEditCheck {
 
     /// `reference` is the source after Basic cleanup, so formatted values such as "$45.99" match.
     static func verdict(source: String, edited: String, reference: String? = nil) -> Verdict {
+        let retractions = DictationRetraction(source)
+        if retractions.hasCues {
+            if retractions.accepts(edited) { return .accepted }
+            guard let reference, reference != source else { return .changedWords }
+            return DictationRetraction(reference).accepts(edited) ? .accepted : .changedWords
+        }
         let sourceTokens = DictationWords.tokens(source)
         let editedTokens = DictationWords.tokens(edited)
         guard !editedTokens.isEmpty || sourceTokens.allSatisfy({ removable.contains($0.key) }) else {
@@ -14,8 +20,13 @@ enum DictationEditCheck {
         }
         let referenceTokens = reference.map(DictationWords.tokens) ?? sourceTokens
         let correctable = correctableIndices(sourceTokens)
-        if !keepsNumbers(sourceTokens, referenceTokens, editedTokens, correctable: correctable) {
-            return .changedNumber
+        if !keepsNumbers(sourceTokens, referenceTokens, editedTokens) {
+            guard correctable.contains(where: { sourceTokens[$0].isNumber }) else { return .changedNumber }
+            let referenceCorrections = correctableIndices(referenceTokens)
+            let retained = sourceTokens.indices.filter { !correctable.contains($0) }.map { sourceTokens[$0] }
+            let retainedReference = referenceTokens.indices
+                .filter { !referenceCorrections.contains($0) }.map { referenceTokens[$0] }
+            guard keepsNumbers(retained, retainedReference, editedTokens) else { return .changedNumber }
         }
 
         let source = sourceTokens.filter { !$0.isNumber && !numberish.contains($0.key) }
@@ -51,7 +62,7 @@ enum DictationEditCheck {
 
     private static func keepsNumbers(
         _ spokenSource: [DictationWords.Token], _ spokenReference: [DictationWords.Token],
-        _ edited: [DictationWords.Token], correctable: Set<Int>
+        _ edited: [DictationWords.Token]
     ) -> Bool {
         let (source, runs) = mergingDigitRuns(spokenSource)
         let reference = mergingDigitRuns(spokenReference).tokens
@@ -93,9 +104,7 @@ enum DictationEditCheck {
             let groups = token.key.dropFirst().split(whereSeparator: { !$0.isNumber }).count
             mentions += groups + (groups == 1 && pairs.contains(token.number ?? .nan) ? 1 : 0)
         }
-        let dropped = spokenSource.indices.count { spokenSource[$0].isNumber && correctable.contains($0) }
-        let required = min(
-            source.count(where: \.isNumber), reference.count(where: \.isNumber)) - dropped
+        let required = min(source.count(where: \.isNumber), reference.count(where: \.isNumber))
         return mentions >= required
     }
 
@@ -142,18 +151,34 @@ enum DictationEditCheck {
         Set(key.dropFirst().split(whereSeparator: { !$0.isNumber }).compactMap { Double($0) })
     }
 
-    /// Words before a spoken correction cue, which the engine may drop with the cue.
+    // A short correction needs a matching kind on both sides of the cue.
     private static func correctableIndices(_ tokens: [DictationWords.Token]) -> Set<Int> {
+        let weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         var indices: Set<Int> = []
-        for (index, token) in tokens.enumerated() {
-            let next = index + 1 < tokens.count ? tokens[index + 1].key : ""
-            let cue = ["sorry", "scratch", "correction", "rather"].contains(token.key)
-                || (token.key == "no" && index > 0 && !tokens[index - 1].isNumber && next != "")
-                || (token.key == "i" && next == "mean")
-                || (token.key == "make" && next == "that")
-                || (token.key == "actually" && index > 0)
-            guard cue else { continue }
-            for offset in max(0, index - 4)..<min(tokens.count, index + 2) { indices.insert(offset) }
+        for index in tokens.indices where index > 0 {
+            let next = index + 1
+            guard next < tokens.count else { continue }
+            let word = tokens[index].key
+            var replacement = next
+            if (word == "no" && tokens[next].key == "sorry")
+                || (word == "make" && tokens[next].key == "that")
+                || (word == "i" && tokens[next].key == "mean") {
+                replacement += 1
+            } else if !["no", "sorry", "rather", "actually", "correction"].contains(word) {
+                continue
+            }
+            guard replacement < tokens.count else { continue }
+            let preceding = tokens[index - 1]
+            let revised = tokens[replacement]
+            let changesDay = weekdays.contains(preceding.key) && weekdays.contains(revised.key)
+            let changesName = preceding.capitalized && !preceding.startsSentence && revised.capitalized
+            if changesDay || changesName {
+                indices.formUnion((index - 1)..<replacement)
+            } else if preceding.isNumber, revised.isNumber {
+                var start = index - 1
+                while start > 0, tokens[start - 1].isNumber { start -= 1 }
+                indices.formUnion(start..<replacement)
+            }
         }
         return indices
     }

@@ -641,6 +641,11 @@ struct DictationSettingsView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
             }
+            SettingsRow(title: "Hide indicator text", anchor: .dictationOutput) {
+                Toggle("Hide indicator text", isOn: $settings.dictationHideIndicatorText)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+            }
             SettingsRow(title: "Position", anchor: .dictationOutput) {
                 Button("Restore Defaults") { settings.dictationIndicatorPositions = [:] }
                     .disabled(settings.dictationIndicatorPositions.isEmpty)
@@ -841,6 +846,7 @@ struct DictationSettingsView: View {
 }
 
 struct DictationIndicatorPreviews: View {
+    @Environment(AppSettings.self) private var settings
     let style: DictationIndicatorStyle
     var showsTranscript = false
     var twoLines = false
@@ -871,7 +877,9 @@ struct DictationIndicatorPreviews: View {
                 preview(.listening)
             }
             ZStack {
-                if !style.isCompact { DictationProcessingWidth() }
+                if style.showsProcessingText(hidesStatusText: settings.dictationHideIndicatorText) {
+                    DictationProcessingWidth(style: style)
+                }
                 preview(transcribing)
             }
         }
@@ -879,7 +887,7 @@ struct DictationIndicatorPreviews: View {
 
     private func preview(_ phase: DictationIndicatorView.Phase) -> some View {
         DictationIndicatorView(
-            style: style, phase: phase,
+            style: style, phase: phase, hidesStatusText: settings.dictationHideIndicatorText,
             levels: [0.05, 0.25, 0.55, 0.75, 0.45, 0.25, 0.05],
             cyclesWords: appearsActive && scrolledIntoView)
     }

@@ -114,7 +114,7 @@ enum DictationTextFormatter {
     nonisolated(unsafe) private static let meridiemAbbreviationPattern = /(?i:\b[ap]\.m\b)/
     nonisolated(unsafe) private static let literalPattern = /[@\/\\<>]|(?i:\b(?:https?:|www\.))|(?:\w\.\p{L}|\p{L}\.\w)/
 
-    private static func preservesLiteral(_ line: Substring) -> Bool {
+    static func preservesLiteral(_ line: Substring) -> Bool {
         let literalCheck = line.replacing(meridiemAbbreviationPattern, with: "")
         return literalCheck.firstMatch(of: literalPattern) != nil
     }

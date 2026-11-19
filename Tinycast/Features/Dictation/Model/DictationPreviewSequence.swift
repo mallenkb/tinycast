@@ -89,33 +89,54 @@ enum DictationPreviewSequence {
             text: isLine ? String(text) : text.trimmingCharacters(in: .whitespacesAndNewlines), isLine: isLine)
     }
 
-    static func revealStart(previous: String, incoming: String, limit: Int) -> Int {
-        let count = incoming.count
-        let floor = max(0, count - limit)
-        if incoming.hasPrefix(previous) { return max(floor, previous.count) }
-        let old = previous.split(whereSeparator: \.isWhitespace).map { normalized(String($0)) }
-        let words = incoming.split(whereSeparator: \.isWhitespace)
-        let new = words.map { normalized(String($0)) }
-        guard !new.isEmpty, old.last != new.last else { return count }
-        var bestLength = 1
-        var firstNewWord = 0
-        for left in old.indices.suffix(8).reversed() {
-            for right in new.indices.reversed() where old[left] == new[right] && !old[left].isEmpty {
-                var length = 1
-                while left >= length, right >= length,
-                    old[left - length] == new[right - length], !old[left - length].isEmpty
-                {
-                    length += 1
-                }
-                if length > bestLength {
-                    bestLength = length
-                    firstNewWord = right + 1
-                }
+    static func words(in text: String) -> [Substring] {
+        var words: [Substring] = []
+        var end = text.startIndex
+        text.enumerateSubstrings(in: text.startIndex..., options: [.byWords, .substringNotRequired]) { _, range, _, _ in
+            words.append(contentsOf: text[end..<range.lowerBound].split(whereSeparator: \.isWhitespace))
+            words.append(text[range])
+            end = range.upperBound
+        }
+        words.append(contentsOf: text[end...].split(whereSeparator: \.isWhitespace))
+        return Array(words.suffix(100))
+    }
+
+    enum WordEdit: Equatable {
+        case kept(Int)
+        case followsDeletion(Int)
+        case replaced(Int)
+        case inserted
+    }
+
+    static func wordEdits(from old: [Substring], to new: [Substring]) -> [WordEdit] {
+        let diff = new.difference(from: old)
+        var removed: Set<Int> = []
+        var inserted: Set<Int> = []
+        for change in diff {
+            switch change {
+            case .remove(let index, _, _): removed.insert(index)
+            case .insert(let index, _, _): inserted.insert(index)
             }
         }
-        guard firstNewWord < words.count else { return count }
-        let index = words[firstNewWord].startIndex
-        return max(floor, incoming.distance(from: incoming.startIndex, to: index))
+        var edits: [WordEdit] = []
+        var left = 0
+        var right = 0
+        while right < new.count {
+            let firstRemoved = left
+            while removed.contains(left) { left += 1 }
+            var replacement = firstRemoved
+            while inserted.contains(right) {
+                edits.append(replacement < left ? .replaced(replacement) : .inserted)
+                replacement += 1
+                right += 1
+            }
+            if right < new.count {
+                edits.append(replacement < left ? .followsDeletion(left) : .kept(left))
+                left += 1
+                right += 1
+            }
+        }
+        return edits
     }
 
     private static func normalized(_ word: String) -> String {

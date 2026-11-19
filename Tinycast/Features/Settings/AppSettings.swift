@@ -388,6 +388,10 @@ final class AppSettings {
         didSet { Stored.dictationIndicatorStyle.store(dictationIndicatorStyle, in: defaults) }
     }
 
+    var dictationHideIndicatorText: Bool {
+        didSet { Stored.dictationHideIndicatorText.store(dictationHideIndicatorText, in: defaults) }
+    }
+
     var dictationIndicatorPositions: [String: [Double]] {
         didSet { Stored.dictationIndicatorPositions.store(dictationIndicatorPositions, in: defaults) }
     }
@@ -734,6 +738,7 @@ final class AppSettings {
         dictationHistoryRetention = Stored.dictationHistoryRetention.load(from: defaults)
         dictationPlaysSounds = Stored.dictationPlaysSounds.load(from: defaults)
         dictationIndicatorStyle = Stored.dictationIndicatorStyle.load(from: defaults)
+        dictationHideIndicatorText = Stored.dictationHideIndicatorText.load(from: defaults)
         dictationIndicatorPositions = Stored.dictationIndicatorPositions.load(from: defaults)
         dictationLivePreview = Stored.dictationLivePreview.load(from: defaults)
         dictationTwoLinePreview = Stored.dictationTwoLinePreview.load(from: defaults)
@@ -904,6 +909,7 @@ private enum Stored {
     static let dictationPlaysSounds = Preference<Bool>(Key.dictationPlaysSounds.rawValue, default: true)
     static let dictationIndicatorStyle = Preference<DictationIndicatorStyle>(
         Key.dictationIndicatorStyle.rawValue, default: .compact)
+    static let dictationHideIndicatorText = Preference<Bool>(Key.dictationHideIndicatorText.rawValue, default: false)
     static let dictationIndicatorPositions = Preference<[String: [Double]]>(
         Key.dictationIndicatorPositions.rawValue, default: [:])
     static let dictationLivePreview = Preference<Bool>(Key.dictationLivePreview.rawValue, default: false)

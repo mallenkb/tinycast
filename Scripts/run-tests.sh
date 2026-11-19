@@ -468,6 +468,7 @@ run dictation-retraction-test Tinycast/Features/Dictation/Model/DictationRetract
 run dictation-layout-test  Tinycast/Features/Dictation/Model/DictationCurrencyData.generated.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift \
                            Tinycast/Features/Dictation/Model/DictationLayout.swift \
                            Tinycast/Features/Dictation/Model/DictationWords.swift \
+                           Tinycast/Features/Dictation/Model/DictationRetraction.swift \
                            Tinycast/Features/Dictation/Model/DictationEditCheck.swift \
                            Tinycast/Features/Dictation/Model/DictationRecognition.swift
 run dictation-cue-test     Tinycast/Features/Dictation/Service/DictationCueRunner.swift

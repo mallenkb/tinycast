@@ -69,6 +69,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case dictationToggleAlternateShortcut = "dictation.toggleAlternateShortcut"
     case dictationPlaysSounds = "dictation.playsSounds"
     case dictationIndicatorStyle = "dictation.indicatorStyle"
+    case dictationHideIndicatorText = "dictation.hideIndicatorText"
     case dictationIndicatorPositions = "dictation.indicatorPositions"
     case dictationLivePreview = "dictation.livePreview"
     case dictationTwoLinePreview = "dictation.twoLinePreview"
