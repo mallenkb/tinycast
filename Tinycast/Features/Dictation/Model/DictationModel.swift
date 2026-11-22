@@ -9,18 +9,19 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
         let encoderUsesGPU: Bool
     }
     enum Family: String, CaseIterable, Identifiable {
-        case parakeet = "Parakeet", qwen = "Qwen", cohere = "Cohere"
+        case parakeet = "Parakeet", fluidSpeech = "Fluid Speech", qwen = "Qwen", cohere = "Cohere"
         var id: Self { self }
         var defaultModel: DictationModel {
             switch self {
             case .parakeet: .ultra
+            case .fluidSpeech: .fluidMini
             case .qwen: .qwenSmall
             case .cohere: .cohereQ8
             }
         }
         var summary: String {
             switch self {
-            case .parakeet: String(localized: "Fast and memory-efficient")
+            case .parakeet, .fluidSpeech: String(localized: "Fast and memory-efficient")
             case .qwen: String(localized: "More languages, but slower")
             case .cohere: String(localized: "Higher accuracy, more memory.")
             }
@@ -30,6 +31,8 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
     case unified
     case ultra
     case redux
+    case fluidMini = "fluid-speech-mini"
+    case fluidPro = "fluid-speech-pro"
     case phonon2 = "phonon-2"
     case v2
     case qwenSmall = "qwen-0.6b"
@@ -43,6 +46,8 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
         case .unified: "Unified"
         case .ultra: "Ultra"
         case .redux: "Redux"
+        case .fluidMini: "Mini"
+        case .fluidPro: "Pro"
         case .v3: "V3"
         case .v2: "V2"
         case .phonon2: "Phonon-2"
@@ -57,7 +62,8 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
         case .unified: String(localized: "Most accurate fast model. English only.")
         case .ultra: String(localized: "Best balance for 25 languages.")
         case .v3: String(localized: "25 languages. Ultra replaces it.")
-        case .phonon2: String(localized: "Smallest English model.")
+        case .fluidMini: String(localized: "Smallest English model.")
+        case .fluidPro, .phonon2: coverage
         case .redux: String(localized: "Smallest download for 25 languages.")
         case .cohereQ8: String(localized: "Most accurate. Slow, with no live preview.")
         case .qwenSmall: String(localized: "30 languages and 22 Chinese dialects.")
@@ -69,6 +75,7 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
     var family: Family {
         switch self {
         case .ultra, .redux, .v3, .v2, .phonon2, .unified: .parakeet
+        case .fluidMini, .fluidPro: .fluidSpeech
         case .qwenSmall, .qwenLarge: .qwen
         case .cohereQ8: .cohere
         }
@@ -85,6 +92,10 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
             .init(
                 encoder: "Encoder_v2", encoderFunction: nil, joint: "JointDecisionv3",
                 blankToken: 8192, encoderUsesGPU: false)
+        case .fluidMini, .fluidPro:
+            .init(
+                encoder: "Encoder", encoderFunction: nil, joint: "JointDecision",
+                blankToken: 8192, encoderUsesGPU: false)
         case .v2:
             .init(
                 encoder: "Encoder", encoderFunction: nil, joint: "JointDecision",
@@ -96,19 +107,27 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
         case .qwenSmall, .qwenLarge, .unified, .cohereQ8: nil
         }
     }
+    var isEnglishOnly: Bool {
+        switch self {
+        case .fluidMini, .v2, .phonon2, .unified: true
+        default: false
+        }
+    }
     var coverage: String {
         switch self {
-        case .ultra, .redux, .v3: String(localized: "25 languages")
-        case .v2, .phonon2, .unified: String(localized: "English only")
+        case .fluidPro, .ultra, .redux, .v3: String(localized: "25 languages")
+        case .fluidMini, .v2, .phonon2, .unified: String(localized: "English only")
         case .qwenSmall, .qwenLarge: String(localized: "30 languages and 22 Chinese dialects")
         case .cohereQ8: String(localized: "14 languages")
         }
     }
-    var folderName: String { isQwen || isCohere ? rawValue : "parakeet-\(rawValue)" }
+    var folderName: String { family == .parakeet ? "parakeet-\(rawValue)" : rawValue }
     var approximateInstalledMegabytes: Int {
         switch self {
         case .unified: 615
         case .ultra: 632
+        case .fluidMini: 253
+        case .fluidPro: 652
         case .redux: 220
         case .v3: 633
         case .v2: 464
@@ -144,6 +163,7 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
         case .ultra, .redux: "FluidInference/\(folderName)-coreml"
         case .v3, .v2: "FluidInference/parakeet-tdt-0.6b-\(rawValue)-coreml"
         case .phonon2: "FluidInference/phonon-2-coreml"
+        case .fluidMini, .fluidPro: "FluidVoice-Labs/\(rawValue)-coreml"
         case .qwenSmall: "UniMocha/Qwen3-ASR-0.6B-CoreML-INT8"
         case .qwenLarge: "UniMocha/Qwen3-ASR-1.7B-CoreML-INT8"
         case .cohereQ8: "FluidInference/cohere-transcribe-03-2026-coreml"
@@ -157,6 +177,8 @@ enum DictationModel: String, CaseIterable, Identifiable, Codable, Sendable {
         case .redux: "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9"
         case .v3: "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe"
         case .v2: "ee09c569f73759e6d44c9bd16766f477b2b36d39"
+        case .fluidMini: "d81c3160dfe5a5e1f8f7267164a07d30617a3a1a"
+        case .fluidPro: "3b9d38a93d606f84011e5a0a669b7ea146375a22"
         case .phonon2: "1702fc22e76f203d5ca464cd5d3ef130a45ce2c0"
         case .qwenSmall: "27b7a26835d7c2cd1cf774b4c490eb5519ca71a0"
         case .qwenLarge: "06312fbac1383cd22e1000c28b017634e03251a2"

@@ -235,7 +235,7 @@ struct DictationSettingsView: View {
     }
 
     @ViewBuilder private var modelSection: some View {
-        let models = sortedModels.filter { !englishOnly || Self.englishOnlyModels.contains($0) }
+        let models = sortedModels.filter { !englishOnly || $0.isEnglishOnly }
         let installed = models.filter { coordinator.models.isInstalled($0) }
         let hidden = models.filter {
             !coordinator.models.isInstalled($0) && Self.supersededModels.contains($0)
@@ -378,10 +378,9 @@ struct DictationSettingsView: View {
     }
 
     private static let listedModels: [DictationModel] = [
-        .ultra, .unified, .cohereQ8, .phonon2, .redux, .v3, .qwenSmall, .v2, .qwenLarge
+        .ultra, .fluidMini, .fluidPro, .unified, .cohereQ8, .phonon2, .redux, .v3, .qwenSmall, .v2, .qwenLarge
     ]
     private static let supersededModels: Set<DictationModel> = [.v2, .qwenLarge]
-    private static let englishOnlyModels: Set<DictationModel> = [.v2, .phonon2, .unified]
 
     private func modelListHeader(showsSelection: Bool) -> some View {
         HStack(spacing: Theme.Spacing.lg) {
@@ -551,6 +550,8 @@ struct DictationSettingsView: View {
         case .unified: (144, "1.7")
         case .v2: (nil, "1.9")
         case .ultra: (151, "2.1")
+        case .fluidMini: (417, "1.5")
+        case .fluidPro: (237, nil)
         case .v3: (149, "2.3")
         case .phonon2: (159, "2.5")
         case .redux: (84, "2.7")
@@ -569,7 +570,9 @@ struct DictationSettingsView: View {
 
     private func benchmarkHelp(for model: DictationModel?) -> String {
         let source: String
-        if model == .unified {
+        if let model, model.family == .fluidSpeech {
+            source = "https://huggingface.co/\(model.repository)"
+        } else if model == .unified {
             source = "https://huggingface.co/FluidInference/parakeet-unified-en-0.6b-coreml"
         } else if model == .v2 || model == .cohereQ8 {
             source = "https://github.com/moona3k/macparakeet#asr-benchmarks"
@@ -591,7 +594,7 @@ struct DictationSettingsView: View {
     }
 
     private func languageNames(for model: DictationModel) -> String {
-        if Self.englishOnlyModels.contains(model) { return String(localized: "English only") }
+        if model.isEnglishOnly { return String(localized: "English only") }
         let codes = ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
                      "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]
         let names: [String]

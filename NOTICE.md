@@ -52,6 +52,12 @@ and the Phonon-2 weights use the [CC BY 4.0 license](https://creativecommons.org
 FluidInference provides the Parakeet Core ML conversions. UniMocha provides the Qwen conversions.
 Qwen's tokenizer resources come from Qwen/Qwen3-ASR-0.6B. The Apache 2.0 licence follows.
 
+Fluid Speech Mini and Fluid Speech Pro by FluidVoice are optional, unmodified Core ML downloads under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Both derive from NVIDIA Parakeet TDT v3
+and Moondream Parakeet Ultra. Mini uses FluidInference’s audio preprocessor.
+
+- https://huggingface.co/FluidVoice-Labs/fluid-speech-mini-coreml
+- https://huggingface.co/FluidVoice-Labs/fluid-speech-pro-coreml
 - https://huggingface.co/moondream/parakeet-ultra
 - https://huggingface.co/moondream/parakeet-redux
 - https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2

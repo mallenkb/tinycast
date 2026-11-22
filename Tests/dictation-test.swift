@@ -133,7 +133,7 @@ struct DictationTest {
                 fatalError("Model installation metadata is incomplete")
             }
             if let configuration = model.parakeetConfiguration {
-                guard model.family == .parakeet,
+                guard model.family == .parakeet || model.family == .fluidSpeech,
                     configuration.blankToken == (model == .v2 ? 1024 : 8192),
                     configuration.encoderUsesGPU == (model == .redux),
                     model.components.contains(configuration.encoder + ".mlmodelc"),

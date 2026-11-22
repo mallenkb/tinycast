@@ -774,7 +774,7 @@ final class DictationCoordinator {
     }
 
     private func englishOverride(model: DictationModel?, language: String?) -> Bool? {
-        if model == .v2 || model == .phonon2 || model == .unified {
+        if model?.isEnglishOnly == true {
             true
         } else if model?.isCohere == true, language == nil {
             true

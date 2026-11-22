@@ -4,6 +4,10 @@ Dictation is off by default. Either assigned global shortcut records from the ch
 transcribes locally and sends the result through `TextInjector`. Parakeet V3, Ultra and Redux
 support 25 languages. Parakeet V2, Unified and Phonon-2 support English. Phonon-2 is a smaller model
 retrained from V3 for English. Qwen3-ASR 0.6B and 1.7B support 30 languages and 22 Chinese dialects.
+Fluid Speech Mini supports English and Fluid Speech Pro supports 25 languages. Both use the Parakeet
+recognizer with the FluidVoice Core ML packages. Their speed figures come from FluidVoice’s M5 Max
+recordings (one minute for Mini, 16.6 minutes for Pro). Mini’s clean-speech error figure comes from
+LibriSpeech test-clean. Pro has no comparable clean-speech figure in the picker.
 Parakeet Ultra is the default. The Speech recognition page lists models under On this Mac and
 Available to download, with size, speed, errors per 100 words and live preview in aligned columns.
 The Live column marks every model except Cohere Q8, which shows text only after you stop. Any language or
