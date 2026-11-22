@@ -48,6 +48,7 @@ Version 0.1.33 applies spoken take-backs such as "scratch that" in Advanced and 
 Version 0.1.34 improves spoken corrections and live dictation previews, adds an option to hide
 indicator text, and reduces memory use during S1-mini and S1-ASR-Cleanup processing.
 Version 0.1.35 adds Fluid Speech Mini for English dictation and Fluid Speech Pro for 25 languages.
+Version 0.1.36 releases the currency formatting cache between dictations to reduce idle memory use.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

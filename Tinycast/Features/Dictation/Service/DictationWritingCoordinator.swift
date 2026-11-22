@@ -137,6 +137,9 @@ final class DictationWritingCoordinator {
         preparedSections = []
         prewarmedApple = nil
         cleanup.endRecording()
+        formatterWarmUp?.cancel()
+        formatterWarmUp = nil
+        DictationTextFormatter.releaseCaches()
     }
 
     func prepareStableTranscript(_ raw: String, isEnglish: Bool?) {

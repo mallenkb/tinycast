@@ -253,6 +253,8 @@ models use CPU/Neural Engine.
   ready, transcription uses the normal timeout. Capture start, model loads and each preview,
   segment and final transcription emit `com.tinycast.perf` signpost intervals for Instruments. Main-app state never retains Core ML models.
   The helper is an embedded accessory app with no bundled icon, Dock item or windows.
+  The 1.3 MB compiled currency pattern is dropped when a dictation ends and rebuilt in about 10 ms by
+  the warm-up that starts with the next recording.
 - The Apple Dictation engine uses Apple's on-device `DictationTranscriber` and the Mac's preferred
   language. Tinycast starts preparation when recording begins. macOS installs missing speech assets,
   then manages those assets and their memory. The analyzer lives for one recording.

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 enum DictationCleanupMode: String, CaseIterable, Sendable {
     case off, basic, advanced, smart
@@ -1008,7 +1009,22 @@ enum DictationTextFormatter {
         return limit
     }
 
-    private static let currencyPattern: NSRegularExpression? = {
+    private static let currencyPatternCache = Mutex<NSRegularExpression?>(nil)
+
+    private static var currencyPattern: NSRegularExpression? {
+        currencyPatternCache.withLock { cached in
+            guard !Task.isCancelled else { return nil }
+            if cached == nil { cached = makeCurrencyPattern() }
+            return cached
+        }
+    }
+
+    /// Drops the 1.3 MB compiled currency program between dictations; `warmUp` rebuilds it in ~10 ms.
+    static func releaseCaches() {
+        currencyPatternCache.withLock { $0 = nil }
+    }
+
+    private static func makeCurrencyPattern() -> NSRegularExpression? {
         let whitespace = #"[\t ]"#
         let codes = currencyAlternatives(DictationCurrencyData.digits.keys)
         let word = "(?i:" + currencyAlternatives(units + tens + ["a", "an", "hundred", "point", "oh"]
@@ -1040,7 +1056,7 @@ enum DictationTextFormatter {
         return try? NSRegularExpression(
             pattern: "(?<![\\p{L}\\p{N}_])(?:\(suffixForm)|\(prefixForm)|\(minorForm))"
         )
-    }()
+    }
 
     static func currencyCleanup(_ transcript: String, now: @escaping () -> ContinuousClock.Instant = { .now }) -> String {
         var budget = Budget(now: now)
