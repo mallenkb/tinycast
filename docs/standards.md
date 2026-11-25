@@ -188,17 +188,20 @@ Use `@Observable` for UI state rather than `ObservableObject` or `@Published`:
 
 Budgets, not aspirations:
 
-- **Physical footprint under 100 MB.** Measure the Activity Monitor memory figure or `phys_footprint`,
-  including any helper processes. Shared mapped pages make RSS unsuitable for this budget. Closing
-  Settings and dismissing the palette must return to a stable warmed baseline across repeated use.
+- **Aim for 50–60 MB at idle after use.** Measure the combined physical footprint of Tinycast and
+  its helpers after Settings and the palette close and background work settles. Repeated use should
+  return to a stable baseline. The overall budget is under 100 MB. Use the Activity Monitor memory
+  figure or `phys_footprint`. Shared mapped pages make RSS unsuitable for this measurement.
 - Launch is the thing the app protects most. Work added to `AppCore.start()` or to an initialiser is the
   most expensive place to put it; defer it into a `Task` or do it on first use.
 - The palette must feel instant. Anything on the summon path is resolved once per show, never per render.
 - Zero leaks and no retain cycles. Ownership is a tree with `AppCore` at the root.
 - The app opts into libmalloc's space-efficient allocation policy through `LSEnvironment` in Info.plist.
   It trades allocation throughput for eager memory reclamation; keep the allocator's security features.
-  `AppCore` owns `MemoryReclaimer`, which drops disposable image caches after two seconds without app
-  input or search changes and requests allocator relief off-main. It also runs after Settings closes.
+  `AppCore` owns `MemoryReclaimer`. Once a feature settles, it checks the combined idle footprint.
+  Above 60 MB it releases disposable image caches and requests the remaining excess from the
+  allocator off-main. At or below the target it keeps reusable icons warm. System memory pressure
+  also permits an idle trim. Helpers follow their own release policies.
   Visible results keep their content. First-use framework and Swift runtime caches may raise the
   warmed baseline above the cold launch footprint; they are not window-owned allocations.
 

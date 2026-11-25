@@ -49,6 +49,8 @@ Version 0.1.34 improves spoken corrections and live dictation previews, adds an 
 indicator text, and reduces memory use during S1-mini and S1-ASR-Cleanup processing.
 Version 0.1.35 adds Fluid Speech Mini for English dictation and Fluid Speech Pro for 25 languages.
 Version 0.1.36 releases the currency formatting cache between dictations to reduce idle memory use.
+Version 0.1.37 measures Tinycast and its helpers together and releases disposable caches when idle
+to target a combined footprint of 50–60 MB.
 GitHub Actions now provides fork-specific build checks and a manual signed release workflow.
 
 How a build reaches a user. The local development loop is in [development.md](development.md);

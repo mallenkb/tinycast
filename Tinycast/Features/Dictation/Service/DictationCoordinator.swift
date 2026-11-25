@@ -198,6 +198,7 @@ final class DictationCoordinator {
         showMessage(String(localized: "Still finishing the last dictation"), .neutral)
     }
 
+    var hasActiveSession: Bool { phase != .idle }
     var isEnabled: Bool { settings.dictationEnabled }
     var hasModel: Bool { settings.dictationUsesApple || models.isInstalled(settings.dictationModel) }
 

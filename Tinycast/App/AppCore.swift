@@ -53,20 +53,29 @@ final class AppCore {
     let windowMover = WindowMover()
     let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
-    @ObservationIgnored private(set) lazy var memoryReclaimer = MemoryReclaimer { [weak self] in
+    @ObservationIgnored private(set) lazy var memoryReclaimer = MemoryReclaimer(
+        activity: { [weak self] in self?.memoryActivity },
+        releaseHiddenView: { [weak self] in self?.windowController.releaseHiddenSearchContent() }
+    ) { [weak self] in
         guard let self else { return }
-        windowController.releaseHiddenSearchContent()
         IconCache.purgeDecoded()
-        if palette.isVisible {
-            ImageThumbnail.purgePreviews()
-            FilePreviewThumbnail.purgePreviews()
-        } else {
-            ImageThumbnail.purgeDecoded()
-            FilePreviewThumbnail.purgeDecoded()
-            extensionCoordinator.releaseIdleArtwork()
-        }
+        ImageThumbnail.purgeDecoded()
+        FilePreviewThumbnail.purgeDecoded()
+        extensionCoordinator.releaseIdleArtwork()
         linkPreviews.purgeBanners()
     }
+    private var memoryActivity: String? {
+        if settings.dictationEnabled, dictationCoordinator.hasActiveSession { return "dictation" }
+        if palette.isVisible { return palette.mode.rawValue }
+        if isShowingDialog || NSApp.keyWindow?.isVisible == true { return "window" }
+        if extensions.isSigningIn { return "extensionSignIn" }
+        if !aiChats.answeringIDs.isEmpty { return "aiReply" }
+        if case .building = fileIndexer.status { return "fileIndex" }
+        if clipboardTextIndexer?.isExtracting == true { return "clipboardIndex" }
+        if settings.fileSearchImageContentEnabled, fileImageContentIndexer.isExtracting { return "imageIndex" }
+        return nil
+    }
+
     let settings: AppSettings
     /// Mirrors settings into settings.json; nil while the Backup pane's switch is off.
     @ObservationIgnored private var settingsFile: SettingsFileRepository?

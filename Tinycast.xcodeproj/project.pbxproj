@@ -156,6 +156,7 @@
 		268172DEFA93699F853C8D9A /* MathBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEBE95E04A3E8B4BCF973A04 /* MathBox.swift */; };
 		268CDCBE43C0115EAFFE7955 /* DictionaryRecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047AA636571A5920D28A4A80 /* DictionaryRecordingSession.swift */; };
 		26BE7A3799B1FC931B43E737 /* SpotlightContentQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6D071FE0BC8D1CF9D42361C /* SpotlightContentQuery.swift */; };
+		26C569203589E00B1CD5FA28 /* AppMemorySample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C40F581076EA3B6445BC929 /* AppMemorySample.swift */; };
 		26DB736F18280E1BE6C6B8BE /* SettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA61A2FAF4E49E466DA8F37 /* SettingsTab.swift */; };
 		272452259376D0FDFB25AC88 /* MathFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51D65B24A72F4217FEA70A18 /* MathFont.swift */; };
 		27689EEB705F074B247692E9 /* Emberon-2-NOTICE.txt in Resources */ = {isa = PBXBuildFile; fileRef = A84FB9268E2618F0AEB75353 /* Emberon-2-NOTICE.txt */; };
@@ -1140,6 +1141,7 @@
 		0BD0F1989B00B2B3BFF5BFCC /* SecureInputMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureInputMonitor.swift; sourceTree = "<group>"; };
 		0C3B9645DB2293FA144B5AA2 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
 		0C3F123266ED0DA4BC9616B9 /* NoteMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMarkdownParser.swift; sourceTree = "<group>"; };
+		0C40F581076EA3B6445BC929 /* AppMemorySample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMemorySample.swift; sourceTree = "<group>"; };
 		0C45DD5CE569821B02DE1D17 /* llama-xxhash-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "llama-xxhash-LICENSE.txt"; sourceTree = "<group>"; };
 		0CAFDDF6AE094844A7ABB9A3 /* LinkPreviewLoadingStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkPreviewLoadingStrip.swift; sourceTree = "<group>"; };
 		0CD9BD942CF0C95ECEFC41F4 /* CompactShortcutsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactShortcutsSection.swift; sourceTree = "<group>"; };
@@ -2152,6 +2154,7 @@
 				2575583134BE03EA9FA719CD /* ActivationPolicy.swift */,
 				5BBDB6A6CE9564ADA2D16F53 /* AppDisplayName.swift */,
 				8E5F9675F2090C3AA9EEBF65 /* Appearance.swift */,
+				0C40F581076EA3B6445BC929 /* AppMemorySample.swift */,
 				B6A96350EBE68EC79497FA2D /* AppPaths.swift */,
 				142EE14C0BB59FD904238B96 /* AppURLScheme.swift */,
 				E2D1CA733FFAEF665D867A45 /* ASCIIKeyboardLayout.swift */,
@@ -4897,6 +4900,7 @@
 				D736A0FE574A343AA0FD3911 /* AppIndex.swift in Sources */,
 				F7F68D433FE45866BC431DF9 /* AppLanguage.swift in Sources */,
 				5DBD1E52658FB1C3EC37AA4F /* AppLauncher.swift in Sources */,
+				26C569203589E00B1CD5FA28 /* AppMemorySample.swift in Sources */,
 				DDFA439EA7942183414375DC /* AppPaths.swift in Sources */,
 				FBB826DD73104A76AF114114 /* AppPickerPopover.swift in Sources */,
 				362651FE29DD01EC4D846F5F /* AppSettings.swift in Sources */,
@@ -5978,7 +5982,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				DICTATION_EXECUTABLE_NAME = "Tinycast Dev Dictation";
@@ -5999,7 +6003,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.36;
+				MARKETING_VERSION = 0.1.37;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -6134,7 +6138,7 @@
 				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
@@ -6152,7 +6156,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.36;
+				MARKETING_VERSION = 0.1.37;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

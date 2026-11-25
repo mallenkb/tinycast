@@ -313,6 +313,25 @@ cue to delete it. See [migrations.md](migrations.md).
 
 ## Performance measurement
 
+To inspect Tinycast's periodic memory samples and idle cleanups, use the Memory category in Console
+or read the last hour from Terminal.
+
+```sh
+log show --last 1h --info --predicate 'subsystem == "com.tinycast.app" AND category == "Memory"'
+```
+
+Samples give the combined footprint, the main-process footprint and lifetime peak, compressed memory,
+graphics and each running bundled helper's footprint in decimal MB. At or above the main process's 100 MB
+budget they also include bytes in use across malloc zones, shown in MB. These measures overlap.
+The activity field describes what Tinycast was doing at sample time. A peak can occur between
+samples and a short-lived helper can exit before the next one. Idle cleanup records give the
+main footprint before and after the pass and the bytes the allocator reports releasing. For live
+samples, use `log stream --info` with the same predicate. macOS controls retention.
+
+To check the 50–60 MB warmed idle target, compare `total` across repeated uses of the same feature
+after the palette and Settings close and background work settles. Between events, samples are about
+ten minutes apart below 100 MB combined and about one minute apart at or above it.
+
 `Platform/Signposts.swift` emits eight intervals on the `com.tinycast.perf` subsystem: `AppCore.start`,
 `AppIndex.scan`, `AppIndex.rank`, `PaletteWindowController.show`, `UninstallScanner.discover`,
 `UninstallScanner.measure`, `Notes.search` and `FileIndexer.update`. Open the Time Profiler or

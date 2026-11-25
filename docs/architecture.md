@@ -137,13 +137,21 @@ Dictation similarly runs its model adapters in a bundled helper, with bounded in
 text over pipes. The coordinator keeps microphone capture, UI and insertion in Tinycast; the model
 store starts the helper on demand and reaps it after the selected idle delay or a model switch.
 
-`AppCore` also owns `MemoryReclaimer`. Its local event monitor and palette observation reschedule a
-single idle timer. After two seconds it detaches hidden search views and releases image caches, then
-requests allocator relief off-main. Settings schedules the same cleanup when opening, navigating
-through its coordinator, and closing. Teardown cancels the timer and worker and removes the event monitor.
+`AppCore` owns `MemoryReclaimer`. Two seconds after input or feature activity settles, it can
+detach a hidden search view. When Tinycast is idle, it measures the physical footprint of the main
+process and its running bundled helpers off the main thread. A visible palette, key window, dictation
+session, extension sign-in, streaming reply or active indexing defers cache cleanup.
 
-While the palette is hidden, that idle pass also releases row thumbnails and extension artwork.
-Cache generations prevent decodes started before the purge from restoring those allocations.
+Above 60 MB combined, the idle pass releases decoded icons, thumbnails, extension artwork and
+link banners. It rechecks the main footprint and asks the allocator for the remaining excess.
+Helpers follow their feature's own release policy. Cache generations keep earlier decodes from
+refilling a purged cache. Further trims wait ten minutes unless the main process grows by at least
+10 MB after cleanup or macOS signals memory pressure. A warning or critical pressure event allows
+a full idle trim, including below 60 MB.
+
+Between events, a utility task checks again after ten minutes, or one minute when the combined
+footprint reaches 100 MB. The scheduler allows 20 percent timing tolerance. Teardown removes the
+event monitor and cancels the timer, pressure source, sampler and allocator worker.
 
 Spotlight content queries also run in a disposable helper. The file-search session owns cancellation;
 the helper is reaped before its bounded paths are matched against the current index. Once the search

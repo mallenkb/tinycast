@@ -17,10 +17,7 @@ final class SettingsCoordinator {
             title: String(localized: "Settings"), contentSize: Theme.Size.settingsWindow,
             minimumSize: Theme.Size.settingsWindowMinimum, resizable: true,
             autosaveName: "SettingsWindow", activation: core.activationPolicy,
-            onClose: { [weak core] in
-                IconCache.purgeDecoded()
-                core?.memoryReclaimer.schedule()
-            })
+            onClose: { [weak core] in core?.memoryReclaimer.schedule() })
     }
 
     /// A fresh window mounts on `tab`; an open one navigates to it, recording the jump in history.

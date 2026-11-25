@@ -67,8 +67,8 @@ source list and cancels pending lookup work.
 
 On 2026-11-05, the original combined Dictionary and Settings workflow peaked at 104.4 MB in Debug
 and 114.8 MB in Release. Info.plist now selects libmalloc's space-efficient policy, which favors eager
-reclamation over allocation throughput. AppCore's idle cleanup drops disposable image caches after two
-seconds without input or query changes, preserving the result being read.
+reclamation over allocation throughput. After a dictionary session, Tinycast checks its combined idle
+footprint and can release disposable image caches above 60 MB or under system memory pressure.
 
 With the shipped renderer and launch configuration, two Debug stress runs peaked at 78.4 and 93.0 MB;
 a Release stress run peaked at 73.7 MB. Each performed three cycles of seven dictionary queries and
